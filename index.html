@@ -238,7 +238,8 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
         <div class="c-body">
           <div class="frow">
             <span class="flabel">ID</span>
-            <input class="fin" type="text" inputmode="tel" pattern="[0-9\-]*" id="f_patientId" placeholder="患者ID（例: 1234-5）" oninput="autoSave()">
+            <input class="fin" type="text" inputmode="numeric" pattern="[0-9\-]*" id="f_patientId" placeholder="患者ID（例: 1234-5）" oninput="autoSave()" style="flex:1;min-width:80px">
+            <button type="button" onclick="insertHyphen('f_patientId')" title="ハイフン挿入" style="background:#f0f4f8;border:1.5px solid var(--border);border-radius:6px;padding:8px 16px;font-size:20px;font-weight:700;cursor:pointer;min-height:44px;color:var(--text);flex-shrink:0;line-height:1">−</button>
           </div>
           <div class="frow">
             <span class="flabel">オーナー</span>
@@ -1534,6 +1535,21 @@ function onWeightChange(val) {
 function updateWeightPill(val) {
   const pill = document.getElementById('weightPill');
   if (pill) pill.textContent = val ? val + 'kg' : '—kg';
+}
+
+// ─────────────────────────────────────────────────
+// HYPHEN INSERTER（テンキー入力中のハイフン補助）
+// ─────────────────────────────────────────────────
+function insertHyphen(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const start = el.selectionStart != null ? el.selectionStart : el.value.length;
+  const end   = el.selectionEnd   != null ? el.selectionEnd   : el.value.length;
+  el.value = el.value.slice(0, start) + '-' + el.value.slice(end);
+  const pos = start + 1;
+  el.focus();
+  try { el.setSelectionRange(pos, pos); } catch(e) {}
+  el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 // ─────────────────────────────────────────────────
