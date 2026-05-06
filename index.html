@@ -128,6 +128,13 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .rbtn{padding:5px 10px;border:1.5px solid var(--border);border-radius:5px;background:#f8fafc;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;min-height:32px;-webkit-user-select:none}
 .rbtn.on{background:var(--navy);border-color:var(--navy);color:#fff}
 
+/* PRESET BUTTONS */
+.preset-bar{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px}
+.preset-btn{background:#eaf3fb;border:2px solid var(--blue);color:var(--navy);border-radius:8px;padding:9px 8px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;min-height:54px;-webkit-user-select:none;transition:all .12s}
+.preset-btn:active{background:var(--blue);color:#fff;transform:scale(.97)}
+.preset-label{font-weight:700;font-size:13px;margin-bottom:2px}
+.preset-desc{font-size:11px;opacity:.75;font-weight:400}
+
 /* DRUG LOG TABLE */
 .dtable{width:100%;border-collapse:collapse;font-size:14px}
 .dtable th{background:#f0f4f8;padding:7px 8px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)}
@@ -193,7 +200,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
         <div class="c-body">
           <div class="frow">
             <span class="flabel">ID</span>
-            <input class="fin" type="text" id="f_patientId" placeholder="患者ID" oninput="autoSave()">
+            <input class="fin" type="text" inputmode="tel" pattern="[0-9\-]*" id="f_patientId" placeholder="患者ID（例: 1234-5）" oninput="autoSave()">
           </div>
           <div class="frow">
             <span class="flabel">オーナー</span>
@@ -216,10 +223,15 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <input class="fin" type="text" id="f_breed" placeholder="品種" oninput="autoSave()">
           </div>
           <div class="frow">
+            <span class="flabel">生年月日</span>
+            <input class="fin" type="date" id="f_birthdate" oninput="onBirthdateChange(this.value)" style="flex:1;min-width:140px">
+            <button type="button" onclick="clearBirthdate()" style="background:#f0f4f8;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;cursor:pointer;min-height:40px;color:var(--muted)">不詳</button>
+          </div>
+          <div class="frow">
             <span class="flabel">年齢</span>
-            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_ageY" placeholder="0" oninput="autoSave()">
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_ageY" placeholder="0" oninput="onAgeManualInput()">
             <span class="unit">歳</span>
-            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_ageM" placeholder="0" oninput="autoSave()">
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_ageM" placeholder="0" oninput="onAgeManualInput()">
             <span class="unit">ヶ月</span>
           </div>
           <div class="frow">
@@ -432,6 +444,26 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
         <div class="c-body">
           <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:10px">
             💡 <strong>体重を患者タブに入力すると、全薬剤の総量が自動計算されます</strong>
+          </div>
+
+          <div style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:6px;letter-spacing:.4px">⚡ プリセット（いつものセット）</div>
+          <div class="preset-bar">
+            <button class="preset-btn" type="button" onclick="applyPreset('dog_routine')">
+              <div class="preset-label">🐶 犬・標準</div>
+              <div class="preset-desc">不妊去勢/腹部外科</div>
+            </button>
+            <button class="preset-btn" type="button" onclick="applyPreset('cat_routine')">
+              <div class="preset-label">🐱 猫・標準</div>
+              <div class="preset-desc">不妊去勢/IM導入</div>
+            </button>
+            <button class="preset-btn" type="button" onclick="applyPreset('light_sedation')">
+              <div class="preset-label">💉 軽鎮静</div>
+              <div class="preset-desc">画像/歯科処置</div>
+            </button>
+            <button class="preset-btn" type="button" onclick="applyPreset('senior_risk')">
+              <div class="preset-label">⚠️ 高齢/リスク</div>
+              <div class="preset-desc">α2回避・低用量</div>
+            </button>
           </div>
 
           <div class="sec-title">前投薬 Pre-medication</div>
@@ -767,6 +799,69 @@ const DRUG_GROUPS = {
 };
 
 // ─────────────────────────────────────────────────
+// DRUG PRESETS（いつものセット）
+// 各プリセットの内容は使用獣医師の方針に合わせて自由に変更可
+// ─────────────────────────────────────────────────
+const DRUG_PRESETS = {
+  dog_routine: {
+    label: '🐶 犬・標準',
+    drugs: {
+      medetomidine:   { dose: '10',   route: 'IM' },
+      midazolam:      { dose: '0.2',  route: 'IV' },
+      butorphanol:    { dose: '0.2',  route: 'IM' },
+      atropine_p:     { dose: '0.02', route: 'SC' },
+      propofol:       { dose: '4',    route: 'IV' },
+      cefazolin:      { dose: '22',   route: 'IV' },
+      meloxicam:      { dose: '0.1',  route: 'SC' },
+    },
+  },
+  cat_routine: {
+    label: '🐱 猫・標準',
+    drugs: {
+      medetomidine:   { dose: '60',   route: 'IM' },
+      midazolam:      { dose: '0.2',  route: 'IM' },
+      butorphanol:    { dose: '0.2',  route: 'IM' },
+      alfaxalone_p:   { dose: '3',    route: 'IM' },
+      cefazolin:      { dose: '22',   route: 'IV' },
+      meloxicam:      { dose: '0.1',  route: 'SC' },
+    },
+  },
+  light_sedation: {
+    label: '💉 軽鎮静',
+    drugs: {
+      butorphanol:    { dose: '0.2',  route: 'IM' },
+      midazolam:      { dose: '0.2',  route: 'IM' },
+      alfaxalone_p:   { dose: '2',    route: 'IM' },
+    },
+  },
+  senior_risk: {
+    label: '⚠️ 高齢/リスク',
+    drugs: {
+      midazolam:        { dose: '0.2',  route: 'IV' },
+      butorphanol:      { dose: '0.2',  route: 'IV' },
+      alfaxalone_i:     { dose: '1',    route: 'IV' },
+      cefazolin:        { dose: '22',   route: 'IV' },
+      buprenorphine_p:  { dose: '15',   route: 'IM' },
+    },
+  },
+};
+
+function applyPreset(key) {
+  if (!current) return;
+  const preset = DRUG_PRESETS[key];
+  if (!preset) return;
+  const hasDrugs = Object.values(current.drugs || {}).some(d => d && d.use);
+  if (hasDrugs && !confirm(`現在の薬剤選択を「${preset.label}」で上書きします。よろしいですか？`)) return;
+  current.drugs = {};
+  Object.entries(preset.drugs).forEach(([k, s]) => {
+    current.drugs[k] = { use:true, dose:s.dose, route:s.route };
+  });
+  populateForm();
+  showToast(`プリセット適用: ${preset.label}`);
+  autoSave();
+}
+
+// ─────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────
 let cases = [];
@@ -789,7 +884,7 @@ function makeCase() {
     caseNo: '', staff: '',
     // patient
     patientId:'', ownerName:'', patientName:'',
-    species:'dog', breed:'', ageY:'', ageM:'', sex:'M',
+    species:'dog', breed:'', birthdate:'', ageY:'', ageM:'', sex:'M',
     weight:'', bcs:'', consciousness:'正常',
     seizures:false, allergies:false, allergyDetail:'', preMeds:'',
     // pre-op
@@ -973,7 +1068,7 @@ function populateForm() {
 
   // Simple text / number fields
   const fields = [
-    'patientId','ownerName','patientName','breed','ageY','ageM','weight','bcs',
+    'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
     'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
     'diagnosis','procedure','surgeon','assistant','anesthSupervisor',
     'epinephrineDose','epinephrineVol','dantrolen','otherComplications',
@@ -1066,7 +1161,7 @@ function collectForm() {
   current.staff = getVal('hStaff');
 
   const fields = [
-    'patientId','ownerName','patientName','breed','ageY','ageM','weight','bcs',
+    'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
     'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
     'diagnosis','procedure','surgeon','assistant','anesthSupervisor',
     'epinephrineDose','epinephrineVol','dantrolen','otherComplications',
@@ -1209,6 +1304,50 @@ function updateWeightPill(val) {
 }
 
 // ─────────────────────────────────────────────────
+// BIRTHDATE → AGE
+// ─────────────────────────────────────────────────
+function calcAge(birthdate) {
+  if (!birthdate) return null;
+  const bd = new Date(birthdate);
+  if (isNaN(bd.getTime())) return null;
+  const now = new Date();
+  let years = now.getFullYear() - bd.getFullYear();
+  let months = now.getMonth() - bd.getMonth();
+  if (now.getDate() < bd.getDate()) months--;
+  if (months < 0) { years--; months += 12; }
+  if (years < 0) return null;
+  return { years, months };
+}
+
+function onBirthdateChange(val) {
+  if (!current) return;
+  current.birthdate = val;
+  const age = calcAge(val);
+  if (age) {
+    setVal('f_ageY', age.years);
+    setVal('f_ageM', age.months);
+    current.ageY = String(age.years);
+    current.ageM = String(age.months);
+  }
+  autoSave();
+}
+
+function onAgeManualInput() {
+  if (!current) return;
+  current.ageY = document.getElementById('f_ageY').value;
+  current.ageM = document.getElementById('f_ageM').value;
+  autoSave();
+}
+
+function clearBirthdate() {
+  if (!current) return;
+  current.birthdate = '';
+  setVal('f_birthdate', '');
+  autoSave();
+  showToast('生年月日をクリアしました（年齢は手入力可）');
+}
+
+// ─────────────────────────────────────────────────
 // TIME
 // ─────────────────────────────────────────────────
 function setNow(fieldId) {
@@ -1342,7 +1481,7 @@ function exportCSV() {
   if (!cases.length) { showToast('症例データがありません'); return; }
   collectForm();
   const headers = [
-    '日付','症例番号','担当者','患者名','オーナー','動物種','品種','年齢','体重(kg)',
+    '日付','症例番号','担当者','患者ID','患者名','オーナー','動物種','品種','生年月日','年齢','体重(kg)',
     '性別','診断名','術式','ASA-PS',
     '麻酔開始','手術開始','手術終了','抜管','麻酔時間(分)','手術時間(分)',
     '覚醒の様子','疼痛スコア',
@@ -1350,9 +1489,9 @@ function exportCSV() {
     '改善点/申し送り'
   ];
   const rows = cases.map(c => [
-    c.date, c.caseNo, c.staff, c.patientName, c.ownerName,
+    c.date, c.caseNo, c.staff, c.patientId, c.patientName, c.ownerName,
     c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : '他',
-    c.breed, `${c.ageY||''}歳${c.ageM||''}ヶ月`, c.weight,
+    c.breed, c.birthdate, `${c.ageY||''}歳${c.ageM||''}ヶ月`, c.weight,
     c.sex, c.diagnosis, c.procedure, c.asaps,
     c.anesthStart, c.surgStart, c.surgEnd, c.extubation, c.anesthDur, c.surgDur,
     c.recQuality, c.painScore,
