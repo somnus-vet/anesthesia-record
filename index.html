@@ -642,10 +642,22 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
         <div class="c-hdr">5. 術中経過 <span class="c-hdr-en">Intra-op</span></div>
         <div class="c-body">
           <div class="frow">
-            <span class="flabel flabel-w">麻酔開始</span>
+            <span class="flabel flabel-w">前投薬</span>
             <div class="tgrp">
               <input class="fin" type="text" id="f_anesthStart" placeholder="00:00" oninput="autoSave()">
               <button class="btn-now" onclick="setNow('f_anesthStart')">今</button>
+            </div>
+            <span class="flabel" style="min-width:36px">導入</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_inductionTime" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_inductionTime')">今</button>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">抗菌薬</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_antibioticTime" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_antibioticTime')">今</button>
             </div>
             <span class="flabel" style="min-width:36px">手術開始</span>
             <div class="tgrp">
@@ -654,15 +666,34 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             </div>
           </div>
           <div class="frow">
-            <span class="flabel flabel-w">手術終了</span>
+            <span class="flabel flabel-w">縫合開始</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_sutureStart" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_sutureStart')">今</button>
+            </div>
+            <span class="flabel" style="min-width:36px">手術終了</span>
             <div class="tgrp">
               <input class="fin" type="text" id="f_surgEnd" placeholder="00:00" oninput="autoSave()">
               <button class="btn-now" onclick="setNow('f_surgEnd')">今</button>
             </div>
-            <span class="flabel" style="min-width:28px">抜管</span>
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">拮抗薬</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_antagonistTime" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_antagonistTime')">今</button>
+            </div>
+            <span class="flabel" style="min-width:36px">抜管</span>
             <div class="tgrp">
               <input class="fin" type="text" id="f_extubation" placeholder="00:00" oninput="autoSave()">
               <button class="btn-now" onclick="setNow('f_extubation')">今</button>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">帰舎</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_returnToWard" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_returnToWard')">今</button>
             </div>
           </div>
           <div class="frow">
@@ -1330,8 +1361,10 @@ function makeCase() {
     maintConc:'', maintO2:'', ventilation:'',
     fluidType:'', fluidRate:'',
     localBlocks: {}, localCustom1:'', localCustom2:'',
-    // intra-op
-    anesthStart:'', surgStart:'', surgEnd:'', extubation:'',
+    // intra-op timeline
+    anesthStart:'', inductionTime:'', antibioticTime:'',
+    surgStart:'', sutureStart:'', surgEnd:'',
+    antagonistTime:'', extubation:'', returnToWard:'',
     anesthDur:'', surgDur:'', events:'',
     // complications
     compInductBreathing:false, compInductUpperAirway:false, compInductApnea:false,
@@ -1499,7 +1532,8 @@ function populateForm() {
     'tubeSize','bagSize',
     'maintConc','maintO2','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
-    'anesthStart','surgStart','surgEnd','extubation','anesthDur','surgDur','events',
+    'anesthStart','inductionTime','antibioticTime','surgStart','sutureStart','surgEnd',
+    'antagonistTime','extubation','returnToWard','anesthDur','surgDur','events',
     'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
     'compHtnMax','compHypotensionMin','compArrhythmiaType',
     'compHypoxemiaMin','compHypocapniaMin','compHypercapniaMax','compDetails',
@@ -1602,7 +1636,8 @@ function collectForm() {
     'tubeSize','bagSize',
     'maintConc','maintO2','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
-    'anesthStart','surgStart','surgEnd','extubation','anesthDur','surgDur','events',
+    'anesthStart','inductionTime','antibioticTime','surgStart','sutureStart','surgEnd',
+    'antagonistTime','extubation','returnToWard','anesthDur','surgDur','events',
     'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
     'compHtnMax','compHypotensionMin','compArrhythmiaType',
     'compHypoxemiaMin','compHypocapniaMin','compHypercapniaMax','compDetails',
@@ -2228,12 +2263,17 @@ function generatePrintHTML(c) {
     })()}
 
     <div class="p-section">
-      <h3>術中 / Intra-op</h3>
+      <h3>術中タイムライン / Intra-op Timeline</h3>
       <div class="p-row">
-        ${fld('麻酔開始', c.anesthStart)}
+        ${fld('前投薬', c.anesthStart)}
+        ${fld('導入', c.inductionTime)}
+        ${fld('抗菌薬', c.antibioticTime)}
         ${fld('手術開始', c.surgStart)}
+        ${fld('縫合開始', c.sutureStart)}
         ${fld('手術終了', c.surgEnd)}
+        ${fld('拮抗薬', c.antagonistTime)}
         ${fld('抜管', c.extubation)}
+        ${fld('帰舎', c.returnToWard)}
         ${fld('麻酔時間', c.anesthDur ? c.anesthDur+'分':'')}
         ${fld('手術時間', c.surgDur ? c.surgDur+'分':'')}
       </div>
