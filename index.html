@@ -399,14 +399,14 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           </div>
           <div class="frow">
             <span class="flabel flabel-w">ASA-PS</span>
-            <div class="seg" style="flex:1">
+            <div class="seg" style="flex:1;max-width:240px">
               <div class="seg-i on" onclick="setSeg('asaps','1',this)">Ⅰ</div>
               <div class="seg-i" onclick="setSeg('asaps','2',this)">Ⅱ</div>
               <div class="seg-i" onclick="setSeg('asaps','3',this)">Ⅲ</div>
               <div class="seg-i" onclick="setSeg('asaps','4',this)">Ⅳ</div>
               <div class="seg-i" onclick="setSeg('asaps','5',this)">Ⅴ</div>
-              <div class="seg-i" onclick="setSeg('asaps','E',this)">E</div>
             </div>
+            <div class="chk-item" onclick="toggleChk(this,'asapsE')"><div class="chk-box"></div><span class="chk-label">E (緊急)</span></div>
           </div>
           <div class="frow">
             <span class="flabel flabel-w">予想リスク</span>
@@ -434,8 +434,12 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
                 <span class="emerg-calc" data-emerg="atropine_e"></span>
               </div>
               <div class="emerg-row">
-                <div class="chk-item" onclick="toggleChk(this,'hpot_ephedrine')"><div class="chk-box"></div><span class="chk-label">エフェドリン 40-80μg/kg</span></div>
+                <div class="chk-item" onclick="toggleChk(this,'hpot_ephedrine')"><div class="chk-box"></div><span class="chk-label">エフェドリン (100倍希釈) 0.1-0.2mL/kg</span></div>
                 <span class="emerg-calc" data-emerg="ephedrine_e"></span>
+              </div>
+              <div class="emerg-row">
+                <div class="chk-item" onclick="toggleChk(this,'hpot_norad')"><div class="chk-box"></div><span class="chk-label">ノルアドレナリン (50倍希釈) 0.1μg/kg/min CRI〜</span></div>
+                <span class="emerg-calc" data-emerg="norad_e"></span>
               </div>
               <input class="fin" type="text" id="f_hpot_notes" placeholder="メモ" oninput="autoSave()">
             </div>
@@ -480,11 +484,12 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             </div>
           </div>
 
-          <!-- アナフィラキシー -->
+          <!-- アナフィラキシー / 心停止 -->
           <div class="comp-block">
-            <div class="chk-item comp-main" onclick="toggleChk(this,'expectedAnaphylaxis')"><div class="chk-box"></div><span class="chk-label">⚡ アナフィラキシー</span></div>
+            <div class="chk-item comp-main" onclick="toggleChk(this,'expectedAnaphylaxis')"><div class="chk-box"></div><span class="chk-label">⚡ アナフィラキシー / 心停止</span></div>
             <div class="comp-sub">
-              <div class="emerg-info"><span class="emerg-info-label">アドレナリン 0.01mg/kg IV</span><span class="emerg-calc" data-emerg="epinephrine"></span></div>
+              <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心拍動時) 1μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_normal"></span></div>
+              <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心停止時) 10μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_arrest"></span></div>
               <div class="emerg-info"><span class="emerg-info-label">ジフェンヒドラミン 1-2mg/kg</span><span class="emerg-calc" data-emerg="diphenhydramine"></span></div>
               <div class="emerg-info"><span class="emerg-info-label">デキサメタゾン 0.1-0.2mg/kg</span><span class="emerg-calc" data-emerg="dexamethasone"></span></div>
               <input class="fin" type="text" id="f_anaphy_notes" placeholder="メモ" oninput="autoSave()">
@@ -505,7 +510,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           <div class="comp-block">
             <div class="chk-item comp-main" onclick="toggleChk(this,'expectedHypo')"><div class="chk-box"></div><span class="chk-label">📉 低血糖</span></div>
             <div class="comp-sub">
-              <div class="emerg-info"><span class="emerg-info-label">50%ブドウ糖 0.5-1mL/kg IV slow</span><span class="emerg-calc" data-emerg="glucose50"></span></div>
+              <div class="emerg-info"><span class="emerg-info-label">20%ブドウ糖 1mL/kg IV slow</span><span class="emerg-calc" data-emerg="glucose20"></span></div>
               <input class="fin" type="text" id="f_hypoTx" placeholder="メモ" oninput="autoSave()">
             </div>
           </div>
@@ -549,12 +554,19 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <div class="seg-i on" onclick="setSeg('circuit','rebreath',this)">再呼吸</div>
             <div class="seg-i" onclick="setSeg('circuit','nonrebreath',this)">非再呼吸</div>
           </div>
-          <div style="font-size:12px;color:var(--muted);margin:8px 0 5px">静脈路</div>
+          <div style="font-size:12px;color:var(--muted);margin:8px 0 5px">静脈留置</div>
           <div class="chk-grid">
             <div class="chk-item" onclick="toggleChk(this,'ivLF')"><div class="chk-box"></div><span class="chk-label">LF</span></div>
             <div class="chk-item" onclick="toggleChk(this,'ivRF')"><div class="chk-box"></div><span class="chk-label">RF</span></div>
             <div class="chk-item" onclick="toggleChk(this,'ivLR')"><div class="chk-box"></div><span class="chk-label">LR</span></div>
             <div class="chk-item" onclick="toggleChk(this,'ivRR')"><div class="chk-box"></div><span class="chk-label">RR</span></div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin:8px 0 5px">動脈留置</div>
+          <div class="chk-grid">
+            <div class="chk-item" onclick="toggleChk(this,'aLF')"><div class="chk-box"></div><span class="chk-label">LF</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'aRF')"><div class="chk-box"></div><span class="chk-label">RF</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'aLR')"><div class="chk-box"></div><span class="chk-label">LR</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'aRR')"><div class="chk-box"></div><span class="chk-label">RR</span></div>
           </div>
         </div>
       </div>
@@ -644,7 +656,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           <div class="frow">
             <span class="flabel flabel-w">前投薬</span>
             <div class="tgrp">
-              <input class="fin" type="text" id="f_anesthStart" placeholder="00:00" oninput="autoSave()">
+              <input class="fin" type="text" id="f_anesthStart" placeholder="00:00" oninput="onTimelineInput('anesthStart',this.value)">
               <button class="btn-now" onclick="setNow('f_anesthStart')">今</button>
             </div>
             <span class="flabel" style="min-width:36px">導入</span>
@@ -661,7 +673,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             </div>
             <span class="flabel" style="min-width:36px">手術開始</span>
             <div class="tgrp">
-              <input class="fin" type="text" id="f_surgStart" placeholder="00:00" oninput="autoSave()">
+              <input class="fin" type="text" id="f_surgStart" placeholder="00:00" oninput="onTimelineInput('surgStart',this.value)">
               <button class="btn-now" onclick="setNow('f_surgStart')">今</button>
             </div>
           </div>
@@ -673,7 +685,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             </div>
             <span class="flabel" style="min-width:36px">手術終了</span>
             <div class="tgrp">
-              <input class="fin" type="text" id="f_surgEnd" placeholder="00:00" oninput="autoSave()">
+              <input class="fin" type="text" id="f_surgEnd" placeholder="00:00" oninput="onTimelineInput('surgEnd',this.value)">
               <button class="btn-now" onclick="setNow('f_surgEnd')">今</button>
             </div>
           </div>
@@ -692,19 +704,21 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           <div class="frow">
             <span class="flabel flabel-w">帰舎</span>
             <div class="tgrp">
-              <input class="fin" type="text" id="f_returnToWard" placeholder="00:00" oninput="autoSave()">
+              <input class="fin" type="text" id="f_returnToWard" placeholder="00:00" oninput="onTimelineInput('returnToWard',this.value)">
               <button class="btn-now" onclick="setNow('f_returnToWard')">今</button>
             </div>
           </div>
           <div class="frow">
             <span class="flabel flabel-w">麻酔時間</span>
-            <input class="fin fin-md" type="text" inputmode="numeric" id="f_anesthDur" placeholder="分" oninput="autoSave()">
-            <span class="unit">分</span>
-            <span class="flabel" style="min-width:36px">手術時間</span>
-            <input class="fin fin-md" type="text" inputmode="numeric" id="f_surgDur" placeholder="分" oninput="autoSave()">
-            <span class="unit">分</span>
+            <input class="fin fin-md" type="text" inputmode="numeric" id="f_anesthDur" placeholder="自動" oninput="autoSave()" readonly style="background:#eaf3fb;color:var(--navy);font-weight:700">
+            <span class="unit">分（前投薬→帰舎）</span>
           </div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:5px">術中イベント・バイタル変動・対応</div>
+          <div class="frow">
+            <span class="flabel flabel-w">手術時間</span>
+            <input class="fin fin-md" type="text" inputmode="numeric" id="f_surgDur" placeholder="自動" oninput="autoSave()" readonly style="background:#eaf3fb;color:var(--navy);font-weight:700">
+            <span class="unit">分（手術開始→終了）</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin:8px 0 5px">術中イベント・バイタル変動・対応</div>
           <textarea class="ftxt" style="min-height:120px" id="f_events" placeholder="イベントを時系列で記載" oninput="autoSave()"></textarea>
         </div>
       </div>
@@ -1330,10 +1344,10 @@ function makeCase() {
     testEcho:false, testECG:false, testUA:false, testOther:false,
     // surgery
     diagnosis:'', procedure:'', surgeon:'', assistant:'',
-    anesthSupervisor:'', asaps:'1', riskLevel:'light',
+    anesthSupervisor:'', asaps:'1', asapsE:false, riskLevel:'light',
     // 低血圧
     expectedHypotension:false,
-    hpot_miniFluid:false, hpot_atropine:false, hpot_ephedrine:false, hpot_notes:'',
+    hpot_miniFluid:false, hpot_atropine:false, hpot_ephedrine:false, hpot_norad:false, hpot_notes:'',
     // 低体温
     expectedHypothermia:false,
     hthm_warmAir:false, hthm_warmMat:false, hthm_warmWater:false, hthm_notes:'',
@@ -1355,6 +1369,7 @@ function makeCase() {
     equipOscillo:false, equipDoppler:true, equipArterial:false,
     circuit:'rebreath', tubeSize:'', bagSize:'',
     ivLF:false, ivRF:false, ivLR:false, ivRR:false,
+    aLF:false, aRF:false, aLR:false, aRR:false,
     // protocol
     drugs: {}, // { key: { use, dose, route } }
     maintIsoflurane:false, maintSevoflurane:false, maintPropofol:false,
@@ -1553,13 +1568,15 @@ function populateForm() {
   const chks = [
     'seizures','allergies','testCBC','testBiochem','testCoag','testXray',
     'testEcho','testECG','testUA','testOther',
+    'asapsE',
     'expectedHypotension','expectedHypo','expectedHypothermia','expectedAnaphylaxis','expectedMH','expectedHypovent',
-    'hpot_miniFluid','hpot_atropine','hpot_ephedrine',
+    'hpot_miniFluid','hpot_atropine','hpot_ephedrine','hpot_norad',
     'hthm_warmAir','hthm_warmMat','hthm_warmWater',
     'hvent_pcv','hvent_vcv','hvent_manual',
     'equipTemp','equipECG','equipHR','equipRR','equipEtCO2','equipSpO2',
     'equipABP','equipGas','equipOscillo','equipDoppler','equipArterial',
     'ivLF','ivRF','ivLR','ivRR',
+    'aLF','aRF','aLR','aRR',
     'maintIsoflurane','maintSevoflurane','maintPropofol',
     'compInductBreathing','compInductUpperAirway','compInductApnea',
     'compInductLaryngospasm','compInductCyanosis','compInductVomiting','compInductExcitement',
@@ -1606,6 +1623,9 @@ function populateForm() {
 
   // Emergency response doses
   updateEmergencyDoses(current.weight);
+
+  // Durations
+  updateDurations();
 
   // Recovery quality
   setQuality(current.recQuality, false);
@@ -1786,14 +1806,16 @@ const EMERG_FORMULAS = {
     const lo = 5*w, hi = 10*w;
     return `= ${lo.toFixed(0)}〜${hi.toFixed(0)} μg (${(lo/500).toFixed(2)}〜${(hi/500).toFixed(2)} mL @0.5mg/mL)`;
   },
-  ephedrine_e: w => {
-    const lo = 40*w, hi = 80*w;
-    return `= ${lo.toFixed(0)}〜${hi.toFixed(0)} μg (${(lo/4000).toFixed(2)}〜${(hi/4000).toFixed(2)} mL @4mg/mL)`;
-  },
+  ephedrine_e: w => `= ${(0.1*w).toFixed(2)}〜${(0.2*w).toFixed(2)} mL (100倍希釈 = 400μg/mL, 0.1-0.2mL/kg)`,
+  norad_e: w => `= 開始 ${(0.1*w).toFixed(2)} μg/min = ${(0.3*w).toFixed(2)} mL/hr (50倍希釈 = 20μg/mL)`,
   vt_range: w => `(目安: ${(8*w).toFixed(0)}〜${(15*w).toFixed(0)} mL = 8-15mL/kg)`,
-  epinephrine: w => {
-    const dose = 0.01*w;
-    return `= ${dose.toFixed(2)} mg = ${dose.toFixed(2)} mL @1mg/mL (1:1000)`;
+  epinephrine_normal: w => {
+    const ug = 1*w;
+    return `= ${ug.toFixed(1)} μg = ${(ug/1000).toFixed(3)} mg = ${(ug/1000).toFixed(3)} mL @1mg/mL (1:1000)`;
+  },
+  epinephrine_arrest: w => {
+    const ug = 10*w;
+    return `= ${ug.toFixed(1)} μg = ${(ug/1000).toFixed(2)} mg = ${(ug/1000).toFixed(2)} mL @1mg/mL (1:1000)`;
   },
   diphenhydramine: w => {
     const lo = 1*w, hi = 2*w;
@@ -1807,10 +1829,7 @@ const EMERG_FORMULAS = {
     const lo = 1*w, hi = 3*w;
     return `= ${lo.toFixed(1)}〜${hi.toFixed(1)} mg (${(lo/0.333).toFixed(1)}〜${(hi/0.333).toFixed(1)} mL @希釈後0.333mg/mL)`;
   },
-  glucose50: w => {
-    const lo = 0.5*w, hi = 1*w;
-    return `= ${lo.toFixed(1)}〜${hi.toFixed(1)} mL`;
-  },
+  glucose20: w => `= ${(1*w).toFixed(1)} mL (20%ブドウ糖)`,
 };
 
 function updateEmergencyDoses(weight) {
@@ -1899,11 +1918,51 @@ function clearBirthdate() {
 }
 
 // ─────────────────────────────────────────────────
-// TIME
+// TIME / DURATION CALC
+// 麻酔時間 = 前投薬→帰舎、手術時間 = 手術開始→手術終了
 // ─────────────────────────────────────────────────
+function calcMinutesBetween(start, end) {
+  if (!start || !end) return null;
+  const m1 = String(start).match(/^(\d{1,2}):(\d{2})$/);
+  const m2 = String(end).match(/^(\d{1,2}):(\d{2})$/);
+  if (!m1 || !m2) return null;
+  const startMin = parseInt(m1[1],10) * 60 + parseInt(m1[2],10);
+  let endMin = parseInt(m2[1],10) * 60 + parseInt(m2[2],10);
+  if (endMin < startMin) endMin += 24 * 60; // 日跨ぎ対応
+  const diff = endMin - startMin;
+  return diff >= 0 ? diff : null;
+}
+
+function updateDurations() {
+  if (!current) return;
+  const anesth = calcMinutesBetween(current.anesthStart, current.returnToWard);
+  if (anesth !== null) {
+    current.anesthDur = String(anesth);
+    setVal('f_anesthDur', anesth);
+  }
+  const surg = calcMinutesBetween(current.surgStart, current.surgEnd);
+  if (surg !== null) {
+    current.surgDur = String(surg);
+    setVal('f_surgDur', surg);
+  }
+}
+
+function onTimelineInput(key, val) {
+  if (current) current[key] = val;
+  updateDurations();
+  autoSave();
+}
+
 function setNow(fieldId) {
   const el = document.getElementById(fieldId);
-  if (el) { el.value = nowTime(); autoSave(); }
+  if (!el) return;
+  el.value = nowTime();
+  if (current) {
+    const key = fieldId.replace('f_', '');
+    if (key in current) current[key] = el.value;
+  }
+  updateDurations();
+  autoSave();
 }
 
 // ─────────────────────────────────────────────────
@@ -2113,6 +2172,10 @@ function generatePrintHTML(c) {
   const ivs = [];
   if (c.ivLF) ivs.push('LF'); if (c.ivRF) ivs.push('RF');
   if (c.ivLR) ivs.push('LR'); if (c.ivRR) ivs.push('RR');
+  // 動脈ライン
+  const arts = [];
+  if (c.aLF) arts.push('LF'); if (c.aRF) arts.push('RF');
+  if (c.aLR) arts.push('LR'); if (c.aRR) arts.push('RR');
 
   // 薬剤投与ログ
   const drugLogRows = (c.drugLog || []).filter(r => r.drug || r.dose || r.time)
@@ -2162,7 +2225,7 @@ function generatePrintHTML(c) {
         <div class="p-row">
           ${fld('診断名', c.diagnosis)}
           ${fld('術式', c.procedure)}
-          ${fld('ASA-PS', c.asaps)}
+          ${fld('ASA-PS', c.asaps ? c.asaps + (c.asapsE ? 'E':''):'')}
           ${fld('リスク', c.riskLevel)}
         </div>
         <div class="p-row">
@@ -2179,7 +2242,8 @@ function generatePrintHTML(c) {
         const sub = [
           c.hpot_miniFluid ? 'ミニフルイド5mL/kg×5min' : '',
           c.hpot_atropine ? 'アトロピン5-10μg/kg' : '',
-          c.hpot_ephedrine ? 'エフェドリン40-80μg/kg' : '',
+          c.hpot_ephedrine ? 'エフェドリン100倍希釈0.1-0.2mL/kg' : '',
+          c.hpot_norad ? 'ノルアド50倍希釈0.1μg/kg/min CRI〜' : '',
           c.hpot_notes,
         ].filter(Boolean);
         items.push(`<tr><td>低血圧</td><td>${esc(sub.join(' / ') || '—')}</td></tr>`);
@@ -2203,8 +2267,8 @@ function generatePrintHTML(c) {
       }
       if (c.expectedAnaphylaxis) {
         const w = parseFloat(c.weight);
-        const dose = w ? `アドレナリン ${(0.01*w).toFixed(2)}mg / ジフェンヒドラミン ${(1*w).toFixed(1)}-${(2*w).toFixed(1)}mg / デキサメタゾン ${(0.1*w).toFixed(2)}-${(0.2*w).toFixed(2)}mg` : '';
-        items.push(`<tr><td>アナフィラキシー</td><td>${esc(dose)}${c.anaphy_notes ? ' / ' + esc(c.anaphy_notes) : ''}</td></tr>`);
+        const dose = w ? `アドレナリン拍動時${(1*w).toFixed(1)}μg/心停止${(10*w).toFixed(0)}μg / ジフェン${(1*w).toFixed(1)}-${(2*w).toFixed(1)}mg / デキサ${(0.1*w).toFixed(2)}-${(0.2*w).toFixed(2)}mg` : '';
+        items.push(`<tr><td>アナフィラキシー/心停止</td><td>${esc(dose)}${c.anaphy_notes ? ' / ' + esc(c.anaphy_notes) : ''}</td></tr>`);
       }
       if (c.expectedMH) {
         const w = parseFloat(c.weight);
@@ -2213,7 +2277,7 @@ function generatePrintHTML(c) {
       }
       if (c.expectedHypo) {
         const w = parseFloat(c.weight);
-        const dose = w ? `50%ブドウ糖 ${(0.5*w).toFixed(1)}-${(1*w).toFixed(1)}mL IV` : '50%ブドウ糖 0.5-1mL/kg IV';
+        const dose = w ? `20%ブドウ糖 ${(1*w).toFixed(1)}mL IV slow` : '20%ブドウ糖 1mL/kg IV slow';
         items.push(`<tr><td>低血糖</td><td>${esc(dose)}${c.hypoTx ? ' / ' + esc(c.hypoTx) : ''}</td></tr>`);
       }
       if (!items.length && !c.otherComplications) return '';
@@ -2309,7 +2373,8 @@ function generatePrintHTML(c) {
           ${fld('回路', c.circuit)}
           ${fld('チューブ', c.tubeSize)}
           ${fld('バッグ', c.bagSize)}
-          ${ivs.length ? fld('IVライン', ivs.join('・')) : ''}
+          ${ivs.length ? fld('静脈', ivs.join('・')) : ''}
+          ${arts.length ? fld('動脈', arts.join('・')) : ''}
         </div>
       </div>
     </div>
@@ -2347,7 +2412,7 @@ function exportCSV() {
     c.date, c.caseNo, c.staff, c.patientId, c.patientName, c.ownerName,
     c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : '他',
     c.breed, c.birthdate, `${c.ageY||''}歳${c.ageM||''}ヶ月`, c.weight,
-    c.sex, c.diagnosis, c.procedure, c.asaps,
+    c.sex, c.diagnosis, c.procedure, c.asaps + (c.asapsE ? 'E':''),
     c.anesthStart, c.surgStart, c.surgEnd, c.extubation, c.anesthDur, c.surgDur,
     c.recQuality, c.painScore,
     c.compHypotension ? '✓' : '', c.compBrady ? '✓' : '',
