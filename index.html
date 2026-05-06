@@ -134,6 +134,28 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .preset-btn:active{background:var(--blue);color:#fff;transform:scale(.97)}
 .preset-label{font-weight:700;font-size:13px;margin-bottom:2px}
 .preset-desc{font-size:11px;opacity:.75;font-weight:400}
+.preset-edit-btn{background:#fff;border:1.5px dashed var(--blue);color:var(--blue);border-radius:8px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;width:100%;margin-bottom:12px;min-height:36px;-webkit-user-select:none}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.modal-overlay.on{display:flex}
+.modal-box{background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-hdr{background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:15px}
+.modal-close{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0;line-height:1;width:30px;height:30px}
+.modal-body{padding:14px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1}
+.modal-footer{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.modal-footer button{padding:9px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:600;cursor:pointer;min-height:40px}
+.modal-footer .btn-save{background:var(--navy);color:#fff;border-color:var(--navy)}
+.modal-footer .btn-reset{background:#fff8e0;border-color:#f3c441;color:#8a6d00}
+.preset-drug-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:8px 0;border-bottom:1px dashed #eee}
+.preset-drug-row:last-child{border-bottom:none}
+.preset-drug-name{font-size:13px;font-weight:600}
+.preset-drug-name .unit-inline{font-size:11px;opacity:.6;font-weight:400}
+.preset-drug-controls{display:flex;align-items:center;gap:5px;flex-wrap:wrap;grid-column:1/-1;margin-top:4px}
+.preset-drug-del{background:#fff;border:1.5px solid #f5c2c7;color:#dc3545;border-radius:6px;width:32px;height:32px;font-size:16px;cursor:pointer}
+.preset-add-row{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1.5px solid var(--border)}
+.preset-add-row select{flex:1;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;background:#f8fafc;min-height:42px}
+.preset-add-row button{padding:9px 14px;background:var(--green);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;min-height:42px}
 
 /* DRUG LOG TABLE */
 .dtable{width:100%;border-collapse:collapse;font-size:14px}
@@ -224,7 +246,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           </div>
           <div class="frow">
             <span class="flabel">生年月日</span>
-            <input class="fin" type="date" id="f_birthdate" oninput="onBirthdateChange(this.value)" style="flex:1;min-width:140px">
+            <input class="fin" type="text" inputmode="numeric" id="f_birthdate" placeholder="YYYY/MM/DD" maxlength="10" oninput="onBirthdateInput(this)" style="flex:1;min-width:130px">
             <button type="button" onclick="clearBirthdate()" style="background:#f0f4f8;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;cursor:pointer;min-height:40px;color:var(--muted)">不詳</button>
           </div>
           <div class="frow">
@@ -447,24 +469,8 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           </div>
 
           <div style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:6px;letter-spacing:.4px">⚡ プリセット（いつものセット）</div>
-          <div class="preset-bar">
-            <button class="preset-btn" type="button" onclick="applyPreset('dog_routine')">
-              <div class="preset-label">🐶 犬・標準</div>
-              <div class="preset-desc">不妊去勢/腹部外科</div>
-            </button>
-            <button class="preset-btn" type="button" onclick="applyPreset('cat_routine')">
-              <div class="preset-label">🐱 猫・標準</div>
-              <div class="preset-desc">不妊去勢/IM導入</div>
-            </button>
-            <button class="preset-btn" type="button" onclick="applyPreset('light_sedation')">
-              <div class="preset-label">💉 軽鎮静</div>
-              <div class="preset-desc">画像/歯科処置</div>
-            </button>
-            <button class="preset-btn" type="button" onclick="applyPreset('senior_risk')">
-              <div class="preset-label">⚠️ 高齢/リスク</div>
-              <div class="preset-desc">α2回避・低用量</div>
-            </button>
-          </div>
+          <div class="preset-bar" id="presetBar"></div>
+          <button class="preset-edit-btn" type="button" onclick="openPresetEditor()">✏️ プリセットを編集</button>
 
           <div class="sec-title">前投薬 Pre-medication</div>
           <div id="drugList_premeds"></div>
@@ -751,6 +757,36 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
 <div id="toast" class="toast"></div>
 
+<!-- ========== PRESET EDITOR MODAL ========== -->
+<div class="modal-overlay" id="presetModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span>✏️ プリセット編集</span>
+      <button class="modal-close" onclick="closePresetEditor()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">編集するプリセット</div>
+      <select id="presetSelect" onchange="renderPresetEditor()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:12px;min-height:44px"></select>
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">表示名</div>
+      <input id="presetLabel" type="text" oninput="onPresetLabelInput(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px">
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">薬剤・用量・経路</div>
+      <div id="presetDrugList"></div>
+
+      <div class="preset-add-row">
+        <select id="addDrugSelect"></select>
+        <button type="button" onclick="addDrugToPreset()">＋追加</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-reset" onclick="resetPresetToDefault()">デフォルトに戻す</button>
+      <button type="button" onclick="closePresetEditor()">キャンセル</button>
+      <button type="button" class="btn-save" onclick="savePresetEditor()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─────────────────────────────────────────────────
 // DRUG DEFINITIONS
@@ -846,9 +882,47 @@ const DRUG_PRESETS = {
   },
 };
 
+// プリセット説明文（キーごとの簡単な補足）
+const PRESET_DESC = {
+  dog_routine: '不妊去勢/腹部',
+  cat_routine: '不妊去勢/IM導入',
+  light_sedation: '画像/歯科処置',
+  senior_risk: 'α2回避・低用量',
+};
+
+// localStorageから読込み・保存
+let userPresets = null;
+function loadPresets() {
+  try {
+    const stored = localStorage.getItem('vet_presets');
+    if (stored) userPresets = JSON.parse(stored);
+  } catch(e) {}
+  // 不足キーがあればデフォルトで補完
+  if (!userPresets || typeof userPresets !== 'object') userPresets = {};
+  Object.keys(DRUG_PRESETS).forEach(k => {
+    if (!userPresets[k]) userPresets[k] = JSON.parse(JSON.stringify(DRUG_PRESETS[k]));
+  });
+}
+function savePresetsToStorage() {
+  try { localStorage.setItem('vet_presets', JSON.stringify(userPresets)); } catch(e){}
+}
+
+// プリセットバーを描画
+function renderPresetBar() {
+  const bar = document.getElementById('presetBar');
+  if (!bar || !userPresets) return;
+  bar.innerHTML = Object.entries(userPresets).map(([key, preset]) => {
+    const desc = PRESET_DESC[key] || '';
+    return `<button class="preset-btn" type="button" onclick="applyPreset('${key}')">
+      <div class="preset-label">${esc(preset.label)}</div>
+      <div class="preset-desc">${esc(desc)}</div>
+    </button>`;
+  }).join('');
+}
+
 function applyPreset(key) {
   if (!current) return;
-  const preset = DRUG_PRESETS[key];
+  const preset = (userPresets || DRUG_PRESETS)[key];
   if (!preset) return;
   const hasDrugs = Object.values(current.drugs || {}).some(d => d && d.use);
   if (hasDrugs && !confirm(`現在の薬剤選択を「${preset.label}」で上書きします。よろしいですか？`)) return;
@@ -859,6 +933,136 @@ function applyPreset(key) {
   populateForm();
   showToast(`プリセット適用: ${preset.label}`);
   autoSave();
+}
+
+// ─────────────────────────────────────────────────
+// プリセット編集モーダル
+// ─────────────────────────────────────────────────
+let editingPreset = null; // 編集中の作業コピー
+
+function openPresetEditor() {
+  if (!userPresets) loadPresets();
+  editingPreset = JSON.parse(JSON.stringify(userPresets));
+  // セレクト初期化
+  const sel = document.getElementById('presetSelect');
+  sel.innerHTML = Object.entries(editingPreset).map(([k, p]) =>
+    `<option value="${k}">${esc(p.label)}</option>`
+  ).join('');
+  sel.value = Object.keys(editingPreset)[0];
+  document.getElementById('presetModal').classList.add('on');
+  renderPresetEditor();
+}
+
+function closePresetEditor() {
+  document.getElementById('presetModal').classList.remove('on');
+  editingPreset = null;
+}
+
+function renderPresetEditor() {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  const preset = editingPreset[key];
+  if (!preset) return;
+  document.getElementById('presetLabel').value = preset.label;
+
+  const allDrugs = Object.values(DRUG_GROUPS).flat();
+  const list = document.getElementById('presetDrugList');
+  const drugEntries = Object.entries(preset.drugs);
+  if (drugEntries.length === 0) {
+    list.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px">薬剤がありません。下の「＋追加」から薬剤を追加してください</div>';
+  } else {
+    list.innerHTML = drugEntries.map(([drugKey, settings]) => {
+      const drug = allDrugs.find(d => d.key === drugKey);
+      if (!drug) return '';
+      const dispUnit = drug.unit;
+      const routeBtns = drug.routes.map(r =>
+        `<button class="rbtn ${settings.route === r ? 'on' : ''}" type="button" onclick="setPresetDrugRoute('${drugKey}','${r}',this)">${r}</button>`
+      ).join('');
+      return `<div class="preset-drug-row">
+        <div class="preset-drug-name">${esc(drug.label)} <span class="unit-inline">(${esc(dispUnit)})</span></div>
+        <input class="fdose" type="text" inputmode="decimal" value="${esc(settings.dose||'')}"
+               oninput="setPresetDrugDose('${drugKey}', this.value)" placeholder="0.0">
+        <button class="preset-drug-del" type="button" onclick="removeDrugFromPreset('${drugKey}')" title="削除">×</button>
+        <div class="preset-drug-controls">${routeBtns}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // 追加ドロップダウン（既に追加済みは除外）
+  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', postAnalg:'術後鎮痛'};
+  const sel = document.getElementById('addDrugSelect');
+  sel.innerHTML = '<option value="">+ 薬剤を選択して追加…</option>' +
+    Object.entries(DRUG_GROUPS).map(([gk, drugs]) => {
+      const opts = drugs.filter(d => !preset.drugs[d.key])
+        .map(d => `<option value="${d.key}">${esc(d.label)} (${esc(d.unit)})</option>`).join('');
+      if (!opts) return '';
+      return `<optgroup label="${esc(groupNames[gk] || gk)}">${opts}</optgroup>`;
+    }).join('');
+}
+
+function onPresetLabelInput(val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]) editingPreset[key].label = val;
+}
+
+function setPresetDrugDose(drugKey, val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]?.drugs[drugKey]) editingPreset[key].drugs[drugKey].dose = val;
+}
+
+function setPresetDrugRoute(drugKey, route, el) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]?.drugs[drugKey]) {
+    editingPreset[key].drugs[drugKey].route = route;
+    el.parentElement.querySelectorAll('.rbtn').forEach(b => b.classList.toggle('on', b === el));
+  }
+}
+
+function removeDrugFromPreset(drugKey) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]?.drugs) delete editingPreset[key].drugs[drugKey];
+  renderPresetEditor();
+}
+
+function addDrugToPreset() {
+  if (!editingPreset) return;
+  const sel = document.getElementById('addDrugSelect');
+  const drugKey = sel.value;
+  if (!drugKey) return;
+  const allDrugs = Object.values(DRUG_GROUPS).flat();
+  const drug = allDrugs.find(d => d.key === drugKey);
+  if (!drug) return;
+  const presetKey = document.getElementById('presetSelect').value;
+  if (!editingPreset[presetKey].drugs) editingPreset[presetKey].drugs = {};
+  editingPreset[presetKey].drugs[drugKey] = { dose: '', route: drug.def };
+  sel.value = '';
+  renderPresetEditor();
+}
+
+function resetPresetToDefault() {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (!confirm(`「${editingPreset[key].label}」をデフォルト設定に戻しますか？`)) return;
+  editingPreset[key] = JSON.parse(JSON.stringify(DRUG_PRESETS[key]));
+  // セレクトのラベルも更新
+  const sel = document.getElementById('presetSelect');
+  Array.from(sel.options).forEach(o => {
+    if (o.value === key) o.textContent = editingPreset[key].label;
+  });
+  renderPresetEditor();
+}
+
+function savePresetEditor() {
+  if (!editingPreset) return;
+  userPresets = editingPreset;
+  savePresetsToStorage();
+  renderPresetBar();
+  closePresetEditor();
+  showToast('プリセットを保存しました');
 }
 
 // ─────────────────────────────────────────────────
@@ -1022,6 +1226,7 @@ function openForm() {
   document.getElementById('casesScreen').classList.add('hidden');
   document.getElementById('formScreen').classList.remove('hidden');
   renderDrugGroups();
+  renderPresetBar();
   populateForm();
   switchTab(0);
 }
@@ -1308,8 +1513,13 @@ function updateWeightPill(val) {
 // ─────────────────────────────────────────────────
 function calcAge(birthdate) {
   if (!birthdate) return null;
-  const bd = new Date(birthdate);
-  if (isNaN(bd.getTime())) return null;
+  // YYYY/MM/DD or YYYY-MM-DD どちらも受ける
+  const m = String(birthdate).match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const bd = new Date(y, mo - 1, d);
+  if (bd.getFullYear() !== y || bd.getMonth() !== mo - 1 || bd.getDate() !== d) return null;
   const now = new Date();
   let years = now.getFullYear() - bd.getFullYear();
   let months = now.getMonth() - bd.getMonth();
@@ -1319,10 +1529,16 @@ function calcAge(birthdate) {
   return { years, months };
 }
 
-function onBirthdateChange(val) {
+function onBirthdateInput(el) {
   if (!current) return;
-  current.birthdate = val;
-  const age = calcAge(val);
+  // 数字8桁を YYYY/MM/DD に自動整形
+  let digits = (el.value || '').replace(/\D/g, '').slice(0, 8);
+  let formatted = digits;
+  if (digits.length > 4) formatted = digits.slice(0,4) + '/' + digits.slice(4);
+  if (digits.length > 6) formatted = digits.slice(0,4) + '/' + digits.slice(4,6) + '/' + digits.slice(6);
+  el.value = formatted;
+  current.birthdate = formatted;
+  const age = calcAge(formatted);
   if (age) {
     setVal('f_ageY', age.years);
     setVal('f_ageM', age.months);
@@ -1527,6 +1743,7 @@ function showToast(msg) {
 // INIT
 // ─────────────────────────────────────────────────
 loadStorage();
+loadPresets();
 renderCasesList();
 </script>
 </body>
