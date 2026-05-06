@@ -123,6 +123,14 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .drug-row:not(.on) .drug-content{opacity:.4;pointer-events:none}
 .fdose{width:78px;font-size:16px;padding:7px 9px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;-webkit-appearance:none;text-align:right;min-height:40px}
 .fdose:focus{outline:none;border-color:var(--blue);background:#fff}
+
+/* LOCAL BLOCKS */
+.block-inputs{display:flex;flex-wrap:wrap;gap:5px 7px;align-items:center;margin-top:5px}
+.block-inputs select{font-size:14px;padding:7px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;min-height:40px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23999' d='M7 10l5 5 5-5z'/></svg>");background-repeat:no-repeat;background-position:right 4px center;padding-right:22px;min-width:90px}
+.block-inputs .fdose{width:60px}
+.block-inputs .unit{font-size:11px}
+.block-note{width:100%;margin-top:5px;font-size:14px;padding:7px 9px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;min-height:38px}
+.block-note:focus{outline:none;border-color:var(--blue);background:#fff}
 .dose-calc{font-size:13px;color:var(--blue);font-weight:700;min-width:88px;white-space:nowrap}
 .rgrp{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
 .rbtn{padding:5px 10px;border:1.5px solid var(--border);border-radius:5px;background:#f8fafc;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;min-height:32px;-webkit-user-select:none}
@@ -537,23 +545,15 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           <div class="sec-title">術後鎮痛 Post-op Analgesia</div>
           <div id="drugList_postAnalg"></div>
 
-          <div class="sec-title">局所麻酔 Local</div>
+          <div class="sec-title">局所麻酔 Local Blocks</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">タップで選択。複数同時可。各ブロックに薬剤・mg/kg・メスアップ(総量mL)・mL/site・メモ入力</div>
+          <div id="localBlocksList"></div>
+          <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">他のブロック（自由記述）</div>
           <div class="frow">
-            <div class="chk-item" onclick="toggleChk(this,'localLido')"><div class="chk-box"></div><span class="chk-label">リドカイン</span></div>
-            <div class="chk-item" onclick="toggleChk(this,'localBupi')"><div class="chk-box"></div><span class="chk-label">ブピバカイン</span></div>
-            <input class="fin" type="text" id="f_localOther" placeholder="他" oninput="autoSave()" style="flex:1;min-width:80px">
+            <input class="fin" type="text" id="f_localCustom1" placeholder="ブロック名・薬剤・部位・量等" oninput="autoSave()">
           </div>
           <div class="frow">
-            <span class="flabel">部位/手技</span>
-            <input class="fin" type="text" id="f_localApproach" placeholder="硬膜外 / 神経ブロック…" oninput="autoSave()">
-          </div>
-          <div class="frow">
-            <span class="flabel">薬液量</span>
-            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_localDrugAmt" placeholder="0.0" oninput="autoSave()">
-            <span class="unit">mL</span>
-            <span class="flabel" style="min-width:36px">投与量</span>
-            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_localAdminAmt" placeholder="0.0" oninput="autoSave()">
-            <span class="unit">mL</span>
+            <input class="fin" type="text" id="f_localCustom2" placeholder="ブロック名・薬剤・部位・量等" oninput="autoSave()">
           </div>
         </div>
       </div>
@@ -855,6 +855,111 @@ const DRUG_GROUPS = {
 };
 
 // ─────────────────────────────────────────────────
+// LOCAL ANESTHESIA BLOCKS
+// ─────────────────────────────────────────────────
+const LOCAL_BLOCKS = [
+  // 浸潤・体腔系
+  { key:'incisional',         label:'切開部浸潤',        desc:'創縁皮下/皮内' },
+  { key:'intraperitoneal',    label:'腹腔内浸潤/Splash',  desc:'開腹後散布' },
+  { key:'intratesticular',    label:'精巣内ブロック',     desc:'去勢' },
+  // 神経軸
+  { key:'ls_epidural',        label:'腰仙硬膜外',         desc:'後肢/腹部/会陰' },
+  { key:'sc_epidural',        label:'仙尾硬膜外',         desc:'猫尿閉/会陰' },
+  // 体幹
+  { key:'tap',                label:'TAPブロック',        desc:'腹部手術' },
+  { key:'ql',                 label:'QLブロック',         desc:'腹部・骨盤' },
+  { key:'esp',                label:'ESPブロック',        desc:'胸腹部' },
+  { key:'intercostal',        label:'肋間神経ブロック',    desc:'開胸' },
+  // 四肢
+  { key:'brachial',           label:'腕神経叢ブロック',    desc:'前肢' },
+  { key:'rumm_distal',        label:'RUMM（遠位）',       desc:'前肢遠位' },
+  { key:'rumm_proximal',      label:'近位RUMM',           desc:'前肢近位' },
+  { key:'femoral',            label:'大腿神経ブロック',    desc:'後肢内側' },
+  { key:'sciatic',            label:'坐骨神経ブロック',    desc:'後肢' },
+  { key:'ls_plexus',          label:'腰仙骨神経幹',       desc:'後肢広範' },
+  // 頭部・歯科
+  { key:'infraorbital',       label:'眼窩下神経',         desc:'上顎前歯〜PM4' },
+  { key:'maxillary',          label:'上顎神経',           desc:'上顎広範' },
+  { key:'inferior_alveolar',  label:'下歯槽神経',         desc:'下顎' },
+  { key:'mental',             label:'オトガイ神経',       desc:'下顎前歯' },
+  { key:'retrobulbar',        label:'Retrobulbar',        desc:'眼球摘出' },
+  { key:'wound_soaker',       label:'創部留置カテーテル',  desc:'持続注入' },
+];
+
+const LA_DRUG_OPTIONS = ['', 'リドカイン', 'ブピバカイン', 'ロピバカイン', 'メピバカイン', 'リド+ブピ', '他'];
+
+function renderLocalBlocks() {
+  const el = document.getElementById('localBlocksList');
+  if (!el) return;
+  el.innerHTML = LOCAL_BLOCKS.map(b => renderBlockRow(b)).join('');
+}
+
+function renderBlockRow(b) {
+  const drugOpts = LA_DRUG_OPTIONS.map(d => `<option value="${esc(d)}">${esc(d || '薬剤…')}</option>`).join('');
+  return `<div class="drug-row" id="brow_${b.key}" onclick="toggleBlock('${b.key}',event)">
+    <div class="drug-toggle"></div>
+    <div class="drug-content">
+      <div class="drug-name">${esc(b.label)}</div>
+      <div class="drug-ref">${esc(b.desc || '')}</div>
+      <div class="block-inputs" onclick="event.stopPropagation()">
+        <select id="bdrug_${b.key}" onchange="setBlockField('${b.key}','drug',this.value)">${drugOpts}</select>
+        <input class="fdose" type="text" inputmode="decimal" id="bmgkg_${b.key}" placeholder="0" oninput="setBlockField('${b.key}','mgkg',this.value)">
+        <span class="unit">mg/kg</span>
+        <input class="fdose" type="text" inputmode="decimal" id="bmes_${b.key}" placeholder="0" oninput="setBlockField('${b.key}','totalVol',this.value)">
+        <span class="unit">mL総</span>
+        <input class="fdose" type="text" inputmode="decimal" id="bsite_${b.key}" placeholder="0" oninput="setBlockField('${b.key}','volPerSite',this.value)">
+        <span class="unit">mL/site</span>
+      </div>
+      <input class="block-note" type="text" id="bnote_${b.key}" placeholder="メモ（部位・効果・希釈等）" oninput="setBlockField('${b.key}','note',this.value)" onclick="event.stopPropagation()">
+    </div>
+  </div>`;
+}
+
+function ensureBlockData(key) {
+  if (!current.localBlocks) current.localBlocks = {};
+  if (!current.localBlocks[key]) {
+    current.localBlocks[key] = { use:false, drug:'', mgkg:'', totalVol:'', volPerSite:'', note:'' };
+  }
+  return current.localBlocks[key];
+}
+
+function toggleBlock(key, event) {
+  if (!current) return;
+  const t = event.target;
+  if (t.tagName === 'INPUT' || t.tagName === 'BUTTON' || t.tagName === 'SELECT') return;
+  if (t.closest('.block-inputs') || t.closest('.block-note')) return;
+  const data = ensureBlockData(key);
+  data.use = !data.use;
+  document.getElementById('brow_' + key)?.classList.toggle('on', data.use);
+  autoSave();
+}
+
+function setBlockField(key, field, value) {
+  if (!current) return;
+  const data = ensureBlockData(key);
+  data[field] = value;
+  data.use = true;
+  document.getElementById('brow_' + key)?.classList.add('on');
+  autoSave();
+}
+
+function populateLocalBlocks() {
+  if (!current) return;
+  LOCAL_BLOCKS.forEach(b => {
+    const data = (current.localBlocks || {})[b.key] || {};
+    const row = document.getElementById('brow_' + b.key);
+    if (!row) return;
+    row.classList.toggle('on', !!data.use);
+    setVal('bmgkg_' + b.key, data.mgkg);
+    setVal('bmes_' + b.key, data.totalVol);
+    setVal('bsite_' + b.key, data.volPerSite);
+    setVal('bnote_' + b.key, data.note);
+    const sel = document.getElementById('bdrug_' + b.key);
+    if (sel) sel.value = data.drug || '';
+  });
+}
+
+// ─────────────────────────────────────────────────
 // DRUG PRESETS（いつものセット）
 // 各プリセットの内容は使用獣医師の方針に合わせて自由に変更可
 // ─────────────────────────────────────────────────
@@ -1134,8 +1239,7 @@ function makeCase() {
     maintIsoflurane:false, maintSevoflurane:false, maintPropofol:false,
     maintConc:'', maintO2:'', ventilation:'',
     fluidType:'', fluidRate:'',
-    localLido:false, localBupi:false, localOther:'', localApproach:'',
-    localDrugAmt:'', localAdminAmt:'',
+    localBlocks: {}, localCustom1:'', localCustom2:'',
     // intra-op
     anesthStart:'', surgStart:'', surgEnd:'', extubation:'',
     anesthDur:'', surgDur:'', events:'',
@@ -1246,6 +1350,7 @@ function openForm() {
   document.getElementById('casesScreen').classList.add('hidden');
   document.getElementById('formScreen').classList.remove('hidden');
   renderDrugGroups();
+  renderLocalBlocks();
   renderPresetBar();
   populateForm();
   switchTab(0);
@@ -1300,7 +1405,7 @@ function populateForm() {
     'epinephrineDose','epinephrineVol','dantrolen','otherComplications',
     'tubeSize','bagSize',
     'maintConc','maintO2','ventilation','fluidType','fluidRate',
-    'localOther','localApproach','localDrugAmt','localAdminAmt',
+    'localCustom1','localCustom2',
     'anesthStart','surgStart','surgEnd','extubation','anesthDur','surgDur','events',
     'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
     'compHtnMax','compHypotensionMin','compArrhythmiaType',
@@ -1327,7 +1432,6 @@ function populateForm() {
     'equipABP','equipGas','equipOscillo','equipDoppler','equipArterial',
     'ivLF','ivRF','ivLR','ivRR',
     'maintIsoflurane','maintSevoflurane','maintPropofol',
-    'localLido','localBupi',
     'compInductBreathing','compInductUpperAirway','compInductApnea',
     'compInductLaryngospasm','compInductCyanosis','compInductVomiting','compInductExcitement',
     'compVomiting','compSeizure','compCardiacArrest','compDeath','compApnea',
@@ -1368,6 +1472,9 @@ function populateForm() {
     });
   });
 
+  // Local anesthesia blocks
+  populateLocalBlocks();
+
   // Recovery quality
   setQuality(current.recQuality, false);
 
@@ -1393,7 +1500,7 @@ function collectForm() {
     'epinephrineDose','epinephrineVol','dantrolen','otherComplications',
     'tubeSize','bagSize',
     'maintConc','maintO2','ventilation','fluidType','fluidRate',
-    'localOther','localApproach','localDrugAmt','localAdminAmt',
+    'localCustom1','localCustom2',
     'anesthStart','surgStart','surgEnd','extubation','anesthDur','surgDur','events',
     'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
     'compHtnMax','compHypotensionMin','compArrhythmiaType',
@@ -1900,15 +2007,25 @@ function generatePrintHTML(c) {
         ${fld('輸液', c.fluidType)}
         ${fld('輸液速度', c.fluidRate ? c.fluidRate+'mL/kg/h' : '')}
       </div>
-      ${(c.localLido || c.localBupi || c.localOther || c.localApproach || c.localDrugAmt) ? `<div class="p-row">
-        ${c.localLido ? chip('局所: リドカイン') : ''}
-        ${c.localBupi ? chip('局所: ブピバカイン') : ''}
-        ${fld('局所他', c.localOther)}
-        ${fld('部位/手技', c.localApproach)}
-        ${fld('薬液量', c.localDrugAmt ? c.localDrugAmt+'mL':'')}
-        ${fld('投与量', c.localAdminAmt ? c.localAdminAmt+'mL':'')}
-      </div>` : ''}
     </div>
+
+    ${(() => {
+      const blocks = LOCAL_BLOCKS.filter(b => (c.localBlocks||{})[b.key]?.use);
+      const customs = [c.localCustom1, c.localCustom2].filter(Boolean);
+      if (!blocks.length && !customs.length) return '';
+      const rows = blocks.map(b => {
+        const d = c.localBlocks[b.key];
+        return `<tr><td>${esc(b.label)}</td><td>${esc(d.drug||'')}</td><td>${esc(d.mgkg ? d.mgkg+' mg/kg':'')}</td><td>${esc(d.totalVol ? d.totalVol+' mL':'')}</td><td>${esc(d.volPerSite ? d.volPerSite+' mL/site':'')}</td><td>${esc(d.note||'')}</td></tr>`;
+      }).join('');
+      const customRows = customs.map(t => `<tr><td colspan="6" style="font-style:italic">${esc(t)}</td></tr>`).join('');
+      return `<div class="p-section">
+        <h3>局所麻酔 / Local Blocks</h3>
+        <table class="p-table">
+          <thead><tr><th style="width:90px">ブロック</th><th style="width:80px">薬剤</th><th style="width:60px">用量</th><th style="width:55px">メスアップ</th><th style="width:65px">mL/site</th><th>メモ</th></tr></thead>
+          <tbody>${rows}${customRows}</tbody>
+        </table>
+      </div>`;
+    })()}
 
     <div class="p-section">
       <h3>術中 / Intra-op</h3>
