@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>麻酔症例管理</title>
+<style>
+:root {
+  --navy:#1e3a5f; --navy2:#2a4f7a; --blue:#2e86c1; --blue-bg:#e8f4fd;
+  --green:#27ae60; --red:#e74c3c; --orange:#e67e22;
+  --bg:#f0f4f8; --white:#fff; --text:#1a2332; --muted:#6b7c93;
+  --border:#dce3ec; --r:10px; --r-sm:7px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+html,body{height:100%;overflow:hidden;margin:0}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:16px;-webkit-text-size-adjust:100%}
+
+/* SCREENS */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg);transition:transform .3s ease}
+.screen.hidden{transform:translateX(100%);pointer-events:none}
+
+/* CASES SCREEN */
+.app-hdr{background:var(--navy);color:#fff;padding:max(16px,env(safe-area-inset-top)) 18px 14px;display:flex;align-items:flex-end;justify-content:space-between}
+.app-title{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.app-sub{font-size:12px;opacity:.65;margin-top:2px}
+.btn-new{background:#fff;color:var(--navy);border:none;border-radius:22px;padding:9px 18px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
+.cases-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px}
+.case-card{background:#fff;border-radius:var(--r);padding:15px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.09);cursor:pointer;display:flex;align-items:center;gap:13px;-webkit-user-select:none}
+.case-card:active{background:#f2f6fb}
+.case-icon{width:46px;height:46px;background:var(--navy);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.case-info{flex:1;min-width:0}
+.case-name{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.case-meta{font-size:13px;color:var(--muted);margin-top:3px}
+.case-del{background:none;border:none;color:#ccc;font-size:20px;padding:8px;cursor:pointer;flex-shrink:0}
+.empty{text-align:center;padding:70px 20px;color:var(--muted)}
+.empty-icon{font-size:64px;margin-bottom:16px}
+.empty-text{font-size:17px;font-weight:600;margin-bottom:8px}
+.empty-sub{font-size:14px;opacity:.7}
+
+/* FORM HEADER */
+.form-hdr{background:var(--navy);padding:max(10px,env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.btn-back{background:none;border:none;color:#fff;font-size:16px;padding:6px 8px 6px 0;cursor:pointer;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.hdr-inputs{flex:1;display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden}
+.hdr-in{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:14px;padding:5px 8px;min-height:36px}
+.hdr-in::placeholder{color:rgba(255,255,255,.45)}
+.hdr-in:focus{outline:none;background:rgba(255,255,255,.22)}
+.hdr-date{color:rgba(255,255,255,.75);font-size:13px;flex-shrink:0}
+
+/* WEIGHT BADGE - always visible */
+.weight-pill{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:16px;padding:4px 10px;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;white-space:nowrap}
+
+/* TAB BAR */
+.tab-bar{background:var(--navy2);display:flex;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:54px;padding:7px 4px;text-align:center;cursor:pointer;color:rgba(255,255,255,.55);font-size:9.5px;border-bottom:3px solid transparent;transition:all .2s;-webkit-user-select:none}
+.tab .ti{font-size:17px;display:block;margin-bottom:1px}
+.tab.on{color:#fff;border-bottom-color:#5dade2}
+
+/* MAIN + PANELS */
+.form-main{flex:1;overflow:hidden;position:relative}
+.panel{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;padding-bottom:76px}
+.panel.on{display:block}
+
+/* ACTION BAR */
+.act-bar{background:#fff;border-top:1px solid var(--border);padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));display:flex;gap:8px;flex-shrink:0}
+.act-btn{flex:1;padding:10px 6px;border-radius:var(--r-sm);border:none;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;min-height:44px}
+.act-primary{background:var(--navy);color:#fff}
+.act-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+
+/* CARDS */
+.card{background:#fff;border-radius:var(--r);margin:10px 11px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.c-hdr{background:var(--navy);color:#fff;padding:9px 13px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.c-hdr-en{font-size:11px;opacity:.65;font-weight:400}
+.c-body{padding:13px}
+
+/* FIELDS */
+.frow{display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap}
+.frow:last-child{margin-bottom:0}
+.flabel{font-size:13px;color:var(--muted);flex-shrink:0;min-width:52px}
+.flabel-w{min-width:80px}
+.fin{flex:1;min-width:60px;font-size:16px;padding:9px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;color:var(--text);-webkit-appearance:none;appearance:none;min-height:44px}
+.fin:focus{outline:none;border-color:var(--blue);background:#fff}
+.fin-sm{max-width:72px}
+.fin-md{max-width:110px}
+.ftxt{width:100%;font-size:16px;padding:9px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;color:var(--text);min-height:80px;resize:vertical;font-family:inherit}
+.ftxt:focus{outline:none;border-color:var(--blue);background:#fff}
+.unit{font-size:13px;color:var(--muted);flex-shrink:0;white-space:nowrap}
+
+/* TIME + NOW */
+.tgrp{display:flex;align-items:center;gap:6px;flex:1}
+.btn-now{background:var(--blue);color:#fff;border:none;border-radius:6px;padding:9px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;min-height:44px;flex-shrink:0}
+
+/* SEGMENT */
+.seg{display:flex;border:1.5px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.seg-i{flex:1;padding:9px 5px;text-align:center;cursor:pointer;font-size:13px;color:var(--muted);background:#f8fafc;border-right:1px solid var(--border);-webkit-user-select:none;min-height:44px;display:flex;align-items:center;justify-content:center}
+.seg-i:last-child{border-right:none}
+.seg-i.on{background:var(--navy);color:#fff;font-weight:600}
+
+/* CHECKBOXES */
+.chk-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
+.chk-item{display:flex;align-items:center;gap:6px;cursor:pointer;-webkit-user-select:none;min-height:36px}
+.chk-box{width:26px;height:26px;border:2px solid var(--border);border-radius:6px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s;font-size:0}
+.chk-item.on .chk-box{background:var(--blue);border-color:var(--blue);font-size:14px;color:#fff}
+.chk-item.on .chk-box::after{content:'✓';font-weight:800}
+.chk-label{font-size:14px}
+
+/* SECTION TITLE */
+.sec-title{font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;padding:10px 13px 5px;background:var(--blue-bg);margin:0 -13px 8px}
+.comp-title{font-size:12px;font-weight:700;color:var(--red);margin:10px 0 6px}
+
+/* DRUG ROWS */
+.drug-row{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid #f0f4f8}
+.drug-row:last-child{border-bottom:none}
+.drug-toggle{width:36px;height:36px;border:2px solid var(--border);border-radius:8px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:4px;transition:all .12s;font-size:0;-webkit-user-select:none}
+.drug-row.on .drug-toggle{background:var(--blue);border-color:var(--blue);font-size:16px;color:#fff}
+.drug-row.on .drug-toggle::after{content:'✓';font-weight:800}
+.drug-content{flex:1;min-width:0}
+.drug-name{font-size:15px;font-weight:600;margin-bottom:2px}
+.drug-ref{font-size:11px;color:var(--muted);margin-bottom:7px}
+.drug-inputs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.drug-row:not(.on) .drug-content{opacity:.4;pointer-events:none}
+.fdose{width:78px;font-size:16px;padding:7px 9px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;-webkit-appearance:none;text-align:right;min-height:40px}
+.fdose:focus{outline:none;border-color:var(--blue);background:#fff}
+.dose-calc{font-size:13px;color:var(--blue);font-weight:700;min-width:88px;white-space:nowrap}
+.rgrp{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.rbtn{padding:5px 10px;border:1.5px solid var(--border);border-radius:5px;background:#f8fafc;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;min-height:32px;-webkit-user-select:none}
+.rbtn.on{background:var(--navy);border-color:var(--navy);color:#fff}
+
+/* DRUG LOG TABLE */
+.dtable{width:100%;border-collapse:collapse;font-size:14px}
+.dtable th{background:#f0f4f8;padding:7px 8px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border)}
+.dtable td{padding:5px 6px;border-bottom:1px solid #f0f4f8;vertical-align:middle}
+.dtable .fin{min-height:36px;padding:6px 8px;font-size:14px}
+.btn-add-row{width:100%;padding:10px;border:2px dashed var(--border);border-radius:var(--r-sm);background:none;color:var(--muted);font-size:14px;cursor:pointer;margin-top:9px}
+.btn-del{background:none;border:none;color:#ddd;font-size:18px;cursor:pointer;padding:4px;min-height:36px}
+
+/* TOAST */
+.toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:9px 20px;border-radius:20px;font-size:14px;font-weight:600;pointer-events:none;z-index:1000;opacity:0;transition:opacity .3s;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* PRINT */
+@media print{
+  .screen{position:static;transform:none!important}
+  .form-hdr,.tab-bar,.act-bar{display:none!important}
+  .panel{display:block!important;position:static!important;overflow:visible;padding:0}
+  .card{break-inside:avoid;box-shadow:none;border:1px solid #ccc;margin:6px 0}
+  .c-hdr{background:var(--navy)!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{overflow:visible!important;height:auto!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ========== CASES SCREEN ========== -->
+<div id="casesScreen" class="screen">
+  <div class="app-hdr">
+    <div>
+      <div class="app-title">🐾 麻酔症例管理</div>
+      <div class="app-sub">Veterinary Anesthesia Record</div>
+    </div>
+    <button class="btn-new" onclick="newCase()">＋ 新規症例</button>
+  </div>
+  <div class="cases-list" id="casesList"></div>
+</div>
+
+<!-- ========== FORM SCREEN ========== -->
+<div id="formScreen" class="screen hidden">
+  <div class="form-hdr">
+    <button class="btn-back" onclick="backToList()">‹ 一覧</button>
+    <div class="hdr-inputs">
+      <input class="hdr-in" style="width:70px" type="text" id="hCaseNo" placeholder="No." oninput="autoSave()">
+      <input class="hdr-in" style="flex:1;min-width:0" type="text" id="hStaff" placeholder="担当者" oninput="autoSave()">
+    </div>
+    <div class="hdr-date" id="hDate"></div>
+    <div class="weight-pill" id="weightPill">—kg</div>
+  </div>
+  <nav class="tab-bar">
+    <div class="tab on" onclick="switchTab(0)"><span class="ti">🐶</span>患者/術前</div>
+    <div class="tab" onclick="switchTab(1)"><span class="ti">🔧</span>手術/器材</div>
+    <div class="tab" onclick="switchTab(2)"><span class="ti">💉</span>麻酔PL</div>
+    <div class="tab" onclick="switchTab(3)"><span class="ti">⏱️</span>術中/合併</div>
+    <div class="tab" onclick="switchTab(4)"><span class="ti">📋</span>回復/薬剤</div>
+  </nav>
+  <div class="form-main">
+
+    <!-- ========== TAB 0: 患者/術前 ========== -->
+    <div class="panel on" id="panel0">
+
+      <div class="card">
+        <div class="c-hdr">1. 患者情報 <span class="c-hdr-en">Patient</span></div>
+        <div class="c-body">
+          <div class="frow">
+            <span class="flabel">ID</span>
+            <input class="fin" type="text" id="f_patientId" placeholder="患者ID" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">オーナー</span>
+            <input class="fin" type="text" id="f_ownerName" placeholder="オーナー名" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">患者名</span>
+            <input class="fin" type="text" id="f_patientName" placeholder="患者名" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">動物種</span>
+            <div class="seg" style="flex:1">
+              <div class="seg-i on" onclick="setSeg('species','dog',this)">犬</div>
+              <div class="seg-i" onclick="setSeg('species','cat',this)">猫</div>
+              <div class="seg-i" onclick="setSeg('species','other',this)">他</div>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="flabel">品種</span>
+            <input class="fin" type="text" id="f_breed" placeholder="品種" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">年齢</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_ageY" placeholder="0" oninput="autoSave()">
+            <span class="unit">歳</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_ageM" placeholder="0" oninput="autoSave()">
+            <span class="unit">ヶ月</span>
+          </div>
+          <div class="frow">
+            <span class="flabel">性別</span>
+            <div class="seg" style="flex:1">
+              <div class="seg-i on" onclick="setSeg('sex','M',this)">M</div>
+              <div class="seg-i" onclick="setSeg('sex','F',this)">F</div>
+              <div class="seg-i" onclick="setSeg('sex','MC',this)">MC</div>
+              <div class="seg-i" onclick="setSeg('sex','FS',this)">FS</div>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="flabel" style="font-weight:700;color:var(--navy)">体重 ★</span>
+            <input class="fin fin-md" type="text" inputmode="decimal" id="f_weight"
+              placeholder="0.0" oninput="onWeightChange(this.value)">
+            <span class="unit">kg</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_bcs" placeholder="—">
+            <span class="unit">/9 BCS</span>
+          </div>
+          <div class="frow">
+            <span class="flabel">意識</span>
+            <div class="seg" style="flex:1">
+              <div class="seg-i on" onclick="setSeg('consciousness','正常',this)">正常</div>
+              <div class="seg-i" onclick="setSeg('consciousness','攻撃的',this)">攻撃的</div>
+              <div class="seg-i" onclick="setSeg('consciousness','傾眠',this)">傾眠</div>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'seizures')"><div class="chk-box"></div><span class="chk-label">発作歴</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'allergies')"><div class="chk-box"></div><span class="chk-label">アレルギー</span></div>
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">事前投与中薬剤</span>
+            <input class="fin" type="text" id="f_preMeds" placeholder="薬剤名" oninput="autoSave()">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="c-hdr">2. 術前評価 <span class="c-hdr-en">Pre-op</span></div>
+        <div class="c-body">
+          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px">麻酔当日バイタル</div>
+          <div class="frow">
+            <span class="flabel">体温</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_preTemp" placeholder="38.0" oninput="autoSave()">
+            <span class="unit">℃</span>
+            <span class="flabel" style="min-width:28px">心拍</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_preHr" placeholder="120" oninput="autoSave()">
+            <span class="unit">bpm</span>
+          </div>
+          <div class="frow">
+            <span class="flabel">呼吸数</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_preRr" placeholder="24" oninput="autoSave()">
+            <span class="unit">rpm</span>
+            <span class="flabel" style="min-width:28px">血圧</span>
+            <input class="fin fin-md" type="text" id="f_preBp" placeholder="120/80" oninput="autoSave()">
+            <span class="unit">mmHg</span>
+          </div>
+          <div class="frow" style="align-items:flex-start">
+            <span class="flabel flabel-w">主訴</span>
+            <textarea class="ftxt" style="min-height:60px" id="f_chiefComplaint" placeholder="主訴" oninput="autoSave()"></textarea>
+          </div>
+          <div class="frow" style="align-items:flex-start">
+            <span class="flabel flabel-w">異常所見</span>
+            <textarea class="ftxt" style="min-height:60px" id="f_abnormalFindings" placeholder="身体・血液・画像" oninput="autoSave()"></textarea>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:5px">術前検査</div>
+          <div class="chk-grid">
+            <div class="chk-item" onclick="toggleChk(this,'testCBC')"><div class="chk-box"></div><span class="chk-label">CBC</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'testBiochem')"><div class="chk-box"></div><span class="chk-label">生化学</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'testCoag')"><div class="chk-box"></div><span class="chk-label">凝固系</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'testXray')"><div class="chk-box"></div><span class="chk-label">X線</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'testEcho')"><div class="chk-box"></div><span class="chk-label">Echo</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'testECG')"><div class="chk-box"></div><span class="chk-label">ECG</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'testUA')"><div class="chk-box"></div><span class="chk-label">UA</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'testOther')"><div class="chk-box"></div><span class="chk-label">他</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 1: 手術/器材 ========== -->
+    <div class="panel" id="panel1">
+
+      <div class="card">
+        <div class="c-hdr">3. 手術情報 <span class="c-hdr-en">Surgery</span></div>
+        <div class="c-body">
+          <div class="frow">
+            <span class="flabel flabel-w">診断名</span>
+            <input class="fin" type="text" id="f_diagnosis" placeholder="診断名" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">術式</span>
+            <input class="fin" type="text" id="f_procedure" placeholder="術式" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">術者</span>
+            <input class="fin" type="text" id="f_surgeon" placeholder="術者" oninput="autoSave()">
+            <span class="flabel" style="min-width:28px">助手</span>
+            <input class="fin" type="text" id="f_assistant" placeholder="助手" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">麻酔監視指</span>
+            <input class="fin" type="text" id="f_anesthSupervisor" placeholder="監視指導医" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">ASA-PS</span>
+            <div class="seg" style="flex:1">
+              <div class="seg-i on" onclick="setSeg('asaps','1',this)">Ⅰ</div>
+              <div class="seg-i" onclick="setSeg('asaps','2',this)">Ⅱ</div>
+              <div class="seg-i" onclick="setSeg('asaps','3',this)">Ⅲ</div>
+              <div class="seg-i" onclick="setSeg('asaps','4',this)">Ⅳ</div>
+              <div class="seg-i" onclick="setSeg('asaps','5',this)">Ⅴ</div>
+              <div class="seg-i" onclick="setSeg('asaps','E',this)">E</div>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">予想リスク</span>
+            <div class="seg" style="flex:1">
+              <div class="seg-i on" onclick="setSeg('riskLevel','light',this)">軽度</div>
+              <div class="seg-i" onclick="setSeg('riskLevel','moderate',this)">中等度</div>
+              <div class="seg-i" onclick="setSeg('riskLevel','heavy',this)">重度</div>
+              <div class="seg-i" onclick="setSeg('riskLevel','max',this)">最大</div>
+            </div>
+          </div>
+
+          <div class="sec-title">予想される合併症と対応</div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'expectedHtn')"><div class="chk-box"></div><span class="chk-label">低血圧</span></div>
+            <span class="flabel" style="min-width:28px">対応</span>
+            <input class="fin" type="text" id="f_htnTx" placeholder="対処" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'expectedHypo')"><div class="chk-box"></div><span class="chk-label">低血糖</span></div>
+            <span class="flabel" style="min-width:28px">対応</span>
+            <input class="fin" type="text" id="f_hypoTx" placeholder="対処" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'expectedHypothermia')"><div class="chk-box"></div><span class="chk-label">低体温</span></div>
+            <span class="flabel" style="min-width:28px">対応</span>
+            <input class="fin" type="text" id="f_hypothermiaTx" placeholder="対処" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'expectedAnaphylaxis')"><div class="chk-box"></div><span class="chk-label">アナフィラキシー</span></div>
+          </div>
+          <div class="frow" style="padding-left:32px;flex-wrap:wrap;gap:5px">
+            <span class="unit">アドレナリン</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_epinephrineDose" placeholder="mg/kg" oninput="autoSave()">
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_epinephrineVol" placeholder="mL" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'expectedMH')"><div class="chk-box"></div><span class="chk-label">悪性高熱</span></div>
+            <span class="flabel" style="min-width:36px">ダントロ</span>
+            <input class="fin" type="text" id="f_dantrolen" placeholder="mg/kg × mL" oninput="autoSave()">
+          </div>
+          <div class="frow" style="align-items:flex-start">
+            <span class="flabel flabel-w">その他</span>
+            <textarea class="ftxt" style="min-height:50px" id="f_otherComplications" oninput="autoSave()"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="c-hdr">4. 準備器材 <span class="c-hdr-en">Equipment</span></div>
+        <div class="c-body">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">モニタリング</div>
+          <div class="chk-grid">
+            <div class="chk-item on" onclick="toggleChk(this,'equipTemp')"><div class="chk-box"></div><span class="chk-label">体温</span></div>
+            <div class="chk-item on" onclick="toggleChk(this,'equipECG')"><div class="chk-box"></div><span class="chk-label">ECG</span></div>
+            <div class="chk-item on" onclick="toggleChk(this,'equipHR')"><div class="chk-box"></div><span class="chk-label">HR</span></div>
+            <div class="chk-item on" onclick="toggleChk(this,'equipRR')"><div class="chk-box"></div><span class="chk-label">RR</span></div>
+            <div class="chk-item on" onclick="toggleChk(this,'equipEtCO2')"><div class="chk-box"></div><span class="chk-label">EtCO₂</span></div>
+            <div class="chk-item on" onclick="toggleChk(this,'equipSpO2')"><div class="chk-box"></div><span class="chk-label">SpO₂</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'equipABP')"><div class="chk-box"></div><span class="chk-label">動脈血圧</span></div>
+            <div class="chk-item on" onclick="toggleChk(this,'equipGas')"><div class="chk-box"></div><span class="chk-label">麻酔ガス</span></div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin:8px 0 5px">血圧計</div>
+          <div class="chk-grid">
+            <div class="chk-item" onclick="toggleChk(this,'equipOscillo')"><div class="chk-box"></div><span class="chk-label">オシロ</span></div>
+            <div class="chk-item on" onclick="toggleChk(this,'equipDoppler')"><div class="chk-box"></div><span class="chk-label">ドップラー</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'equipArterial')"><div class="chk-box"></div><span class="chk-label">観血</span></div>
+          </div>
+          <div class="frow">
+            <span class="flabel">チューブ</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_tubeSize" placeholder="7.0" oninput="autoSave()">
+            <span class="unit">mm</span>
+            <span class="flabel" style="min-width:36px">バッグ</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_bagSize" placeholder="1L" oninput="autoSave()">
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin:8px 0 5px">回路</div>
+          <div class="seg" style="max-width:200px">
+            <div class="seg-i on" onclick="setSeg('circuit','rebreath',this)">再呼吸</div>
+            <div class="seg-i" onclick="setSeg('circuit','nonrebreath',this)">非再呼吸</div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin:8px 0 5px">静脈路</div>
+          <div class="chk-grid">
+            <div class="chk-item" onclick="toggleChk(this,'ivLF')"><div class="chk-box"></div><span class="chk-label">LF</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'ivRF')"><div class="chk-box"></div><span class="chk-label">RF</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'ivLR')"><div class="chk-box"></div><span class="chk-label">LR</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'ivRR')"><div class="chk-box"></div><span class="chk-label">RR</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 2: 麻酔プロトコル ========== -->
+    <div class="panel" id="panel2">
+      <div class="card">
+        <div class="c-hdr">A. 麻酔プロトコル <span class="c-hdr-en">Protocol</span></div>
+        <div class="c-body">
+          <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:10px">
+            💡 <strong>体重を患者タブに入力すると、全薬剤の総量が自動計算されます</strong>
+          </div>
+
+          <div class="sec-title">前投薬 Pre-medication</div>
+          <div id="drugList_premeds"></div>
+
+          <div class="sec-title">導入薬 Induction</div>
+          <div id="drugList_induction"></div>
+
+          <div class="sec-title">維持 Maintenance</div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'maintIsoflurane')"><div class="chk-box"></div><span class="chk-label">イソフルラン</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'maintSevoflurane')"><div class="chk-box"></div><span class="chk-label">セボフルラン</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'maintPropofol')"><div class="chk-box"></div><span class="chk-label">プロポフォール</span></div>
+          </div>
+          <div class="frow">
+            <span class="flabel">濃度</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_maintConc" placeholder="2.0" oninput="autoSave()">
+            <span class="unit">%</span>
+            <span class="flabel" style="min-width:28px">O₂</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_maintO2" placeholder="1.5" oninput="autoSave()">
+            <span class="unit">L/min</span>
+          </div>
+          <div class="frow">
+            <span class="flabel">人工呼吸</span>
+            <input class="fin" type="text" id="f_ventilation" placeholder="TV/RR 設定" oninput="autoSave()">
+          </div>
+
+          <div class="sec-title">輸液 Fluids</div>
+          <div class="frow">
+            <span class="flabel">種類</span>
+            <input class="fin" type="text" id="f_fluidType" placeholder="生食/乳酸リンゲル…" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">速度</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_fluidRate" placeholder="5" oninput="autoSave()">
+            <span class="unit">mL/kg/h</span>
+          </div>
+
+          <div class="sec-title">抗菌薬 Antibiotics</div>
+          <div id="drugList_antibiotics"></div>
+
+          <div class="sec-title">CRI</div>
+          <div id="drugList_cri"></div>
+
+          <div class="sec-title">昇圧剤 / 循環作動薬</div>
+          <div id="drugList_vasopressors"></div>
+
+          <div class="sec-title">術後鎮痛 Post-op Analgesia</div>
+          <div id="drugList_postAnalg"></div>
+
+          <div class="sec-title">局所麻酔 Local</div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'localLido')"><div class="chk-box"></div><span class="chk-label">リドカイン</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'localBupi')"><div class="chk-box"></div><span class="chk-label">ブピバカイン</span></div>
+            <input class="fin" type="text" id="f_localOther" placeholder="他" oninput="autoSave()" style="flex:1;min-width:80px">
+          </div>
+          <div class="frow">
+            <span class="flabel">部位/手技</span>
+            <input class="fin" type="text" id="f_localApproach" placeholder="硬膜外 / 神経ブロック…" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">薬液量</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_localDrugAmt" placeholder="0.0" oninput="autoSave()">
+            <span class="unit">mL</span>
+            <span class="flabel" style="min-width:36px">投与量</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_localAdminAmt" placeholder="0.0" oninput="autoSave()">
+            <span class="unit">mL</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 3: 術中/合併症 ========== -->
+    <div class="panel" id="panel3">
+
+      <div class="card">
+        <div class="c-hdr">5. 術中経過 <span class="c-hdr-en">Intra-op</span></div>
+        <div class="c-body">
+          <div class="frow">
+            <span class="flabel flabel-w">麻酔開始</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_anesthStart" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_anesthStart')">今</button>
+            </div>
+            <span class="flabel" style="min-width:36px">手術開始</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_surgStart" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_surgStart')">今</button>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">手術終了</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_surgEnd" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_surgEnd')">今</button>
+            </div>
+            <span class="flabel" style="min-width:28px">抜管</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_extubation" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_extubation')">今</button>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">麻酔時間</span>
+            <input class="fin fin-md" type="text" inputmode="numeric" id="f_anesthDur" placeholder="分" oninput="autoSave()">
+            <span class="unit">分</span>
+            <span class="flabel" style="min-width:36px">手術時間</span>
+            <input class="fin fin-md" type="text" inputmode="numeric" id="f_surgDur" placeholder="分" oninput="autoSave()">
+            <span class="unit">分</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:5px">術中イベント・バイタル変動・対応</div>
+          <textarea class="ftxt" style="min-height:120px" id="f_events" placeholder="イベントを時系列で記載" oninput="autoSave()"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="c-hdr">6. 合併症 <span class="c-hdr-en">Complications</span></div>
+        <div class="c-body">
+          <div class="comp-title">◆ 麻酔導入時に生じた合併症</div>
+          <div class="chk-grid">
+            <div class="chk-item" onclick="toggleChk(this,'compInductBreathing')"><div class="chk-box"></div><span class="chk-label">呼吸</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compInductUpperAirway')"><div class="chk-box"></div><span class="chk-label">上部気道閉塞</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compInductApnea')"><div class="chk-box"></div><span class="chk-label">吸誘発呼吸停止</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compInductLaryngospasm')"><div class="chk-box"></div><span class="chk-label">喉頭痙攣</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compInductCyanosis')"><div class="chk-box"></div><span class="chk-label">チアノーゼ</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compInductVomiting')"><div class="chk-box"></div><span class="chk-label">嘔吐/逆流</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compInductExcitement')"><div class="chk-box"></div><span class="chk-label">不整脈</span></div>
+          </div>
+
+          <div class="comp-title">◆ 麻酔中に生じた合併症（5分以上持続 or 要治療）</div>
+          <div class="chk-grid">
+            <div class="chk-item" onclick="toggleChk(this,'compVomiting')"><div class="chk-box"></div><span class="chk-label">嘔吐/逆流</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compSeizure')"><div class="chk-box"></div><span class="chk-label">発作</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compCardiacArrest')"><div class="chk-box"></div><span class="chk-label">心停止</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compDeath')"><div class="chk-box"></div><span class="chk-label">安楽死</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compApnea')"><div class="chk-box"></div><span class="chk-label">無呼吸</span></div>
+          </div>
+
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compHypothermia')"><div class="chk-box"></div><span class="chk-label">低体温(&lt;36℃)</span></div>
+            <span class="unit">最低値</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_compHypothermiaDeg" placeholder="35.5" oninput="autoSave()">
+            <span class="unit">℃</span>
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compHyperthermia')"><div class="chk-box"></div><span class="chk-label">高体温(&gt;39℃)</span></div>
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compBleed')"><div class="chk-box"></div><span class="chk-label">大量出血(>20mL/kg)</span></div>
+            <span class="unit">最高値</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_compBleedMax" placeholder="mL" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compTachy')"><div class="chk-box"></div><span class="chk-label">頻脈(犬&gt;160, 猫&gt;200)</span></div>
+            <span class="unit">最高値</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_compTachyMax" placeholder="bpm" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compBrady')"><div class="chk-box"></div><span class="chk-label">徐脈(犬&lt;60, 猫&lt;100)</span></div>
+            <span class="unit">最低値</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_compBradyMin" placeholder="bpm" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compHtn')"><div class="chk-box"></div><span class="chk-label">高血圧(MAP&gt;120)</span></div>
+            <span class="unit">最高値</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_compHtnMax" placeholder="mmHg" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compHypotension')"><div class="chk-box"></div><span class="chk-label">低血圧(MAP&lt;60)</span></div>
+            <span class="unit">最低値</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_compHypotensionMin" placeholder="mmHg" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compArrhythmia')"><div class="chk-box"></div><span class="chk-label">不整脈</span></div>
+            <input class="fin" type="text" id="f_compArrhythmiaType" placeholder="分類" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compTachyBreath')"><div class="chk-box"></div><span class="chk-label">頻呼吸(&gt;50bpm)</span></div>
+            <div class="chk-item" onclick="toggleChk(this,'compBradyBreath')"><div class="chk-box"></div><span class="chk-label">徐呼吸(&lt;4bpm)</span></div>
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compHypoxemia')"><div class="chk-box"></div><span class="chk-label">低酸素症(SpO₂&lt;90%)</span></div>
+            <span class="unit">最低値</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_compHypoxemiaMin" placeholder="%" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compHypocapnia')"><div class="chk-box"></div><span class="chk-label">低CO₂(EtCO₂&lt;20)</span></div>
+            <span class="unit">最低値</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_compHypocapniaMin" placeholder="mmHg" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <div class="chk-item" onclick="toggleChk(this,'compHypercapnia')"><div class="chk-box"></div><span class="chk-label">高CO₂(EtCO₂&gt;60)</span></div>
+            <span class="unit">最高値</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_compHypercapniaMax" placeholder="mmHg" oninput="autoSave()">
+          </div>
+
+          <div style="font-size:13px;color:var(--muted);margin:10px 0 5px">詳細/対応</div>
+          <textarea class="ftxt" id="f_compDetails" style="min-height:80px" placeholder="詳細を記載" oninput="autoSave()"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 4: 回復/薬剤/申し送り ========== -->
+    <div class="panel" id="panel4">
+
+      <div class="card">
+        <div class="c-hdr">7. 覚醒・回復 <span class="c-hdr-en">Recovery</span></div>
+        <div class="c-body">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:7px">覚醒の様子</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px" id="qualityBtns">
+            <button class="quality-btn" onclick="setQuality('良好')" style="padding:12px;border:2px solid var(--border);border-radius:8px;background:#f8fafc;font-size:14px;cursor:pointer;min-height:48px">😊 良好</button>
+            <button class="quality-btn" onclick="setQuality('興奮')" style="padding:12px;border:2px solid var(--border);border-radius:8px;background:#f8fafc;font-size:14px;cursor:pointer;min-height:48px">😤 興奮</button>
+            <button class="quality-btn" onclick="setQuality('遊泳')" style="padding:12px;border:2px solid var(--border);border-radius:8px;background:#f8fafc;font-size:14px;cursor:pointer;min-height:48px">🌊 遊泳</button>
+            <button class="quality-btn" onclick="setQuality('遅延')" style="padding:12px;border:2px solid var(--border);border-radius:8px;background:#f8fafc;font-size:14px;cursor:pointer;min-height:48px">🐢 遅延</button>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:7px">覚醒時バイタル</div>
+          <div class="frow">
+            <span class="flabel">体温</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_recTemp" placeholder="37.5" oninput="autoSave()">
+            <span class="unit">℃</span>
+            <span class="flabel" style="min-width:28px">心拍</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_recHr" placeholder="90" oninput="autoSave()">
+            <span class="unit">bpm</span>
+          </div>
+          <div class="frow">
+            <span class="flabel">呼吸数</span>
+            <input class="fin fin-sm" type="text" inputmode="numeric" id="f_recRr" placeholder="20" oninput="autoSave()">
+            <span class="unit">rpm</span>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--blue);margin:8px 0 6px">疼痛評価</div>
+          <div class="frow">
+            <span class="flabel flabel-w">評価法</span>
+            <input class="fin fin-md" type="text" id="f_painMethod" placeholder="NRS/Glasgow…" oninput="autoSave()">
+            <span class="flabel" style="min-width:36px">スコア</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_painScore" placeholder="0" oninput="autoSave()">
+          </div>
+          <div class="frow" style="align-items:flex-start">
+            <span class="flabel flabel-w">術後鎮痛</span>
+            <textarea class="ftxt" style="min-height:50px" id="f_postopPain" oninput="autoSave()"></textarea>
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:5px">特記/合併症</div>
+          <textarea class="ftxt" id="f_recNotes" style="min-height:60px" oninput="autoSave()"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="c-hdr">B. 薬剤用量記録 <span class="c-hdr-en">Drug Dosage Log</span></div>
+        <div class="c-body">
+          <button class="btn-add-row" onclick="autoFillDrugLog()" style="margin-bottom:10px;border:1px solid var(--blue);color:var(--blue);background:var(--blue-bg)">
+            ⚡️ プロトコルから自動入力
+          </button>
+          <div style="overflow-x:auto">
+            <table class="dtable">
+              <thead>
+                <tr>
+                  <th style="min-width:110px">薬剤名</th>
+                  <th style="min-width:80px">用量</th>
+                  <th style="min-width:70px">投与経路</th>
+                  <th style="min-width:70px">時刻</th>
+                  <th style="width:36px"></th>
+                </tr>
+              </thead>
+              <tbody id="drugLogBody"></tbody>
+            </table>
+          </div>
+          <button class="btn-add-row" onclick="addDrugLogRow()">＋ 行を追加</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="c-hdr">8. 改善点・申し送り <span class="c-hdr-en">Notes</span></div>
+        <div class="c-body">
+          <textarea class="ftxt" id="f_notes" style="min-height:180px" placeholder="次回のための気付き・申し送り事項…" oninput="autoSave()"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="act-bar">
+    <button class="act-btn act-primary" onclick="saveCase()">💾 保存</button>
+    <button class="act-btn act-secondary" onclick="printCase()">🖨️ 印刷</button>
+    <button class="act-btn act-secondary" onclick="exportCSV()">📊 CSV</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────
+// DRUG DEFINITIONS
+// ─────────────────────────────────────────────────
+const DRUG_GROUPS = {
+  premeds: [
+    { key:'medetomidine',   label:'メデトミジン',     unit:'μg/kg', dog:'5〜40',      cat:'40〜80',     routes:['IV','IM','SC'], def:'IM' },
+    { key:'midazolam',      label:'ミダゾラム',       unit:'mg/kg', dog:'0.1〜0.3',   cat:'0.1〜0.3',  routes:['IV','IM'],      def:'IV' },
+    { key:'butorphanol',    label:'ブトルファノール',  unit:'mg/kg', dog:'0.1〜0.4',   cat:'0.1〜0.4',  routes:['IV','IM','SC'], def:'IM' },
+    { key:'atropine_p',     label:'アトロピン',       unit:'mg/kg', dog:'0.02〜0.04', cat:'0.02〜0.04',routes:['IV','IM','SC'], def:'SC' },
+    { key:'nicardipine',    label:'ニカルジピン',      unit:'μg/kg', dog:'1〜5',       cat:'1〜5',      routes:['IV'],           def:'IV' },
+    { key:'alfaxalone_p',   label:'アルファキサロン',  unit:'mg/kg', dog:'2〜3',       cat:'2〜5',      routes:['IV','IM'],      def:'IM' },
+    { key:'fentanyl_p',     label:'フェンタニル',     unit:'μg/kg', dog:'2〜5',       cat:'2〜5',      routes:['IV'],           def:'IV' },
+    { key:'buprenorphine_p',label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',     cat:'10〜20',    routes:['IV','IM','SC'], def:'IM' },
+  ],
+  induction: [
+    { key:'propofol',       label:'プロポフォール',   unit:'mg/kg', dog:'4〜6',  cat:'6〜8',  routes:['IV'], def:'IV' },
+    { key:'alfaxalone_i',   label:'アルファキサロン', unit:'mg/kg', dog:'2〜3',  cat:'2〜5',  routes:['IV'], def:'IV' },
+  ],
+  antibiotics: [
+    { key:'cefazolin',      label:'セファゾリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV' },
+    { key:'ampicillin',     label:'アンピシリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV' },
+  ],
+  cri: [
+    { key:'fentanyl_c',     label:'フェンタニル',     unit:'μg/kg/hr',  dog:'1〜5',    cat:'1〜3',    routes:['IV'], def:'IV' },
+    { key:'remifentanil',   label:'レミフェンタニル', unit:'μg/kg/min', dog:'0.1〜0.5',cat:'0.1〜0.5',routes:['IV'], def:'IV' },
+    { key:'medetomidine_c', label:'メデトミジン',     unit:'μg/kg/hr',  dog:'1〜3',    cat:'1〜3',    routes:['IV'], def:'IV' },
+    { key:'lidocaine_c',    label:'リドカイン',       unit:'mg/kg/hr',  dog:'1.5〜3',  cat:'—',       routes:['IV'], def:'IV' },
+    { key:'ketamine_c',     label:'ケタミン',         unit:'mg/kg/hr',  dog:'0.1〜0.6',cat:'0.1〜0.6',routes:['IV'], def:'IV' },
+  ],
+  vasopressors: [
+    { key:'atropine_v',     label:'アトロピン',       unit:'mg/kg', dog:'0.02〜0.04',cat:'0.02〜0.04',routes:['IV','IM'], def:'IV' },
+    { key:'ephedrine',      label:'エフェドリン',     unit:'mg/kg', dog:'0.05〜0.1', cat:'0.05〜0.1', routes:['IV'],     def:'IV' },
+    { key:'phenylephrine',  label:'フェニレフリン',   unit:'μg/kg', dog:'1〜3',      cat:'1〜3',      routes:['IV'],     def:'IV' },
+    { key:'noradrenaline',  label:'ノルアドレナリン', unit:'μg/kg/min',dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'],   def:'IV' },
+    { key:'adrenaline',     label:'アドレナリン',     unit:'μg/kg', dog:'10〜20',    cat:'10〜20',    routes:['IV','IM'],def:'IV' },
+  ],
+  postAnalg: [
+    { key:'meloxicam',      label:'メロキシカム',      unit:'mg/kg', dog:'0.1〜0.2',cat:'0.1',       routes:['SC','IV','PO'], def:'SC' },
+    { key:'robenacoxib',    label:'ロベナコキシブ',    unit:'mg/kg', dog:'2',       cat:'0.5mg/head',routes:['SC','PO'],      def:'SC' },
+    { key:'prednisolone',   label:'プレドニゾロン',    unit:'mg/kg', dog:'0.5〜1',  cat:'0.5〜1',    routes:['IV','IM'],      def:'IV' },
+    { key:'buprenorphine',  label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',  cat:'10〜20',    routes:['IV','IM','SC'], def:'IV' },
+    { key:'tramadol',       label:'トラマドール',      unit:'mg/kg', dog:'2〜5',    cat:'2〜4',      routes:['IV','SC'],      def:'IV' },
+    { key:'acetaminophen',  label:'アセトアミノフェン',unit:'mg/kg', dog:'10〜15',  cat:'⚠️禁忌',   routes:['IV'],           def:'IV' },
+  ],
+};
+
+// ─────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────
+let cases = [];
+let current = null;
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function nowTime() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function makeCase() {
+  return {
+    id: Date.now().toString(),
+    date: today(),
+    caseNo: '', staff: '',
+    // patient
+    patientId:'', ownerName:'', patientName:'',
+    species:'dog', breed:'', ageY:'', ageM:'', sex:'M',
+    weight:'', bcs:'', consciousness:'正常',
+    seizures:false, allergies:false, allergyDetail:'', preMeds:'',
+    // pre-op
+    preTemp:'', preHr:'', preRr:'', preBp:'',
+    chiefComplaint:'', abnormalFindings:'',
+    testCBC:false, testBiochem:false, testCoag:false, testXray:false,
+    testEcho:false, testECG:false, testUA:false, testOther:false,
+    // surgery
+    diagnosis:'', procedure:'', surgeon:'', assistant:'',
+    anesthSupervisor:'', asaps:'1', riskLevel:'light',
+    expectedHtn:false, htnTx:'', expectedHypo:false, hypoTx:'',
+    expectedHypothermia:false, hypothermiaTx:'',
+    expectedAnaphylaxis:false, epinephrineDose:'', epinephrineVol:'',
+    expectedMH:false, dantrolen:'', otherComplications:'',
+    // equipment
+    equipTemp:true, equipECG:true, equipHR:true, equipRR:true,
+    equipEtCO2:true, equipSpO2:true, equipABP:false, equipGas:true,
+    equipOscillo:false, equipDoppler:true, equipArterial:false,
+    circuit:'rebreath', tubeSize:'', bagSize:'',
+    ivLF:false, ivRF:false, ivLR:false, ivRR:false,
+    // protocol
+    drugs: {}, // { key: { use, dose, route } }
+    maintIsoflurane:false, maintSevoflurane:false, maintPropofol:false,
+    maintConc:'', maintO2:'', ventilation:'',
+    fluidType:'', fluidRate:'',
+    localLido:false, localBupi:false, localOther:'', localApproach:'',
+    localDrugAmt:'', localAdminAmt:'',
+    // intra-op
+    anesthStart:'', surgStart:'', surgEnd:'', extubation:'',
+    anesthDur:'', surgDur:'', events:'',
+    // complications
+    compInductBreathing:false, compInductUpperAirway:false, compInductApnea:false,
+    compInductLaryngospasm:false, compInductCyanosis:false, compInductVomiting:false,
+    compInductExcitement:false,
+    compVomiting:false, compSeizure:false, compCardiacArrest:false, compDeath:false,
+    compApnea:false, compTachyBreath:false, compBradyBreath:false,
+    compHypothermia:false, compHypothermiaDeg:'',
+    compHyperthermia:false,
+    compBleed:false, compBleedMax:'',
+    compTachy:false, compTachyMax:'',
+    compBrady:false, compBradyMin:'',
+    compHtn:false, compHtnMax:'',
+    compHypotension:false, compHypotensionMin:'',
+    compArrhythmia:false, compArrhythmiaType:'',
+    compHypoxemia:false, compHypoxemiaMin:'',
+    compHypocapnia:false, compHypocapniaMin:'',
+    compHypercapnia:false, compHypercapniaMax:'',
+    compDetails:'',
+    // recovery
+    recQuality:'', recTemp:'', recHr:'', recRr:'',
+    painMethod:'', painScore:'', postopPain:'', recNotes:'',
+    // drug log
+    drugLog: [],
+    // notes
+    notes:'',
+  };
+}
+
+// ─────────────────────────────────────────────────
+// STORAGE
+// ─────────────────────────────────────────────────
+function loadStorage() {
+  try { cases = JSON.parse(localStorage.getItem('vet_cases') || '[]'); }
+  catch(e) { cases = []; }
+}
+function saveStorage() {
+  try { localStorage.setItem('vet_cases', JSON.stringify(cases)); } catch(e){}
+}
+
+// ─────────────────────────────────────────────────
+// CASES LIST
+// ─────────────────────────────────────────────────
+function renderCasesList() {
+  const el = document.getElementById('casesList');
+  if (!cases.length) {
+    el.innerHTML = `<div class="empty">
+      <div class="empty-icon">📋</div>
+      <div class="empty-text">症例がありません</div>
+      <div class="empty-sub">右上の「新規症例」から作成してください</div>
+    </div>`;
+    return;
+  }
+  const sorted = [...cases].sort((a,b) => b.id - a.id);
+  el.innerHTML = sorted.map(c => {
+    const sp = c.species === 'dog' ? '🐶' : c.species === 'cat' ? '🐱' : '🐾';
+    const name = [c.patientName, c.ownerName ? `(${c.ownerName})` : ''].filter(Boolean).join(' ') || '—';
+    const diag = c.diagnosis || c.procedure || '診断未記載';
+    return `<div class="case-card" onclick="openCase('${c.id}')">
+      <div class="case-icon">${sp}</div>
+      <div class="case-info">
+        <div class="case-name">${esc(name)}</div>
+        <div class="case-meta">${esc(c.date)} ${c.caseNo ? '| No.'+esc(c.caseNo) : ''} | ${esc(diag)}</div>
+      </div>
+      <button class="case-del" onclick="event.stopPropagation();deleteCase('${c.id}')" title="削除">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function newCase() {
+  current = makeCase();
+  cases.push(current);
+  saveStorage();
+  openForm();
+}
+
+function openCase(id) {
+  current = cases.find(c => c.id === id);
+  if (!current) return;
+  openForm();
+}
+
+function deleteCase(id) {
+  if (!confirm('この症例を削除しますか？')) return;
+  cases = cases.filter(c => c.id !== id);
+  saveStorage();
+  renderCasesList();
+}
+
+function backToList() {
+  collectForm();
+  saveStorage();
+  document.getElementById('formScreen').classList.add('hidden');
+  document.getElementById('casesScreen').classList.remove('hidden');
+  renderCasesList();
+}
+
+// ─────────────────────────────────────────────────
+// FORM OPEN / RENDER
+// ─────────────────────────────────────────────────
+function openForm() {
+  document.getElementById('casesScreen').classList.add('hidden');
+  document.getElementById('formScreen').classList.remove('hidden');
+  renderDrugGroups();
+  populateForm();
+  switchTab(0);
+}
+
+function renderDrugGroups() {
+  Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
+    const el = document.getElementById('drugList_' + gk);
+    if (!el) return;
+    el.innerHTML = drugs.map(d => renderDrugRow(d)).join('');
+  });
+}
+
+function renderDrugRow(d) {
+  const routeBtns = d.routes.map(r =>
+    `<button class="rbtn" data-route="${r}" onclick="toggleRoute('${d.key}','${r}',this)">${r}</button>`
+  ).join('');
+  return `<div class="drug-row" id="drow_${d.key}" onclick="toggleDrug('${d.key}',event)">
+    <div class="drug-toggle" id="dtog_${d.key}"></div>
+    <div class="drug-content">
+      <div class="drug-name">${d.label}</div>
+      <div class="drug-ref">🐶${d.dog} / 🐱${d.cat} &nbsp;<strong>${d.unit}</strong></div>
+      <div class="drug-inputs" onclick="event.stopPropagation()">
+        <input class="fdose" type="text" inputmode="decimal"
+          id="ddose_${d.key}" placeholder="0.0"
+          oninput="onDoseInput('${d.key}',this.value)" autocomplete="off">
+        <span class="unit">${d.unit}</span>
+        <span class="dose-calc" id="dcalc_${d.key}"></span>
+      </div>
+      <div class="rgrp" onclick="event.stopPropagation()" id="rgrp_${d.key}">
+        ${routeBtns}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────
+// POPULATE FORM FROM current
+// ─────────────────────────────────────────────────
+function populateForm() {
+  if (!current) return;
+  document.getElementById('hDate').textContent = current.date;
+  setVal('hCaseNo', current.caseNo);
+  setVal('hStaff', current.staff);
+
+  // Simple text / number fields
+  const fields = [
+    'patientId','ownerName','patientName','breed','ageY','ageM','weight','bcs',
+    'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
+    'diagnosis','procedure','surgeon','assistant','anesthSupervisor',
+    'epinephrineDose','epinephrineVol','dantrolen','otherComplications',
+    'tubeSize','bagSize',
+    'maintConc','maintO2','ventilation','fluidType','fluidRate',
+    'localOther','localApproach','localDrugAmt','localAdminAmt',
+    'anesthStart','surgStart','surgEnd','extubation','anesthDur','surgDur','events',
+    'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
+    'compHtnMax','compHypotensionMin','compArrhythmiaType',
+    'compHypoxemiaMin','compHypocapniaMin','compHypercapniaMax','compDetails',
+    'htnTx','hypoTx','hypothermiaTx',
+    'recTemp','recHr','recRr','painMethod','painScore','postopPain','recNotes','notes',
+  ];
+  fields.forEach(k => setVal('f_' + k, current[k]));
+
+  // Segments
+  setSegVal('species', current.species);
+  setSegVal('sex', current.sex);
+  setSegVal('consciousness', current.consciousness);
+  setSegVal('asaps', current.asaps);
+  setSegVal('riskLevel', current.riskLevel);
+  setSegVal('circuit', current.circuit);
+
+  // Checkboxes
+  const chks = [
+    'seizures','allergies','testCBC','testBiochem','testCoag','testXray',
+    'testEcho','testECG','testUA','testOther',
+    'expectedHtn','expectedHypo','expectedHypothermia','expectedAnaphylaxis','expectedMH',
+    'equipTemp','equipECG','equipHR','equipRR','equipEtCO2','equipSpO2',
+    'equipABP','equipGas','equipOscillo','equipDoppler','equipArterial',
+    'ivLF','ivRF','ivLR','ivRR',
+    'maintIsoflurane','maintSevoflurane','maintPropofol',
+    'localLido','localBupi',
+    'compInductBreathing','compInductUpperAirway','compInductApnea',
+    'compInductLaryngospasm','compInductCyanosis','compInductVomiting','compInductExcitement',
+    'compVomiting','compSeizure','compCardiacArrest','compDeath','compApnea',
+    'compTachyBreath','compBradyBreath','compHypothermia','compHyperthermia',
+    'compBleed','compTachy','compBrady','compHtn','compHypotension',
+    'compArrhythmia','compHypoxemia','compHypocapnia','compHypercapnia',
+  ];
+  chks.forEach(k => {
+    const el = document.querySelector(`.chk-item[onclick*="'${k}'"]`);
+    if (el) {
+      if (current[k]) el.classList.add('on');
+      else el.classList.remove('on');
+    }
+  });
+
+  // Drugs
+  Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
+    drugs.forEach(d => {
+      const drugData = current.drugs[d.key] || {};
+      const row = document.getElementById('drow_' + d.key);
+      if (!row) return;
+      // Toggle
+      if (drugData.use) row.classList.add('on');
+      else row.classList.remove('on');
+      // Dose
+      const doseEl = document.getElementById('ddose_' + d.key);
+      if (doseEl) doseEl.value = drugData.dose || '';
+      // Calc
+      updateCalc(d.key, drugData.dose, current.weight, d.unit);
+      // Routes
+      const route = drugData.route || d.def;
+      const rgrp = document.getElementById('rgrp_' + d.key);
+      if (rgrp) {
+        rgrp.querySelectorAll('.rbtn').forEach(btn => {
+          btn.classList.toggle('on', btn.dataset.route === route);
+        });
+      }
+    });
+  });
+
+  // Recovery quality
+  setQuality(current.recQuality, false);
+
+  // Drug log
+  renderDrugLog();
+
+  // Weight pill
+  updateWeightPill(current.weight);
+}
+
+// ─────────────────────────────────────────────────
+// COLLECT FORM INTO current
+// ─────────────────────────────────────────────────
+function collectForm() {
+  if (!current) return;
+  current.caseNo = getVal('hCaseNo');
+  current.staff = getVal('hStaff');
+
+  const fields = [
+    'patientId','ownerName','patientName','breed','ageY','ageM','weight','bcs',
+    'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
+    'diagnosis','procedure','surgeon','assistant','anesthSupervisor',
+    'epinephrineDose','epinephrineVol','dantrolen','otherComplications',
+    'tubeSize','bagSize',
+    'maintConc','maintO2','ventilation','fluidType','fluidRate',
+    'localOther','localApproach','localDrugAmt','localAdminAmt',
+    'anesthStart','surgStart','surgEnd','extubation','anesthDur','surgDur','events',
+    'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
+    'compHtnMax','compHypotensionMin','compArrhythmiaType',
+    'compHypoxemiaMin','compHypocapniaMin','compHypercapniaMax','compDetails',
+    'htnTx','hypoTx','hypothermiaTx',
+    'recTemp','recHr','recRr','painMethod','painScore','postopPain','recNotes','notes',
+  ];
+  fields.forEach(k => { current[k] = getVal('f_' + k); });
+
+  // Drug data already kept in sync via event handlers
+  // Collect drug log
+  current.drugLog = [];
+  document.querySelectorAll('#drugLogBody tr').forEach(tr => {
+    const cells = tr.querySelectorAll('td');
+    if (cells.length < 4) return;
+    const row = {
+      drug: cells[0].querySelector('input')?.value || '',
+      dose: cells[1].querySelector('input')?.value || '',
+      route: cells[2].querySelector('input')?.value || '',
+      time: cells[3].querySelector('input')?.value || '',
+    };
+    if (row.drug || row.dose || row.route || row.time) current.drugLog.push(row);
+  });
+}
+
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val || '';
+}
+
+// ─────────────────────────────────────────────────
+// SEGMENT CONTROL
+// ─────────────────────────────────────────────────
+function setSeg(key, val, el) {
+  if (current) current[key] = val;
+  const parent = el.closest('.seg');
+  parent.querySelectorAll('.seg-i').forEach(i => i.classList.remove('on'));
+  el.classList.add('on');
+  autoSave();
+}
+
+function setSegVal(key, val) {
+  // Find segment items by onclick content
+  document.querySelectorAll(`.seg-i`).forEach(el => {
+    const fn = el.getAttribute('onclick') || '';
+    if (fn.includes(`'${key}'`) && fn.includes(`'${val}'`)) {
+      const parent = el.closest('.seg');
+      parent.querySelectorAll('.seg-i').forEach(i => i.classList.remove('on'));
+      el.classList.add('on');
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────
+// CHECKBOX TOGGLE
+// ─────────────────────────────────────────────────
+function toggleChk(el, key) {
+  el.classList.toggle('on');
+  if (current) current[key] = el.classList.contains('on');
+  autoSave();
+}
+
+// ─────────────────────────────────────────────────
+// DRUG INTERACTIONS
+// ─────────────────────────────────────────────────
+function toggleDrug(key, event) {
+  if (!current) return;
+  // Don't toggle if user clicked inside an input/button
+  if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON') return;
+  if (event.target.closest('.drug-inputs') || event.target.closest('.rgrp')) return;
+  if (!current.drugs[key]) current.drugs[key] = { use:false, dose:'', route:'' };
+  current.drugs[key].use = !current.drugs[key].use;
+  const row = document.getElementById('drow_' + key);
+  if (row) row.classList.toggle('on', current.drugs[key].use);
+  autoSave();
+}
+
+function onDoseInput(key, val) {
+  if (!current) return;
+  if (!current.drugs[key]) current.drugs[key] = { use:true, dose:'', route:'' };
+  current.drugs[key].dose = val;
+  current.drugs[key].use = true;
+  const row = document.getElementById('drow_' + key);
+  if (row) row.classList.add('on');
+  // Find drug definition to get unit
+  let unit = 'mg/kg';
+  Object.values(DRUG_GROUPS).flat().forEach(d => { if (d.key === key) unit = d.unit; });
+  updateCalc(key, val, current.weight, unit);
+  autoSave();
+}
+
+function toggleRoute(key, route, el) {
+  if (!current) return;
+  if (!current.drugs[key]) current.drugs[key] = { use:false, dose:'', route };
+  current.drugs[key].route = route;
+  const rgrp = document.getElementById('rgrp_' + key);
+  if (rgrp) rgrp.querySelectorAll('.rbtn').forEach(b => b.classList.toggle('on', b.dataset.route === route));
+  autoSave();
+}
+
+function updateCalc(key, dose, weight, unit) {
+  const el = document.getElementById('dcalc_' + key);
+  if (!el) return;
+  const d = parseFloat(dose);
+  const w = parseFloat(weight);
+  if (!isNaN(d) && !isNaN(w) && d > 0 && w > 0) {
+    const total = d * w;
+    const dispUnit = unit.replace('/kg','').replace('/hr','').replace('/min','');
+    el.textContent = `= ${total % 1 === 0 ? total : total.toFixed(2)} ${dispUnit}`;
+  } else {
+    el.textContent = '';
+  }
+}
+
+function onWeightChange(val) {
+  if (!current) return;
+  current.weight = val;
+  updateWeightPill(val);
+  // Recalculate all drug rows
+  Object.values(DRUG_GROUPS).flat().forEach(d => {
+    const drugData = current.drugs[d.key] || {};
+    updateCalc(d.key, drugData.dose, val, d.unit);
+  });
+  autoSave();
+}
+
+function updateWeightPill(val) {
+  const pill = document.getElementById('weightPill');
+  if (pill) pill.textContent = val ? val + 'kg' : '—kg';
+}
+
+// ─────────────────────────────────────────────────
+// TIME
+// ─────────────────────────────────────────────────
+function setNow(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (el) { el.value = nowTime(); autoSave(); }
+}
+
+// ─────────────────────────────────────────────────
+// RECOVERY QUALITY
+// ─────────────────────────────────────────────────
+function setQuality(val, doSave = true) {
+  if (current && val) current.recQuality = val;
+  document.querySelectorAll('.quality-btn').forEach(btn => {
+    const isActive = btn.textContent.includes(val);
+    btn.style.borderColor = isActive ? 'var(--green)' : 'var(--border)';
+    btn.style.background = isActive ? '#eafaf1' : '#f8fafc';
+    btn.style.color = isActive ? 'var(--green)' : 'var(--text)';
+    btn.style.fontWeight = isActive ? '700' : '400';
+  });
+  if (doSave) autoSave();
+}
+
+// ─────────────────────────────────────────────────
+// DRUG LOG TABLE
+// ─────────────────────────────────────────────────
+function renderDrugLog() {
+  const tbody = document.getElementById('drugLogBody');
+  if (!tbody || !current) return;
+  tbody.innerHTML = '';
+  (current.drugLog || []).forEach((row, i) => addDrugLogRow(row));
+}
+
+function addDrugLogRow(data) {
+  const tbody = document.getElementById('drugLogBody');
+  if (!tbody) return;
+  const r = data || {};
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input class="fin" type="text" value="${esc(r.drug||'')}" placeholder="薬剤名" oninput="autoSave()" autocomplete="off"></td>
+    <td><input class="fin" type="text" inputmode="decimal" value="${esc(r.dose||'')}" placeholder="0.0mg" oninput="autoSave()" autocomplete="off"></td>
+    <td><input class="fin" type="text" value="${esc(r.route||'')}" placeholder="IV" oninput="autoSave()" autocomplete="off"></td>
+    <td>
+      <div style="display:flex;gap:4px;align-items:center">
+        <input class="fin" type="text" value="${esc(r.time||'')}" placeholder="00:00" style="min-width:60px" oninput="autoSave()" autocomplete="off">
+        <button class="btn-now" onclick="setRowTime(this)" style="font-size:11px;padding:6px 7px;min-height:36px">今</button>
+      </div>
+    </td>
+    <td><button class="btn-del" onclick="this.closest('tr').remove();autoSave()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function setRowTime(btn) {
+  const input = btn.previousElementSibling;
+  if (input) { input.value = nowTime(); autoSave(); }
+}
+
+function autoFillDrugLog() {
+  if (!current) return;
+  const tbody = document.getElementById('drugLogBody');
+  if (!tbody) return;
+  let added = 0;
+  Object.values(DRUG_GROUPS).flat().forEach(d => {
+    const drugData = current.drugs[d.key];
+    if (!drugData || !drugData.use) return;
+    const dose = drugData.dose || '';
+    const route = drugData.route || d.def;
+    const w = parseFloat(current.weight);
+    let doseStr = dose;
+    if (dose && !isNaN(parseFloat(dose)) && w) {
+      const total = (parseFloat(dose) * w).toFixed(2);
+      const dispUnit = d.unit.replace('/kg','').replace('/hr','').replace('/min','');
+      doseStr = `${dose}${d.unit} = ${total}${dispUnit}`;
+    }
+    addDrugLogRow({ drug: d.label, dose: doseStr, route, time: '' });
+    added++;
+  });
+  if (!added) { showToast('チェックされた薬剤がありません'); return; }
+  showToast(`${added}件の薬剤を入力しました`);
+  autoSave();
+}
+
+// ─────────────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────────────
+function switchTab(i) {
+  document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('on', idx === i));
+  document.querySelectorAll('.panel').forEach((p,idx) => p.classList.toggle('on', idx === i));
+}
+
+// ─────────────────────────────────────────────────
+// SAVE / AUTO-SAVE
+// ─────────────────────────────────────────────────
+let saveTimer = null;
+function autoSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    collectForm();
+    const idx = cases.findIndex(c => c.id === current.id);
+    if (idx >= 0) cases[idx] = current;
+    saveStorage();
+  }, 800);
+}
+
+function saveCase() {
+  collectForm();
+  const idx = cases.findIndex(c => c.id === current.id);
+  if (idx >= 0) cases[idx] = current;
+  saveStorage();
+  showToast('✅ 保存しました');
+}
+
+// ─────────────────────────────────────────────────
+// PRINT
+// ─────────────────────────────────────────────────
+function printCase() {
+  collectForm();
+  // Show all panels for print
+  document.querySelectorAll('.panel').forEach(p => p.classList.add('on'));
+  window.print();
+  // Restore active tab
+  document.querySelectorAll('.panel').forEach((p,i) => {
+    const active = document.querySelectorAll('.tab')[i]?.classList.contains('on');
+    p.classList.toggle('on', active);
+  });
+}
+
+// ─────────────────────────────────────────────────
+// CSV EXPORT
+// ─────────────────────────────────────────────────
+function exportCSV() {
+  if (!cases.length) { showToast('症例データがありません'); return; }
+  collectForm();
+  const headers = [
+    '日付','症例番号','担当者','患者名','オーナー','動物種','品種','年齢','体重(kg)',
+    '性別','診断名','術式','ASA-PS',
+    '麻酔開始','手術開始','手術終了','抜管','麻酔時間(分)','手術時間(分)',
+    '覚醒の様子','疼痛スコア',
+    '低血圧','徐脈','頻脈','低酸素','低体温','高体温','心停止',
+    '改善点/申し送り'
+  ];
+  const rows = cases.map(c => [
+    c.date, c.caseNo, c.staff, c.patientName, c.ownerName,
+    c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : '他',
+    c.breed, `${c.ageY||''}歳${c.ageM||''}ヶ月`, c.weight,
+    c.sex, c.diagnosis, c.procedure, c.asaps,
+    c.anesthStart, c.surgStart, c.surgEnd, c.extubation, c.anesthDur, c.surgDur,
+    c.recQuality, c.painScore,
+    c.compHypotension ? '✓' : '', c.compBrady ? '✓' : '',
+    c.compTachy ? '✓' : '', c.compHypoxemia ? '✓' : '',
+    c.compHypothermia ? '✓' : '', c.compHyperthermia ? '✓' : '',
+    c.compCardiacArrest ? '✓' : '',
+    c.notes
+  ].map(v => `"${String(v||'').replace(/"/g,'""')}"`));
+
+  const bom = '﻿';
+  const csv = bom + [headers.map(h=>`"${h}"`).join(','), ...rows.map(r=>r.join(','))].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `麻酔記録_${today().replace(/\//g,'')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📊 CSVを出力しました');
+}
+
+// ─────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ─────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────
+loadStorage();
+renderCasesList();
+</script>
+</body>
+</html>
