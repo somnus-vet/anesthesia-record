@@ -170,13 +170,29 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .toast.show{opacity:1}
 
 /* PRINT */
+#printView{display:none}
 @media print{
-  .screen{position:static;transform:none!important}
-  .form-hdr,.tab-bar,.act-bar{display:none!important}
-  .panel{display:block!important;position:static!important;overflow:visible;padding:0}
-  .card{break-inside:avoid;box-shadow:none;border:1px solid #ccc;margin:6px 0}
-  .c-hdr{background:var(--navy)!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  html,body{overflow:visible!important;height:auto!important}
+  @page{size:A4;margin:7mm 8mm}
+  html,body{background:#fff!important;overflow:visible!important;height:auto!important;font-size:9pt!important}
+  .screen,.modal-overlay,.toast,#presetModal{display:none!important}
+  #printView{display:block!important;color:#000;line-height:1.32;font-family:-apple-system,'Helvetica Neue',sans-serif;font-size:9pt}
+  .p-hdr{border-bottom:2px solid #000;padding:0 0 3px;margin:0 0 5px;display:flex;justify-content:space-between;align-items:flex-end}
+  .p-title{font-size:14pt;font-weight:800;letter-spacing:-.3px}
+  .p-meta{font-size:9pt;font-weight:600}
+  .p-section{border:1px solid #999;border-radius:3px;padding:0 5px 4px;margin:0 0 4px;break-inside:avoid}
+  .p-section h3{font-size:9pt;font-weight:700;margin:0 -5px 3px;background:#1e3a5f;color:#fff;padding:2px 6px;border-radius:2px 2px 0 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .p-row{display:flex;flex-wrap:wrap;gap:1px 11px;align-items:baseline;font-size:8.8pt}
+  .p-field{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap}
+  .p-label{color:#555;font-size:7.8pt}
+  .p-val{font-weight:600}
+  .p-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .p-table{width:100%;border-collapse:collapse;margin-top:2px}
+  .p-table th,.p-table td{border-bottom:1px solid #ccc;padding:1.5px 4px;text-align:left;font-size:8.4pt;vertical-align:top}
+  .p-table th{background:#dce6f1;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-weight:700}
+  .p-chip{display:inline-block;padding:0 5px;margin:1px 2px 1px 0;background:#fff3cd;border:1px solid #ffc107;border-radius:3px;font-size:8pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .p-chip-warn{background:#ffe1e1;border-color:#e74c3c;color:#a02020}
+  .p-text{white-space:pre-wrap;font-size:8.7pt;display:block;margin-top:2px}
+  .p-block{margin-top:2px}
 }
 </style>
 </head>
@@ -756,6 +772,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 </div>
 
 <div id="toast" class="toast"></div>
+<div id="printView"></div>
 
 <!-- ========== PRESET EDITOR MODAL ========== -->
 <div class="modal-overlay" id="presetModal">
@@ -791,24 +808,26 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 // ─────────────────────────────────────────────────
 // DRUG DEFINITIONS
 // ─────────────────────────────────────────────────
+// conc = 標準濃度（用量と同単位/mL）。例: メデト用量μg/kg → conc:1000(μg/mL=1mg/mL)
+// 値は本邦の代表的な製剤を仮置き。施設ごとの希釈条件に応じて調整可
 const DRUG_GROUPS = {
   premeds: [
-    { key:'medetomidine',   label:'メデトミジン',     unit:'μg/kg', dog:'5〜40',      cat:'40〜80',     routes:['IV','IM','SC'], def:'IM' },
-    { key:'midazolam',      label:'ミダゾラム',       unit:'mg/kg', dog:'0.1〜0.3',   cat:'0.1〜0.3',  routes:['IV','IM'],      def:'IV' },
-    { key:'butorphanol',    label:'ブトルファノール',  unit:'mg/kg', dog:'0.1〜0.4',   cat:'0.1〜0.4',  routes:['IV','IM','SC'], def:'IM' },
-    { key:'atropine_p',     label:'アトロピン',       unit:'mg/kg', dog:'0.02〜0.04', cat:'0.02〜0.04',routes:['IV','IM','SC'], def:'SC' },
-    { key:'nicardipine',    label:'ニカルジピン',      unit:'μg/kg', dog:'1〜5',       cat:'1〜5',      routes:['IV'],           def:'IV' },
-    { key:'alfaxalone_p',   label:'アルファキサロン',  unit:'mg/kg', dog:'2〜3',       cat:'2〜5',      routes:['IV','IM'],      def:'IM' },
-    { key:'fentanyl_p',     label:'フェンタニル',     unit:'μg/kg', dog:'2〜5',       cat:'2〜5',      routes:['IV'],           def:'IV' },
-    { key:'buprenorphine_p',label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',     cat:'10〜20',    routes:['IV','IM','SC'], def:'IM' },
+    { key:'medetomidine',   label:'メデトミジン',     unit:'μg/kg', dog:'5〜40',      cat:'40〜80',     routes:['IV','IM','SC'], def:'IM', conc:1000 },
+    { key:'midazolam',      label:'ミダゾラム',       unit:'mg/kg', dog:'0.1〜0.3',   cat:'0.1〜0.3',  routes:['IV','IM'],      def:'IV', conc:5 },
+    { key:'butorphanol',    label:'ブトルファノール',  unit:'mg/kg', dog:'0.1〜0.4',   cat:'0.1〜0.4',  routes:['IV','IM','SC'], def:'IM', conc:5 },
+    { key:'atropine_p',     label:'アトロピン',       unit:'mg/kg', dog:'0.02〜0.04', cat:'0.02〜0.04',routes:['IV','IM','SC'], def:'SC', conc:0.5 },
+    { key:'nicardipine',    label:'ニカルジピン',      unit:'μg/kg', dog:'1〜5',       cat:'1〜5',      routes:['IV'],           def:'IV', conc:1000 },
+    { key:'alfaxalone_p',   label:'アルファキサロン',  unit:'mg/kg', dog:'2〜3',       cat:'2〜5',      routes:['IV','IM'],      def:'IM', conc:10 },
+    { key:'fentanyl_p',     label:'フェンタニル',     unit:'μg/kg', dog:'2〜5',       cat:'2〜5',      routes:['IV'],           def:'IV', conc:50 },
+    { key:'buprenorphine_p',label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',     cat:'10〜20',    routes:['IV','IM','SC'], def:'IM', conc:300 },
   ],
   induction: [
-    { key:'propofol',       label:'プロポフォール',   unit:'mg/kg', dog:'4〜6',  cat:'6〜8',  routes:['IV'], def:'IV' },
-    { key:'alfaxalone_i',   label:'アルファキサロン', unit:'mg/kg', dog:'2〜3',  cat:'2〜5',  routes:['IV'], def:'IV' },
+    { key:'propofol',       label:'プロポフォール',   unit:'mg/kg', dog:'4〜6',  cat:'6〜8',  routes:['IV'], def:'IV', conc:10 },
+    { key:'alfaxalone_i',   label:'アルファキサロン', unit:'mg/kg', dog:'2〜3',  cat:'2〜5',  routes:['IV'], def:'IV', conc:10 },
   ],
   antibiotics: [
-    { key:'cefazolin',      label:'セファゾリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV' },
-    { key:'ampicillin',     label:'アンピシリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV' },
+    { key:'cefazolin',      label:'セファゾリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:100 },
+    { key:'ampicillin',     label:'アンピシリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:100 },
   ],
   cri: [
     { key:'fentanyl_c',     label:'フェンタニル',     unit:'μg/kg/hr',  dog:'1〜5',    cat:'1〜3',    routes:['IV'], def:'IV' },
@@ -818,19 +837,19 @@ const DRUG_GROUPS = {
     { key:'ketamine_c',     label:'ケタミン',         unit:'mg/kg/hr',  dog:'0.1〜0.6',cat:'0.1〜0.6',routes:['IV'], def:'IV' },
   ],
   vasopressors: [
-    { key:'atropine_v',     label:'アトロピン',       unit:'mg/kg', dog:'0.02〜0.04',cat:'0.02〜0.04',routes:['IV','IM'], def:'IV' },
-    { key:'ephedrine',      label:'エフェドリン',     unit:'mg/kg', dog:'0.05〜0.1', cat:'0.05〜0.1', routes:['IV'],     def:'IV' },
-    { key:'phenylephrine',  label:'フェニレフリン',   unit:'μg/kg', dog:'1〜3',      cat:'1〜3',      routes:['IV'],     def:'IV' },
+    { key:'atropine_v',     label:'アトロピン',       unit:'mg/kg', dog:'0.02〜0.04',cat:'0.02〜0.04',routes:['IV','IM'], def:'IV', conc:0.5 },
+    { key:'ephedrine',      label:'エフェドリン',     unit:'mg/kg', dog:'0.05〜0.1', cat:'0.05〜0.1', routes:['IV'],     def:'IV', conc:4 },
+    { key:'phenylephrine',  label:'フェニレフリン',   unit:'μg/kg', dog:'1〜3',      cat:'1〜3',      routes:['IV'],     def:'IV', conc:1000 },
     { key:'noradrenaline',  label:'ノルアドレナリン', unit:'μg/kg/min',dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'],   def:'IV' },
-    { key:'adrenaline',     label:'アドレナリン',     unit:'μg/kg', dog:'10〜20',    cat:'10〜20',    routes:['IV','IM'],def:'IV' },
+    { key:'adrenaline',     label:'アドレナリン',     unit:'μg/kg', dog:'10〜20',    cat:'10〜20',    routes:['IV','IM'],def:'IV', conc:1000 },
   ],
   postAnalg: [
-    { key:'meloxicam',      label:'メロキシカム',      unit:'mg/kg', dog:'0.1〜0.2',cat:'0.1',       routes:['SC','IV','PO'], def:'SC' },
-    { key:'robenacoxib',    label:'ロベナコキシブ',    unit:'mg/kg', dog:'2',       cat:'0.5mg/head',routes:['SC','PO'],      def:'SC' },
-    { key:'prednisolone',   label:'プレドニゾロン',    unit:'mg/kg', dog:'0.5〜1',  cat:'0.5〜1',    routes:['IV','IM'],      def:'IV' },
-    { key:'buprenorphine',  label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',  cat:'10〜20',    routes:['IV','IM','SC'], def:'IV' },
-    { key:'tramadol',       label:'トラマドール',      unit:'mg/kg', dog:'2〜5',    cat:'2〜4',      routes:['IV','SC'],      def:'IV' },
-    { key:'acetaminophen',  label:'アセトアミノフェン',unit:'mg/kg', dog:'10〜15',  cat:'⚠️禁忌',   routes:['IV'],           def:'IV' },
+    { key:'meloxicam',      label:'メロキシカム',      unit:'mg/kg', dog:'0.1〜0.2',cat:'0.1',       routes:['SC','IV','PO'], def:'SC', conc:5 },
+    { key:'robenacoxib',    label:'ロベナコキシブ',    unit:'mg/kg', dog:'2',       cat:'0.5mg/head',routes:['SC','PO'],      def:'SC', conc:20 },
+    { key:'prednisolone',   label:'プレドニゾロン',    unit:'mg/kg', dog:'0.5〜1',  cat:'0.5〜1',    routes:['IV','IM'],      def:'IV', conc:5 },
+    { key:'buprenorphine',  label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',  cat:'10〜20',    routes:['IV','IM','SC'], def:'IV', conc:300 },
+    { key:'tramadol',       label:'トラマドール',      unit:'mg/kg', dog:'2〜5',    cat:'2〜4',      routes:['IV','SC'],      def:'IV', conc:50 },
+    { key:'acetaminophen',  label:'アセトアミノフェン',unit:'mg/kg', dog:'10〜15',  cat:'⚠️禁忌',   routes:['IV'],           def:'IV', conc:10 },
   ],
 };
 
@@ -1243,11 +1262,12 @@ function renderDrugRow(d) {
   const routeBtns = d.routes.map(r =>
     `<button class="rbtn" data-route="${r}" onclick="toggleRoute('${d.key}','${r}',this)">${r}</button>`
   ).join('');
+  const concInfo = d.conc ? ` <span style="color:var(--muted);font-size:11px">| 規格 ${d.conc < 1 ? d.conc : (d.unit.startsWith('μg') ? (d.conc>=1000 ? d.conc/1000+'mg/mL' : d.conc+'μg/mL') : d.conc+'mg/mL')}</span>` : '';
   return `<div class="drug-row" id="drow_${d.key}" onclick="toggleDrug('${d.key}',event)">
     <div class="drug-toggle" id="dtog_${d.key}"></div>
     <div class="drug-content">
       <div class="drug-name">${d.label}</div>
-      <div class="drug-ref">🐶${d.dog} / 🐱${d.cat} &nbsp;<strong>${d.unit}</strong></div>
+      <div class="drug-ref">🐶${d.dog} / 🐱${d.cat} &nbsp;<strong>${d.unit}</strong>${concInfo}</div>
       <div class="drug-inputs" onclick="event.stopPropagation()">
         <input class="fdose" type="text" inputmode="decimal"
           id="ddose_${d.key}" placeholder="0.0"
@@ -1485,7 +1505,15 @@ function updateCalc(key, dose, weight, unit) {
   if (!isNaN(d) && !isNaN(w) && d > 0 && w > 0) {
     const total = d * w;
     const dispUnit = unit.replace('/kg','').replace('/hr','').replace('/min','');
-    el.textContent = `= ${total % 1 === 0 ? total : total.toFixed(2)} ${dispUnit}`;
+    const totalStr = `${total % 1 === 0 ? total : total.toFixed(2)} ${dispUnit}`;
+    // 薬液量計算（CRI/分量除く）
+    const drug = Object.values(DRUG_GROUPS).flat().find(dr => dr.key === key);
+    let volStr = '';
+    if (drug && drug.conc && drug.conc > 0 && !unit.includes('/hr') && !unit.includes('/min')) {
+      const vol = total / drug.conc;
+      volStr = ` → ${vol.toFixed(2)} mL`;
+    }
+    el.textContent = `= ${totalStr}${volStr}`;
   } else {
     el.textContent = '';
   }
@@ -1633,9 +1661,14 @@ function autoFillDrugLog() {
     const w = parseFloat(current.weight);
     let doseStr = dose;
     if (dose && !isNaN(parseFloat(dose)) && w) {
-      const total = (parseFloat(dose) * w).toFixed(2);
+      const totalNum = parseFloat(dose) * w;
+      const total = totalNum.toFixed(2);
       const dispUnit = d.unit.replace('/kg','').replace('/hr','').replace('/min','');
-      doseStr = `${dose}${d.unit} = ${total}${dispUnit}`;
+      let volPart = '';
+      if (d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) {
+        volPart = ` (${(totalNum / d.conc).toFixed(2)}mL)`;
+      }
+      doseStr = `${dose}${d.unit} = ${total}${dispUnit}${volPart}`;
     }
     addDrugLogRow({ drug: d.label, dose: doseStr, route, time: '' });
     added++;
@@ -1680,14 +1713,247 @@ function saveCase() {
 // ─────────────────────────────────────────────────
 function printCase() {
   collectForm();
-  // Show all panels for print
-  document.querySelectorAll('.panel').forEach(p => p.classList.add('on'));
+  if (!current) return;
+  document.getElementById('printView').innerHTML = generatePrintHTML(current);
   window.print();
-  // Restore active tab
-  document.querySelectorAll('.panel').forEach((p,i) => {
-    const active = document.querySelectorAll('.tab')[i]?.classList.contains('on');
-    p.classList.toggle('on', active);
+}
+
+function generatePrintHTML(c) {
+  const speciesLabel = c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : '他';
+  const ageLabel = (c.ageY || c.ageM) ? `${c.ageY||0}歳${c.ageM||0}ヶ月` : '';
+  const fld = (label, val) => val ? `<span class="p-field"><span class="p-label">${label}:</span><span class="p-val">${esc(val)}</span></span>` : '';
+  const chip = (label, warn) => `<span class="p-chip${warn?' p-chip-warn':''}">${esc(label)}</span>`;
+
+  // 選択された薬剤
+  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', postAnalg:'術後鎮痛'};
+  const selectedDrugs = [];
+  Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
+    drugs.forEach(d => {
+      const dd = (c.drugs||{})[d.key];
+      if (!dd || !dd.use) return;
+      const w = parseFloat(c.weight);
+      const dose = dd.dose || '';
+      let total = '', vol = '';
+      if (dose && w && !isNaN(parseFloat(dose))) {
+        const t = parseFloat(dose) * w;
+        const dispUnit = d.unit.replace('/kg','').replace('/hr','').replace('/min','');
+        total = `${t.toFixed(2)} ${dispUnit}`;
+        if (d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) {
+          vol = `${(t / d.conc).toFixed(2)} mL`;
+        }
+      }
+      selectedDrugs.push({
+        group: groupNames[gk] || gk,
+        name: d.label,
+        dose: dose ? `${dose} ${d.unit}` : '',
+        route: dd.route || d.def || '',
+        total, vol,
+      });
+    });
   });
+
+  // 合併症（チェック付きのみ）
+  const compDef = [
+    ['compInductBreathing','導入時呼吸異常',1],
+    ['compInductUpperAirway','上部気道閉塞',1],
+    ['compInductApnea','吸誘発呼吸停止',1],
+    ['compInductLaryngospasm','喉頭痙攣',1],
+    ['compInductCyanosis','チアノーゼ',1],
+    ['compInductVomiting','導入時嘔吐',1],
+    ['compInductExcitement','不整脈(導入)',1],
+    ['compVomiting','嘔吐/逆流',0],
+    ['compSeizure','発作',1],
+    ['compCardiacArrest','心停止',1],
+    ['compDeath','安楽死',1],
+    ['compApnea','無呼吸',1],
+    ['compTachyBreath','頻呼吸',0],
+    ['compBradyBreath','徐呼吸',0],
+    ['compHypothermia', `低体温${c.compHypothermiaDeg ? '('+c.compHypothermiaDeg+'℃)':''}`, 0],
+    ['compHyperthermia','高体温',0],
+    ['compBleed', `大量出血${c.compBleedMax ? '('+c.compBleedMax+'mL)':''}`, 1],
+    ['compTachy', `頻脈${c.compTachyMax ? '('+c.compTachyMax+'bpm)':''}`, 0],
+    ['compBrady', `徐脈${c.compBradyMin ? '('+c.compBradyMin+'bpm)':''}`, 0],
+    ['compHtn', `高血圧${c.compHtnMax ? '('+c.compHtnMax+'mmHg)':''}`, 0],
+    ['compHypotension', `低血圧${c.compHypotensionMin ? '('+c.compHypotensionMin+'mmHg)':''}`, 0],
+    ['compArrhythmia', `不整脈${c.compArrhythmiaType ? '('+c.compArrhythmiaType+')':''}`, 0],
+    ['compHypoxemia', `低酸素${c.compHypoxemiaMin ? '('+c.compHypoxemiaMin+'%)':''}`, 1],
+    ['compHypocapnia', `低CO₂${c.compHypocapniaMin ? '('+c.compHypocapniaMin+')':''}`, 0],
+    ['compHypercapnia', `高CO₂${c.compHypercapniaMax ? '('+c.compHypercapniaMax+')':''}`, 0],
+  ];
+  const compsActive = compDef.filter(([k]) => c[k]).map(([,label,warn]) => chip(label, warn));
+
+  // 検査
+  const tests = [];
+  if (c.testCBC) tests.push('CBC');
+  if (c.testBiochem) tests.push('生化学');
+  if (c.testCoag) tests.push('凝固系');
+  if (c.testXray) tests.push('X線');
+  if (c.testEcho) tests.push('Echo');
+  if (c.testECG) tests.push('ECG');
+  if (c.testUA) tests.push('UA');
+  if (c.testOther) tests.push('他');
+
+  // 器材
+  const equip = [];
+  if (c.equipTemp) equip.push('体温'); if (c.equipECG) equip.push('ECG');
+  if (c.equipHR) equip.push('HR'); if (c.equipRR) equip.push('RR');
+  if (c.equipEtCO2) equip.push('EtCO₂'); if (c.equipSpO2) equip.push('SpO₂');
+  if (c.equipABP) equip.push('ABP'); if (c.equipGas) equip.push('Gas');
+  if (c.equipOscillo) equip.push('Oscillo'); if (c.equipDoppler) equip.push('Doppler');
+  if (c.equipArterial) equip.push('動脈圧');
+
+  // 静脈ライン
+  const ivs = [];
+  if (c.ivLF) ivs.push('LF'); if (c.ivRF) ivs.push('RF');
+  if (c.ivLR) ivs.push('LR'); if (c.ivRR) ivs.push('RR');
+
+  // 薬剤投与ログ
+  const drugLogRows = (c.drugLog || []).filter(r => r.drug || r.dose || r.time)
+    .map(r => `<tr><td>${esc(r.time||'')}</td><td>${esc(r.drug||'')}</td><td>${esc(r.dose||'')}</td><td>${esc(r.route||'')}</td><td>${esc(r.note||'')}</td></tr>`).join('');
+
+  return `
+    <div class="p-hdr">
+      <div class="p-title">麻酔症例記録</div>
+      <div class="p-meta">${esc(c.date)} ｜ No.${esc(c.caseNo||'—')} ｜ 担当: ${esc(c.staff||'—')}</div>
+    </div>
+
+    <div class="p-section">
+      <h3>患者情報 / Patient</h3>
+      <div class="p-row">
+        ${fld('ID', c.patientId)}
+        ${fld('患者名', c.patientName)}
+        ${fld('オーナー', c.ownerName)}
+        ${fld('動物種', speciesLabel)}
+        ${fld('品種', c.breed)}
+        ${fld('性別', c.sex)}
+        ${fld('生年月日', c.birthdate)}
+        ${fld('年齢', ageLabel)}
+        ${fld('体重', c.weight ? c.weight+'kg' : '')}
+        ${fld('BCS', c.bcs ? c.bcs+'/9' : '')}
+        ${fld('意識', c.consciousness)}
+        ${c.seizures ? chip('発作歴',1) : ''}
+        ${c.allergies ? chip('アレルギー',1) : ''}
+        ${fld('事前投与中薬剤', c.preMeds)}
+      </div>
+    </div>
+
+    <div class="p-grid-2">
+      <div class="p-section">
+        <h3>術前評価 / Pre-op</h3>
+        <div class="p-row">
+          ${fld('体温', c.preTemp ? c.preTemp+'℃':'')}
+          ${fld('心拍', c.preHr ? c.preHr+'bpm':'')}
+          ${fld('呼吸数', c.preRr ? c.preRr+'rpm':'')}
+          ${fld('血圧', c.preBp ? c.preBp+'mmHg':'')}
+        </div>
+        ${c.chiefComplaint ? `<div class="p-block"><span class="p-label">主訴: </span>${esc(c.chiefComplaint)}</div>` : ''}
+        ${c.abnormalFindings ? `<div class="p-block"><span class="p-label">異常所見: </span>${esc(c.abnormalFindings)}</div>` : ''}
+        ${tests.length ? `<div class="p-block"><span class="p-label">術前検査: </span>${tests.join(' ・ ')}</div>` : ''}
+      </div>
+      <div class="p-section">
+        <h3>診断・手術 / Surgery</h3>
+        <div class="p-row">
+          ${fld('診断名', c.diagnosis)}
+          ${fld('術式', c.procedure)}
+          ${fld('ASA-PS', c.asaps)}
+          ${fld('リスク', c.riskLevel)}
+        </div>
+        <div class="p-row">
+          ${fld('術者', c.surgeon)}
+          ${fld('助手', c.assistant)}
+          ${fld('麻酔監督', c.anesthSupervisor)}
+        </div>
+      </div>
+    </div>
+
+    <div class="p-section">
+      <h3>麻酔プロトコル / Anesthetic Protocol</h3>
+      ${selectedDrugs.length ? `<table class="p-table">
+        <thead><tr><th style="width:60px">分類</th><th>薬剤</th><th style="width:80px">用量</th><th style="width:42px">経路</th><th style="width:70px">総量</th><th style="width:60px">薬液量</th></tr></thead>
+        <tbody>
+          ${selectedDrugs.map(d => `<tr><td>${esc(d.group)}</td><td>${esc(d.name)}</td><td>${esc(d.dose)}</td><td>${esc(d.route)}</td><td>${esc(d.total)}</td><td>${esc(d.vol)}</td></tr>`).join('')}
+        </tbody>
+      </table>` : '<div style="font-size:8pt;color:#666">選択された薬剤なし</div>'}
+      <div class="p-row" style="margin-top:3px">
+        ${c.maintIsoflurane ? chip('維持: イソフルラン') : ''}
+        ${c.maintSevoflurane ? chip('維持: セボフルラン') : ''}
+        ${c.maintPropofol ? chip('維持: プロポフォール') : ''}
+        ${fld('濃度', c.maintConc ? c.maintConc+'%':'')}
+        ${fld('O₂', c.maintO2 ? c.maintO2+'L/min':'')}
+        ${fld('人工呼吸', c.ventilation)}
+        ${fld('輸液', c.fluidType)}
+        ${fld('輸液速度', c.fluidRate ? c.fluidRate+'mL/kg/h' : '')}
+      </div>
+      ${(c.localLido || c.localBupi || c.localOther || c.localApproach || c.localDrugAmt) ? `<div class="p-row">
+        ${c.localLido ? chip('局所: リドカイン') : ''}
+        ${c.localBupi ? chip('局所: ブピバカイン') : ''}
+        ${fld('局所他', c.localOther)}
+        ${fld('部位/手技', c.localApproach)}
+        ${fld('薬液量', c.localDrugAmt ? c.localDrugAmt+'mL':'')}
+        ${fld('投与量', c.localAdminAmt ? c.localAdminAmt+'mL':'')}
+      </div>` : ''}
+    </div>
+
+    <div class="p-section">
+      <h3>術中 / Intra-op</h3>
+      <div class="p-row">
+        ${fld('麻酔開始', c.anesthStart)}
+        ${fld('手術開始', c.surgStart)}
+        ${fld('手術終了', c.surgEnd)}
+        ${fld('抜管', c.extubation)}
+        ${fld('麻酔時間', c.anesthDur ? c.anesthDur+'分':'')}
+        ${fld('手術時間', c.surgDur ? c.surgDur+'分':'')}
+      </div>
+      ${c.events ? `<div class="p-block"><span class="p-label">経過: </span><span class="p-text">${esc(c.events)}</span></div>` : ''}
+    </div>
+
+    ${(compsActive.length || c.compDetails) ? `<div class="p-section">
+      <h3>合併症 / Complications</h3>
+      ${compsActive.length ? `<div>${compsActive.join('')}</div>` : ''}
+      ${c.compDetails ? `<div class="p-block"><span class="p-label">詳細: </span><span class="p-text">${esc(c.compDetails)}</span></div>` : ''}
+    </div>` : ''}
+
+    <div class="p-grid-2">
+      <div class="p-section">
+        <h3>覚醒・回復 / Recovery</h3>
+        <div class="p-row">
+          ${fld('覚醒', c.recQuality)}
+          ${fld('体温', c.recTemp ? c.recTemp+'℃':'')}
+          ${fld('心拍', c.recHr ? c.recHr+'bpm':'')}
+          ${fld('呼吸', c.recRr ? c.recRr+'rpm':'')}
+        </div>
+        <div class="p-row">
+          ${fld('鎮痛法', c.painMethod)}
+          ${fld('疼痛スコア', c.painScore)}
+          ${fld('術後疼痛', c.postopPain)}
+        </div>
+        ${c.recNotes ? `<div class="p-block"><span class="p-label">回復メモ: </span>${esc(c.recNotes)}</div>` : ''}
+      </div>
+      <div class="p-section">
+        <h3>器材 / Equipment</h3>
+        ${equip.length ? `<div>${equip.map(e => chip(e)).join('')}</div>` : ''}
+        <div class="p-row" style="margin-top:3px">
+          ${fld('回路', c.circuit)}
+          ${fld('チューブ', c.tubeSize)}
+          ${fld('バッグ', c.bagSize)}
+          ${ivs.length ? fld('IVライン', ivs.join('・')) : ''}
+        </div>
+      </div>
+    </div>
+
+    ${drugLogRows ? `<div class="p-section">
+      <h3>薬剤投与ログ / Drug Log</h3>
+      <table class="p-table">
+        <thead><tr><th style="width:50px">時刻</th><th>薬剤</th><th>用量</th><th style="width:42px">経路</th><th>備考</th></tr></thead>
+        <tbody>${drugLogRows}</tbody>
+      </table>
+    </div>` : ''}
+
+    ${c.notes ? `<div class="p-section">
+      <h3>改善点・申し送り / Notes</h3>
+      <div class="p-text">${esc(c.notes)}</div>
+    </div>` : ''}
+  `;
 }
 
 // ─────────────────────────────────────────────────
