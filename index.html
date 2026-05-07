@@ -394,7 +394,13 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <input class="fin" type="text" id="f_assistant" placeholder="助手" oninput="autoSave()">
           </div>
           <div class="frow">
-            <span class="flabel flabel-w">麻酔監視指</span>
+            <span class="flabel flabel-w">器械</span>
+            <input class="fin" type="text" id="f_scrubNurse" placeholder="器械出し" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">麻酔監視</span>
+            <input class="fin" type="text" id="f_anesthMonitor" placeholder="麻酔監視" oninput="autoSave()">
+            <span class="flabel" style="min-width:36px">指導医</span>
             <input class="fin" type="text" id="f_anesthSupervisor" placeholder="監視指導医" oninput="autoSave()">
           </div>
           <div class="frow">
@@ -409,12 +415,12 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <div class="chk-item" onclick="toggleChk(this,'asapsE')"><div class="chk-box"></div><span class="chk-label">E (緊急)</span></div>
           </div>
           <div class="frow">
-            <span class="flabel flabel-w">予想リスク</span>
+            <span class="flabel flabel-w">予想疼痛</span>
             <div class="seg" style="flex:1">
-              <div class="seg-i on" onclick="setSeg('riskLevel','light',this)">軽度</div>
-              <div class="seg-i" onclick="setSeg('riskLevel','moderate',this)">中等度</div>
-              <div class="seg-i" onclick="setSeg('riskLevel','heavy',this)">重度</div>
-              <div class="seg-i" onclick="setSeg('riskLevel','max',this)">最大</div>
+              <div class="seg-i on" onclick="setSeg('expectedPain','light',this)">軽度</div>
+              <div class="seg-i" onclick="setSeg('expectedPain','moderate',this)">中等度</div>
+              <div class="seg-i" onclick="setSeg('expectedPain','heavy',this)">重度</div>
+              <div class="seg-i" onclick="setSeg('expectedPain','max',this)">最大</div>
             </div>
           </div>
 
@@ -663,6 +669,18 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <div class="tgrp">
               <input class="fin" type="text" id="f_inductionTime" placeholder="00:00" oninput="autoSave()">
               <button class="btn-now" onclick="setNow('f_inductionTime')">今</button>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="flabel flabel-w">挿管</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_intubationTime" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_intubationTime')">今</button>
+            </div>
+            <span class="flabel" style="min-width:36px">局所麻酔</span>
+            <div class="tgrp">
+              <input class="fin" type="text" id="f_localAnesthTime" placeholder="00:00" oninput="autoSave()">
+              <button class="btn-now" onclick="setNow('f_localAnesthTime')">今</button>
             </div>
           </div>
           <div class="frow">
@@ -1343,8 +1361,8 @@ function makeCase() {
     testCBC:false, testBiochem:false, testCoag:false, testXray:false,
     testEcho:false, testECG:false, testUA:false, testOther:false,
     // surgery
-    diagnosis:'', procedure:'', surgeon:'', assistant:'',
-    anesthSupervisor:'', asaps:'1', asapsE:false, riskLevel:'light',
+    diagnosis:'', procedure:'', surgeon:'', assistant:'', scrubNurse:'',
+    anesthMonitor:'', anesthSupervisor:'', asaps:'1', asapsE:false, expectedPain:'light',
     // 低血圧
     expectedHypotension:false,
     hpot_miniFluid:false, hpot_atropine:false, hpot_ephedrine:false, hpot_norad:false, hpot_notes:'',
@@ -1377,8 +1395,8 @@ function makeCase() {
     fluidType:'', fluidRate:'',
     localBlocks: {}, localCustom1:'', localCustom2:'',
     // intra-op timeline
-    anesthStart:'', inductionTime:'', antibioticTime:'',
-    surgStart:'', sutureStart:'', surgEnd:'',
+    anesthStart:'', inductionTime:'', intubationTime:'', localAnesthTime:'',
+    antibioticTime:'', surgStart:'', sutureStart:'', surgEnd:'',
     antagonistTime:'', extubation:'', returnToWard:'',
     anesthDur:'', surgDur:'', events:'',
     // complications
@@ -1539,7 +1557,7 @@ function populateForm() {
   const fields = [
     'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
     'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
-    'diagnosis','procedure','surgeon','assistant','anesthSupervisor',
+    'diagnosis','procedure','surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
     'otherComplications',
     'hpot_notes','hthm_notes',
     'hvent_pcvPIP','hvent_pcvRR','hvent_vcvVT','hvent_vcvRR','hvent_notes',
@@ -1547,7 +1565,8 @@ function populateForm() {
     'tubeSize','bagSize',
     'maintConc','maintO2','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
-    'anesthStart','inductionTime','antibioticTime','surgStart','sutureStart','surgEnd',
+    'anesthStart','inductionTime','intubationTime','localAnesthTime','antibioticTime',
+    'surgStart','sutureStart','surgEnd',
     'antagonistTime','extubation','returnToWard','anesthDur','surgDur','events',
     'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
     'compHtnMax','compHypotensionMin','compArrhythmiaType',
@@ -1561,7 +1580,7 @@ function populateForm() {
   setSegVal('sex', current.sex);
   setSegVal('consciousness', current.consciousness);
   setSegVal('asaps', current.asaps);
-  setSegVal('riskLevel', current.riskLevel);
+  setSegVal('expectedPain', current.expectedPain);
   setSegVal('circuit', current.circuit);
 
   // Checkboxes
@@ -1648,7 +1667,7 @@ function collectForm() {
   const fields = [
     'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
     'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
-    'diagnosis','procedure','surgeon','assistant','anesthSupervisor',
+    'diagnosis','procedure','surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
     'otherComplications',
     'hpot_notes','hthm_notes',
     'hvent_pcvPIP','hvent_pcvRR','hvent_vcvVT','hvent_vcvRR','hvent_notes',
@@ -1656,7 +1675,8 @@ function collectForm() {
     'tubeSize','bagSize',
     'maintConc','maintO2','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
-    'anesthStart','inductionTime','antibioticTime','surgStart','sutureStart','surgEnd',
+    'anesthStart','inductionTime','intubationTime','localAnesthTime','antibioticTime',
+    'surgStart','sutureStart','surgEnd',
     'antagonistTime','extubation','returnToWard','anesthDur','surgDur','events',
     'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
     'compHtnMax','compHypotensionMin','compArrhythmiaType',
@@ -2226,12 +2246,14 @@ function generatePrintHTML(c) {
           ${fld('診断名', c.diagnosis)}
           ${fld('術式', c.procedure)}
           ${fld('ASA-PS', c.asaps ? c.asaps + (c.asapsE ? 'E':''):'')}
-          ${fld('リスク', c.riskLevel)}
+          ${fld('予想疼痛', c.expectedPain)}
         </div>
         <div class="p-row">
           ${fld('術者', c.surgeon)}
           ${fld('助手', c.assistant)}
-          ${fld('麻酔監督', c.anesthSupervisor)}
+          ${fld('器械', c.scrubNurse)}
+          ${fld('麻酔監視', c.anesthMonitor)}
+          ${fld('指導医', c.anesthSupervisor)}
         </div>
       </div>
     </div>
@@ -2331,6 +2353,8 @@ function generatePrintHTML(c) {
       <div class="p-row">
         ${fld('前投薬', c.anesthStart)}
         ${fld('導入', c.inductionTime)}
+        ${fld('挿管', c.intubationTime)}
+        ${fld('局所麻酔', c.localAnesthTime)}
         ${fld('抗菌薬', c.antibioticTime)}
         ${fld('手術開始', c.surgStart)}
         ${fld('縫合開始', c.sutureStart)}
