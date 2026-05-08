@@ -981,16 +981,20 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
         <div class="chk-box"></div><span class="chk-label">Sheets同期を有効化（30秒ごとに自動取得＋保存時にプッシュ）</span>
       </div>
 
-      <div id="syncDiagnostics" style="background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:8px;font-size:11px;color:var(--muted);margin-top:10px">
+      <div id="syncDiagnostics" style="background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:8px;font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">
         <div>同期状態: <span id="diagSyncState">未開始</span></div>
-        <div>最終同期: <span id="diagLastSync">—</span></div>
+        <div>最終同期 (取得): <span id="diagLastSync">—</span></div>
+        <div>最終送信 (Push): <span id="diagLastPush">—</span></div>
+        <div>送信状態: <span id="diagPushStatus" style="font-weight:600;color:var(--text)">—</span></div>
         <div>未送信キュー: <span id="diagQueueSize">0</span> 件</div>
       </div>
 
-      <div style="display:flex;gap:7px;margin-top:10px">
-        <button type="button" onclick="manualSyncNow()" style="flex:1;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;min-height:42px">🔄 今すぐ同期</button>
-        <button type="button" onclick="testSheetsConnection()" style="flex:1;padding:10px;background:#fff;color:var(--navy);border:1.5px solid var(--navy);border-radius:7px;font-weight:600;cursor:pointer;min-height:42px">🔌 接続テスト</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px">
+        <button type="button" onclick="manualSyncNow()" style="padding:10px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;min-height:42px">🔄 取得テスト</button>
+        <button type="button" onclick="testSheetsConnection()" style="padding:10px;background:#fff;color:var(--navy);border:1.5px solid var(--navy);border-radius:7px;font-weight:600;cursor:pointer;min-height:42px">🔌 接続確認</button>
+        <button type="button" onclick="testPushNow()" style="padding:10px;background:var(--green);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;min-height:42px;grid-column:1/-1">📤 Pushテスト送信</button>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">「Pushテスト送信」を押すとテスト行をSheetsに書き込みます（カルテNo: TEST_xxxxxx）</div>
     </div>
     <div class="modal-footer">
       <button type="button" onclick="closeSettings()">閉じる</button>
@@ -1403,6 +1407,9 @@ let facilityMap = { ...FACILITY_LABELS_FALLBACK };
 let pushQueue = [];
 let syncTimer = null;
 let lastSyncAt = null;
+let lastPushAt = null;
+let lastPushStatus = null;
+let lastPushDuration = null;
 
 function loadSheetsConfig() {
   try {
@@ -1520,8 +1527,16 @@ function parseSheetTs(s) {
 
 // 症例をSheetsへupsert（保存時に呼ぶ）
 async function pushToSheets(caseObj) {
-  if (!sheetsConfig.enabled || !sheetsConfig.webappUrl) return;
-  if (!caseObj || !caseObj.date || !caseObj.caseNo) return; // 必須なし
+  if (!sheetsConfig.enabled || !sheetsConfig.webappUrl) {
+    lastPushStatus = '⏸ Sheets同期 OFF';
+    updateDiagnostics();
+    return false;
+  }
+  if (!caseObj || !caseObj.date || !caseObj.caseNo) {
+    lastPushStatus = `⚠️ 必須項目空: ${!caseObj?.date?'日付 ':''}${!caseObj?.caseNo?'カルテNo':''}`;
+    updateDiagnostics();
+    return false;
+  }
 
   const localBlockLabels = (typeof LOCAL_BLOCKS !== 'undefined' ? LOCAL_BLOCKS : [])
     .filter(b => (caseObj.localBlocks || {})[b.key]?.use)
@@ -1543,19 +1558,61 @@ async function pushToSheets(caseObj) {
     '詳細': JSON.stringify(caseObj),
   };
   const payload = { action: 'upsert', row };
+  const t0 = Date.now();
+  lastPushStatus = '🔄 送信中…';
+  updateDiagnostics();
   try {
-    await fetch(sheetsConfig.webappUrl, {
+    const res = await fetch(sheetsConfig.webappUrl, {
       method: 'POST',
       headers: {'Content-Type': 'text/plain;charset=utf-8'},
       body: JSON.stringify(payload),
+      redirect: 'follow',
     });
+    lastPushDuration = Date.now() - t0;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    let result = {};
+    try { result = JSON.parse(text); } catch(e) {
+      // JSON以外（HTMLエラーページ等）が返ってきた
+      throw new Error('応答が JSON ではない');
+    }
+    if (result.ok === false) throw new Error(result.error || '不明エラー');
+    lastPushAt = new Date();
+    lastPushStatus = `✓ 成功 (${lastPushDuration}ms)`;
+    updateDiagnostics();
+    // 数秒後に自動同期して反映を確認
+    setTimeout(() => syncFromSheets(), 1500);
+    return true;
   } catch (e) {
-    console.warn('pushToSheets failed, queueing:', e);
+    lastPushDuration = Date.now() - t0;
+    lastPushAt = new Date();
+    lastPushStatus = `✗ 失敗 (${lastPushDuration}ms): ${e.message}`;
     pushQueue.push({ payload, ts: Date.now() });
     if (pushQueue.length > 100) pushQueue = pushQueue.slice(-100);
     savePushQueue();
     updateDiagnostics();
+    console.warn('pushToSheets failed:', e);
+    return false;
   }
+}
+
+// テストプッシュ（設定モーダルから手動実行）
+async function testPushNow() {
+  const testCase = {
+    date: today(),
+    caseNo: 'TEST_' + Date.now().toString().slice(-6),
+    patientName: 'PUSH動作確認',
+    species: 'dog',
+    weight: '5.0',
+    asaps: '1',
+    asapsE: false,
+    procedure: 'プッシュテスト',
+    progress: 'テスト',
+    staff: 'テスト',
+  };
+  showToast('🔄 テスト送信中…');
+  const ok = await pushToSheets(testCase);
+  showToast(ok ? '✓ テスト送信成功' : ('✗ ' + (lastPushStatus || '失敗')));
 }
 
 async function flushPushQueue() {
@@ -1605,8 +1662,19 @@ function updateDiagnostics() {
   const stateEl = document.getElementById('diagSyncState');
   const lastEl = document.getElementById('diagLastSync');
   const queueEl = document.getElementById('diagQueueSize');
+  const pushEl = document.getElementById('diagLastPush');
+  const pushStatusEl = document.getElementById('diagPushStatus');
   if (stateEl) stateEl.textContent = sheetsConfig.enabled ? '有効' : '無効';
   if (lastEl) lastEl.textContent = lastSyncAt ? lastSyncAt.toLocaleTimeString('ja-JP') : '—';
+  if (pushEl) pushEl.textContent = lastPushAt ? lastPushAt.toLocaleTimeString('ja-JP') : '—';
+  if (pushStatusEl) {
+    pushStatusEl.textContent = lastPushStatus || '—';
+    if (lastPushStatus?.startsWith('✓')) pushStatusEl.style.color = 'var(--green)';
+    else if (lastPushStatus?.startsWith('✗')) pushStatusEl.style.color = 'var(--red)';
+    else if (lastPushStatus?.startsWith('🔄')) pushStatusEl.style.color = 'var(--blue)';
+    else if (lastPushStatus?.startsWith('⚠')) pushStatusEl.style.color = 'var(--orange)';
+    else pushStatusEl.style.color = 'var(--text)';
+  }
   if (queueEl) queueEl.textContent = String(pushQueue.length);
 }
 
