@@ -1464,14 +1464,25 @@ async function syncFromSheets() {
   if (!sheetsConfig.enabled || !sheetsConfig.spreadsheetId) return;
   setSyncStatus('syncing');
   try {
-    const csv = await fetch(csvUrl('症例予約'), {cache:'no-store'}).then(r => r.text());
+    let csv = await fetch(csvUrl('症例予約'), {cache:'no-store'}).then(r => r.text());
+    csv = csv.replace(/^﻿/, ''); // BOM除去
     const rows = parseCSV(csv);
     const reserved = rows.filter(r => r['施設コード'] === sheetsConfig.facility);
-    mergeReservations(reserved);
+    const formIsOpen = !document.getElementById('formScreen').classList.contains('hidden');
+    const editingCaseKey = current ? `${current.date}|${current.caseNo}` : null;
+    let editingChanged = false;
+    mergeReservations(reserved, (caseKey) => {
+      if (caseKey === editingCaseKey) editingChanged = true;
+    });
     lastSyncAt = new Date();
     setSyncStatus('ok');
     updateDiagnostics();
     renderCasesList();
+    // フォーム表示中で、編集中の症例が更新された場合はUIを再描画
+    if (formIsOpen && editingChanged) {
+      populateForm();
+      showToast('📥 サーバー側の更新を取り込みました');
+    }
   } catch (e) {
     console.warn('syncFromSheets failed:', e);
     setSyncStatus('error');
@@ -1481,37 +1492,51 @@ async function syncFromSheets() {
   flushPushQueue();
 }
 
-function mergeReservations(rows) {
+function mergeReservations(rows, onUpdate) {
   rows.forEach(r => {
     if (!r['日付'] || !r['カルテNo']) return;
     let detail = {};
     try { if (r['詳細']) detail = JSON.parse(r['詳細']); } catch(e) {}
-    // ローカルに既存があれば、updated_at が新しい方を採用
     const existing = cases.find(c => c.date === r['日付'] && c.caseNo === r['カルテNo']);
     if (existing) {
       const remoteTs = parseSheetTs(r['updated_at']);
       const localTs = parseSheetTs(existing.updated_at);
       if (remoteTs && (!localTs || remoteTs > localTs)) {
         // remote が新しい → ローカルを上書き
-        Object.assign(existing, detail, {
-          date: r['日付'], caseNo: r['カルテNo'], patientName: r['患者名'] || existing.patientName,
-          species: r['動物種'] || existing.species, weight: r['体重'] || existing.weight,
-          asaps: r['ASA'] || existing.asaps, asapsE: r['ASA緊急'] === 'TRUE',
-          procedure: r['術式'] || existing.procedure, staff: r['担当'] || existing.staff,
-          progress: r['進捗'] || existing.progress, updated_at: r['updated_at'],
-        });
+        const oldId = existing.id;
+        // detail 全体を反映（薬剤・ブロック等のネスト構造も復元）
+        Object.keys(detail).forEach(k => existing[k] = detail[k]);
+        // 上位列の値で上書き（detail と乖離している場合の整合）
+        existing.id = oldId; // ローカルIDは保持
+        existing.date = r['日付'];
+        existing.caseNo = r['カルテNo'];
+        if (r['患者名']) existing.patientName = r['患者名'];
+        if (r['動物種']) existing.species = r['動物種'];
+        if (r['体重']) existing.weight = r['体重'];
+        if (r['ASA']) existing.asaps = r['ASA'];
+        existing.asapsE = r['ASA緊急'] === 'TRUE';
+        if (r['術式']) existing.procedure = r['術式'];
+        if (r['担当']) existing.staff = r['担当'];
+        if (r['進捗']) existing.progress = r['進捗'];
+        existing.updated_at = r['updated_at'];
+        if (onUpdate) onUpdate(`${existing.date}|${existing.caseNo}`);
       }
     } else {
       // 新規
       const fresh = makeCase();
-      Object.assign(fresh, detail, {
-        id: detail.id || (Date.now().toString() + Math.floor(Math.random()*1000)),
-        date: r['日付'], caseNo: r['カルテNo'], patientName: r['患者名'] || '',
-        species: r['動物種'] || 'dog', weight: r['体重'] || '',
-        asaps: r['ASA'] || '1', asapsE: r['ASA緊急'] === 'TRUE',
-        procedure: r['術式'] || '', staff: r['担当'] || '',
-        progress: r['進捗'] || '予約', updated_at: r['updated_at'] || '',
-      });
+      Object.keys(detail).forEach(k => fresh[k] = detail[k]);
+      fresh.id = detail.id || (Date.now().toString() + Math.floor(Math.random()*1000));
+      fresh.date = r['日付'];
+      fresh.caseNo = r['カルテNo'];
+      if (r['患者名']) fresh.patientName = r['患者名'];
+      if (r['動物種']) fresh.species = r['動物種'];
+      if (r['体重']) fresh.weight = r['体重'];
+      if (r['ASA']) fresh.asaps = r['ASA'];
+      fresh.asapsE = r['ASA緊急'] === 'TRUE';
+      if (r['術式']) fresh.procedure = r['術式'];
+      if (r['担当']) fresh.staff = r['担当'];
+      if (r['進捗']) fresh.progress = r['進捗'];
+      fresh.updated_at = r['updated_at'] || '';
       cases.push(fresh);
     }
   });
@@ -1899,10 +1924,40 @@ function openCase(id) {
 }
 
 function deleteCase(id) {
-  if (!confirm('この症例を削除しますか？')) return;
+  if (!confirm('この症例を削除しますか？\n（Sheetsからも削除されます）')) return;
+  const target = cases.find(c => c.id === id);
   cases = cases.filter(c => c.id !== id);
   saveStorage();
   renderCasesList();
+  // Sheetsからも削除
+  if (target && sheetsConfig.enabled && sheetsConfig.webappUrl && target.date && target.caseNo) {
+    deleteFromSheets(target);
+  }
+}
+
+async function deleteFromSheets(caseObj) {
+  if (!sheetsConfig.enabled || !sheetsConfig.webappUrl) return;
+  const payload = {
+    action: 'delete',
+    facility_code: sheetsConfig.facility,
+    case_no: caseObj.caseNo,
+    date: caseObj.date,
+  };
+  try {
+    await fetch(sheetsConfig.webappUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify(payload),
+    });
+    lastPushStatus = `🗑 削除送信: ${caseObj.caseNo}`;
+    updateDiagnostics();
+  } catch(e) {
+    console.warn('deleteFromSheets failed:', e);
+    pushQueue.push({ payload, ts: Date.now() });
+    savePushQueue();
+    lastPushStatus = `✗ 削除送信失敗: ${e.message}`;
+    updateDiagnostics();
+  }
 }
 
 function backToList() {
