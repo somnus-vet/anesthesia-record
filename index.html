@@ -994,8 +994,9 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
         <button type="button" onclick="manualSyncNow()" style="padding:10px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;min-height:42px">🔄 取得テスト</button>
         <button type="button" onclick="testSheetsConnection()" style="padding:10px;background:#fff;color:var(--navy);border:1.5px solid var(--navy);border-radius:7px;font-weight:600;cursor:pointer;min-height:42px">🔌 接続確認</button>
         <button type="button" onclick="testPushNow()" style="padding:10px;background:var(--green);color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;min-height:42px;grid-column:1/-1">📤 Pushテスト送信</button>
+        <button type="button" onclick="cleanupSheetsDuplicates()" style="padding:10px;background:#fff8e0;color:#8a6d00;border:1.5px solid #f3c441;border-radius:7px;font-weight:600;cursor:pointer;min-height:42px;grid-column:1/-1">🧹 Sheetsの重複行をクリーンアップ</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">「Pushテスト送信」を押すとテスト行をSheetsに書き込みます（カルテNo: TEST_xxxxxx）</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">「Pushテスト送信」: テスト行をSheetsに書き込み / 「クリーンアップ」: 同じ患者の重複行を1行に統合</div>
     </div>
     <div class="modal-footer">
       <button type="button" onclick="closeSettings()">閉じる</button>
@@ -1478,12 +1479,37 @@ async function syncFromSheets() {
     mergeReservations(reserved, (caseKey) => {
       if (caseKey === editingCaseKey) editingChanged = true;
     });
+
+    // ★ Sheetsから消えた症例をローカルからも削除（多端末同期）
+    const remoteIds = new Set(reserved.map(r => r['内部ID']).filter(Boolean));
+    const beforeIds = cases.map(c => c.id);
+    let editingDeleted = false;
+    cases = cases.filter(c => {
+      // rec_* 形式IDかつ現施設のcaseで、Sheetsに存在しないものは削除
+      if (!c.id || !String(c.id).startsWith('rec_')) return true; // 仮ID/非rec: 残す
+      if (c.facility && c.facility !== sheetsConfig.facility) return true; // 他施設: 残す
+      if (!c.facility) return true; // facility未設定: 安全のため残す（migration時保護）
+      if (remoteIds.has(c.id)) return true; // Sheetsに存在: 残す
+      // 該当: 他デバイスで削除された
+      if (current && current.id === c.id) editingDeleted = true;
+      return false;
+    });
+    if (cases.length !== beforeIds.length) {
+      saveStorage();
+      const removedCount = beforeIds.length - cases.length;
+      showToast(`🗑 他デバイスで削除された症例 ${removedCount}件 を反映`);
+    }
+    if (editingDeleted) {
+      showToast('⚠️ 編集中の症例が他デバイスで削除されました');
+      setTimeout(() => { try { backToList(); } catch(e){} }, 1200);
+    }
+
     lastSyncAt = new Date();
     setSyncStatus('ok');
     updateDiagnostics();
     renderCasesList();
     // フォーム表示中で、編集中の症例が更新された場合はUIを再描画
-    if (formIsOpen && editingChanged) {
+    if (formIsOpen && editingChanged && !editingDeleted) {
       populateForm();
       showToast('📥 サーバー側の更新を取り込みました');
     }
@@ -1525,21 +1551,35 @@ function mergeReservations(rows, onUpdate) {
     let existing = null;
     const remoteId = r['内部ID'] || detail.id || '';
     if (remoteId) existing = cases.find(c => c.id === remoteId);
-    // 2) 見つからなければレガシー: 日付+カルテNoでマッチ
-    if (!existing) existing = cases.find(c => c.date === r['日付'] && (c.caseNo === r['カルテNo'] || c.patientId === r['カルテNo']));
+    // 2) 見つからなければレガシー: 日付+caseNo+患者名 でマッチ
+    //    患者名が両方空なら除外、片方空ならマッチ可、両方セットなら一致必須（別患者誤判定防止）
+    if (!existing) {
+      const remoteName = (r['患者名'] || '').trim();
+      existing = cases.find(c => {
+        if (c.date !== r['日付']) return false;
+        const caseMatch = c.caseNo === r['カルテNo'] || c.patientId === r['カルテNo'];
+        if (!caseMatch) return false;
+        const localName = (c.patientName || '').trim();
+        if (remoteName && localName && remoteName !== localName) return false;
+        return true;
+      });
+    }
     if (existing) {
       const remoteTs = parseSheetTs(r['updated_at']);
       const localTs = parseSheetTs(existing.updated_at);
-      if (remoteTs && (!localTs || remoteTs > localTs)) {
-        // remote が新しい → ローカルを上書き
-        const oldId = existing.id;
+      // 内部IDが一致しない場合（複数デバイス間の競合）はremote側のIDで統一
+      const idMismatch = remoteId && existing.id !== remoteId;
+      // facilityを必ず記録（auto-delete判定に使用）
+      existing.facility = sheetsConfig.facility;
+      if (idMismatch || (remoteTs && (!localTs || remoteTs > localTs))) {
         // detail 全体を反映（薬剤・ブロック等のネスト構造も復元）
         Object.keys(detail).forEach(k => existing[k] = detail[k]);
-        // 上位列の値で上書き（detail と乖離している場合の整合）
-        existing.id = oldId; // ローカルIDは保持
+        // 内部IDをremote側に統一（複数デバイス間で一意にする）
+        if (remoteId) existing.id = remoteId;
         existing.date = r['日付'];
         existing.caseNo = r['カルテNo'];
         existing.patientId = r['カルテNo']; // patientIdとcaseNoを同期
+        existing.facility = sheetsConfig.facility;
         if (r['患者名']) existing.patientName = r['患者名'];
         if (r['動物種']) existing.species = r['動物種'];
         if (r['体重']) existing.weight = r['体重'];
@@ -1560,6 +1600,7 @@ function mergeReservations(rows, onUpdate) {
       fresh.date = r['日付'];
       fresh.caseNo = r['カルテNo'];
       fresh.patientId = r['カルテNo']; // patientIdとcaseNoを同期
+      fresh.facility = sheetsConfig.facility;
       if (r['患者名']) fresh.patientName = r['患者名'];
       if (r['動物種']) fresh.species = r['動物種'];
       if (r['体重']) fresh.weight = r['体重'];
@@ -1640,12 +1681,29 @@ async function pushToSheets(caseObj, options = {}) {
     const text = await res.text();
     let result = {};
     try { result = JSON.parse(text); } catch(e) {
-      // JSON以外（HTMLエラーページ等）が返ってきた
       throw new Error('応答が JSON ではない');
     }
     if (result.ok === false) throw new Error(result.error || '不明エラー');
+    // Apps Scriptから正規IDが返ってきたらローカルcaseのidを更新（複数デバイス間でID統一）
+    const canonicalId = result.result && result.result.id;
+    if (canonicalId && caseObj.id !== canonicalId) {
+      const idx = cases.findIndex(c => c.id === caseObj.id);
+      if (idx >= 0) {
+        cases[idx].id = canonicalId;
+        cases[idx].facility = sheetsConfig.facility;
+        saveStorage();
+      }
+      caseObj.id = canonicalId;
+    }
+    // facilityを記録（auto-delete判定に使用）
+    caseObj.facility = sheetsConfig.facility;
+    const existingIdx = cases.findIndex(c => c.id === caseObj.id);
+    if (existingIdx >= 0 && cases[existingIdx].facility !== sheetsConfig.facility) {
+      cases[existingIdx].facility = sheetsConfig.facility;
+      saveStorage();
+    }
     lastPushAt = new Date();
-    lastPushStatus = `✓ 成功 (${lastPushDuration}ms)`;
+    lastPushStatus = `✓ 成功 (${lastPushDuration}ms) ${result.result?.action||''}`;
     updateDiagnostics();
     // 数秒後に自動同期して反映を確認（backfill時はスキップしてループ防止）
     if (!options.skipFollowupSync) {
@@ -1662,6 +1720,34 @@ async function pushToSheets(caseObj, options = {}) {
     updateDiagnostics();
     console.warn('pushToSheets failed:', e);
     return false;
+  }
+}
+
+// Sheetsの重複行をクリーンアップ（同じ患者の複数行を1行に統合）
+async function cleanupSheetsDuplicates() {
+  if (!sheetsConfig.enabled || !sheetsConfig.webappUrl) {
+    showToast('⚠️ Sheets同期OFF');
+    return;
+  }
+  if (!confirm('同じ患者の重複行を統合します（最新のものを残す）。よろしいですか？')) return;
+  showToast('🧹 クリーンアップ中…');
+  try {
+    const res = await fetch(sheetsConfig.webappUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({action: 'cleanupDuplicates', facility_code: sheetsConfig.facility}),
+    });
+    const text = await res.text();
+    let result = {};
+    try { result = JSON.parse(text); } catch(e){}
+    if (result.ok && result.result) {
+      showToast(`✓ ${result.result.deleted || 0} 行を削除しました`);
+      setTimeout(() => syncFromSheets(), 1500);
+    } else {
+      showToast('⚠️ クリーンアップ失敗: ' + (result.error || ''));
+    }
+  } catch(e) {
+    showToast('⚠️ 通信エラー');
   }
 }
 
@@ -1829,7 +1915,7 @@ function makeCase() {
     id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
     date: today(),
     caseNo: '', staff: '',
-    progress: '予約', updated_at: '',
+    facility: '', progress: '予約', updated_at: '',
     // patient
     patientId:'', ownerName:'', patientName:'',
     species:'dog', breed:'', birthdate:'', ageY:'', ageM:'', sex:'M',
