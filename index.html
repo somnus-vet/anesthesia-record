@@ -1411,6 +1411,9 @@ let lastSyncAt = null;
 let lastPushAt = null;
 let lastPushStatus = null;
 let lastPushDuration = null;
+// 短時間の重複push防止
+let recentPushKeys = {}; // {key: timestamp}
+const PUSH_DEDUP_WINDOW_MS = 5000;
 
 function loadSheetsConfig() {
   try {
@@ -1498,7 +1501,12 @@ function mergeReservations(rows, onUpdate) {
     if (!r['日付'] || !r['カルテNo']) return;
     let detail = {};
     try { if (r['詳細']) detail = JSON.parse(r['詳細']); } catch(e) {}
-    const existing = cases.find(c => c.date === r['日付'] && c.caseNo === r['カルテNo']);
+    // 1) 内部ID で照合（最優先）
+    let existing = null;
+    const remoteId = r['内部ID'] || detail.id || '';
+    if (remoteId) existing = cases.find(c => c.id === remoteId);
+    // 2) 見つからなければレガシー: 日付+カルテNoでマッチ
+    if (!existing) existing = cases.find(c => c.date === r['日付'] && c.caseNo === r['カルテNo']);
     if (existing) {
       const remoteTs = parseSheetTs(r['updated_at']);
       const localTs = parseSheetTs(existing.updated_at);
@@ -1526,7 +1534,8 @@ function mergeReservations(rows, onUpdate) {
       // 新規
       const fresh = makeCase();
       Object.keys(detail).forEach(k => fresh[k] = detail[k]);
-      fresh.id = detail.id || (Date.now().toString() + Math.floor(Math.random()*1000));
+      // 内部IDの優先順位: Sheetsの内部ID列 > 詳細JSON内のid > 新規生成
+      fresh.id = remoteId || ('rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
       fresh.date = r['日付'];
       fresh.caseNo = r['カルテNo'];
       if (r['患者名']) fresh.patientName = r['患者名'];
@@ -1563,6 +1572,15 @@ async function pushToSheets(caseObj) {
     updateDiagnostics();
     return false;
   }
+  // 短時間の重複push防止
+  const dedupKey = `${caseObj.date}|${sheetsConfig.facility}|${caseObj.caseNo}`;
+  const now = Date.now();
+  if (recentPushKeys[dedupKey] && (now - recentPushKeys[dedupKey]) < PUSH_DEDUP_WINDOW_MS) {
+    lastPushStatus = `⏭ 重複防止スキップ (前回 ${Math.round((now-recentPushKeys[dedupKey])/1000)}秒前)`;
+    updateDiagnostics();
+    return true;
+  }
+  recentPushKeys[dedupKey] = now;
 
   const localBlockLabels = (typeof LOCAL_BLOCKS !== 'undefined' ? LOCAL_BLOCKS : [])
     .filter(b => (caseObj.localBlocks || {})[b.key]?.use)
@@ -1582,6 +1600,7 @@ async function pushToSheets(caseObj) {
     '担当': caseObj.staff || '',
     '進捗': caseObj.progress || '予約',
     '詳細': JSON.stringify(caseObj),
+    '内部ID': caseObj.id || '',
   };
   const payload = { action: 'upsert', row };
   const t0 = Date.now();
@@ -1783,7 +1802,7 @@ function nowTime() {
 
 function makeCase() {
   return {
-    id: Date.now().toString(),
+    id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
     date: today(),
     caseNo: '', staff: '',
     progress: '予約', updated_at: '',
@@ -1870,6 +1889,15 @@ function makeCase() {
 function loadStorage() {
   try { cases = JSON.parse(localStorage.getItem('vet_cases') || '[]'); }
   catch(e) { cases = []; }
+  // 既存データの内部ID backfill（古いidは数字のみのDate.now()）
+  let migrated = false;
+  cases.forEach(c => {
+    if (!c.id || !String(c.id).startsWith('rec_')) {
+      c.id = 'rec_' + (c.id || Date.now()) + '_' + Math.random().toString(36).slice(2, 8);
+      migrated = true;
+    }
+  });
+  if (migrated) saveStorage();
 }
 function saveStorage() {
   try { localStorage.setItem('vet_cases', JSON.stringify(cases)); } catch(e){}
@@ -1940,6 +1968,7 @@ async function deleteFromSheets(caseObj) {
   if (!sheetsConfig.enabled || !sheetsConfig.webappUrl) return;
   const payload = {
     action: 'delete',
+    internal_id: caseObj.id || '',
     facility_code: sheetsConfig.facility,
     case_no: caseObj.caseNo,
     date: caseObj.date,
