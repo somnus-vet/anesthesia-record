@@ -1487,6 +1487,8 @@ async function syncFromSheets() {
       populateForm();
       showToast('📥 サーバー側の更新を取り込みました');
     }
+    // 内部ID未付与のSheets行を検出して backfill push
+    backfillInternalIdsToSheets(reserved);
   } catch (e) {
     console.warn('syncFromSheets failed:', e);
     setSyncStatus('error');
@@ -1494,6 +1496,24 @@ async function syncFromSheets() {
   }
   // キューに溜まっているpushを再送
   flushPushQueue();
+}
+
+// Sheetsで内部IDが空の行を見つけ、対応するローカルcaseの内部IDを書き戻す
+async function backfillInternalIdsToSheets(rows) {
+  if (!sheetsConfig.enabled || !sheetsConfig.webappUrl) return;
+  const targets = rows.filter(r => !r['内部ID'] && r['日付'] && r['カルテNo'] && r['施設コード'] === sheetsConfig.facility);
+  if (!targets.length) return;
+  for (const r of targets) {
+    const localCase = cases.find(c =>
+      c.date === r['日付'] &&
+      (c.caseNo === r['カルテNo'] || c.patientId === r['カルテNo'])
+    );
+    if (!localCase || !localCase.id) continue;
+    // dedupキーをクリアして強制push
+    const dedupKey = `${localCase.date}|${sheetsConfig.facility}|${localCase.caseNo}`;
+    delete recentPushKeys[dedupKey];
+    await pushToSheets(localCase, {skipFollowupSync: true});
+  }
 }
 
 function mergeReservations(rows, onUpdate) {
@@ -1563,7 +1583,7 @@ function parseSheetTs(s) {
 }
 
 // 症例をSheetsへupsert（保存時に呼ぶ）
-async function pushToSheets(caseObj) {
+async function pushToSheets(caseObj, options = {}) {
   if (!sheetsConfig.enabled || !sheetsConfig.webappUrl) {
     lastPushStatus = '⏸ Sheets同期 OFF';
     updateDiagnostics();
@@ -1627,8 +1647,10 @@ async function pushToSheets(caseObj) {
     lastPushAt = new Date();
     lastPushStatus = `✓ 成功 (${lastPushDuration}ms)`;
     updateDiagnostics();
-    // 数秒後に自動同期して反映を確認
-    setTimeout(() => syncFromSheets(), 1500);
+    // 数秒後に自動同期して反映を確認（backfill時はスキップしてループ防止）
+    if (!options.skipFollowupSync) {
+      setTimeout(() => syncFromSheets(), 1500);
+    }
     return true;
   } catch (e) {
     lastPushDuration = Date.now() - t0;
