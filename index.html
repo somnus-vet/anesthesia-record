@@ -1506,7 +1506,7 @@ function mergeReservations(rows, onUpdate) {
     const remoteId = r['内部ID'] || detail.id || '';
     if (remoteId) existing = cases.find(c => c.id === remoteId);
     // 2) 見つからなければレガシー: 日付+カルテNoでマッチ
-    if (!existing) existing = cases.find(c => c.date === r['日付'] && c.caseNo === r['カルテNo']);
+    if (!existing) existing = cases.find(c => c.date === r['日付'] && (c.caseNo === r['カルテNo'] || c.patientId === r['カルテNo']));
     if (existing) {
       const remoteTs = parseSheetTs(r['updated_at']);
       const localTs = parseSheetTs(existing.updated_at);
@@ -1519,6 +1519,7 @@ function mergeReservations(rows, onUpdate) {
         existing.id = oldId; // ローカルIDは保持
         existing.date = r['日付'];
         existing.caseNo = r['カルテNo'];
+        existing.patientId = r['カルテNo']; // patientIdとcaseNoを同期
         if (r['患者名']) existing.patientName = r['患者名'];
         if (r['動物種']) existing.species = r['動物種'];
         if (r['体重']) existing.weight = r['体重'];
@@ -1538,6 +1539,7 @@ function mergeReservations(rows, onUpdate) {
       fresh.id = remoteId || ('rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
       fresh.date = r['日付'];
       fresh.caseNo = r['カルテNo'];
+      fresh.patientId = r['カルテNo']; // patientIdとcaseNoを同期
       if (r['患者名']) fresh.patientName = r['患者名'];
       if (r['動物種']) fresh.species = r['動物種'];
       if (r['体重']) fresh.weight = r['体重'];
@@ -1889,13 +1891,17 @@ function makeCase() {
 function loadStorage() {
   try { cases = JSON.parse(localStorage.getItem('vet_cases') || '[]'); }
   catch(e) { cases = []; }
-  // 既存データの内部ID backfill（古いidは数字のみのDate.now()）
+  // データのbackfill
   let migrated = false;
   cases.forEach(c => {
+    // 内部ID（古いidは数字のみのDate.now()）
     if (!c.id || !String(c.id).startsWith('rec_')) {
       c.id = 'rec_' + (c.id || Date.now()) + '_' + Math.random().toString(36).slice(2, 8);
       migrated = true;
     }
+    // patientId と caseNo を同期（片方が空ならコピー）
+    if (!c.patientId && c.caseNo) { c.patientId = c.caseNo; migrated = true; }
+    if (!c.caseNo && c.patientId) { c.caseNo = c.patientId; migrated = true; }
   });
   if (migrated) saveStorage();
 }
@@ -2172,8 +2178,15 @@ function populateForm() {
 function collectForm() {
   if (!current) return;
   // 患者ID = カルテNo として保存（Sheets同期用）
-  current.patientId = getVal('f_patientId');
-  current.caseNo = current.patientId; // 同一視
+  // 空欄が入力された場合はSheets同期破壊を避けるため既存値を維持
+  const inputId = (getVal('f_patientId') || '').trim();
+  if (inputId) {
+    current.patientId = inputId;
+    current.caseNo = inputId;
+  } else if (current.caseNo && !current.patientId) {
+    // 表示は空でもデータ的には維持
+    current.patientId = current.caseNo;
+  }
   current.staff = getVal('f_staff');
 
   const fields = [
