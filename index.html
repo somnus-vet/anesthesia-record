@@ -1438,6 +1438,26 @@ function csvUrl(sheet) {
   return `https://docs.google.com/spreadsheets/d/${sheetsConfig.spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
 }
 
+// 年齢: ageY/ageM ↔ "5Y3M" 形式の相互変換
+function formatAgeYM(y, m) {
+  const yStr = String(y == null ? '' : y).trim();
+  const mStr = String(m == null ? '' : m).trim();
+  if (!yStr && !mStr) return '';
+  const yi = parseInt(yStr, 10) || 0;
+  const mi = parseInt(mStr, 10) || 0;
+  return `${yi}Y${mi}M`;
+}
+function parseAgeYM(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d+)Y(\d+)M$/i);
+  if (m) return { y: m[1], m: m[2] };
+  const m2 = String(s).match(/^(\d+)Y$/i);
+  if (m2) return { y: m2[1], m: '0' };
+  const m3 = String(s).match(/^(\d+)M$/i);
+  if (m3) return { y: '0', m: m3[1] };
+  return null;
+}
+
 // CSV パーサ（クォート対応）
 function parseCSV(text) {
   const rows = [];
@@ -1580,6 +1600,14 @@ function mergeReservations(rows, onUpdate) {
         existing.caseNo = r['カルテNo'];
         existing.patientId = r['カルテNo']; // patientIdとcaseNoを同期
         existing.facility = sheetsConfig.facility;
+        // 新4列を反映
+        if (r['品種']) existing.breed = r['品種'];
+        if (r['性別']) existing.sex = r['性別'];
+        if (r['生年月日']) existing.birthdate = r['生年月日'];
+        if (r['年齢']) {
+          const a = parseAgeYM(r['年齢']);
+          if (a) { existing.ageY = a.y; existing.ageM = a.m; }
+        }
         if (r['患者名']) existing.patientName = r['患者名'];
         if (r['動物種']) existing.species = r['動物種'];
         if (r['体重']) existing.weight = r['体重'];
@@ -1601,6 +1629,14 @@ function mergeReservations(rows, onUpdate) {
       fresh.caseNo = r['カルテNo'];
       fresh.patientId = r['カルテNo']; // patientIdとcaseNoを同期
       fresh.facility = sheetsConfig.facility;
+      // 新4列を反映
+      if (r['品種']) fresh.breed = r['品種'];
+      if (r['性別']) fresh.sex = r['性別'];
+      if (r['生年月日']) fresh.birthdate = r['生年月日'];
+      if (r['年齢']) {
+        const a = parseAgeYM(r['年齢']);
+        if (a) { fresh.ageY = a.y; fresh.ageM = a.m; }
+      }
       if (r['患者名']) fresh.patientName = r['患者名'];
       if (r['動物種']) fresh.species = r['動物種'];
       if (r['体重']) fresh.weight = r['体重'];
@@ -1655,6 +1691,10 @@ async function pushToSheets(caseObj, options = {}) {
     'カルテNo': caseObj.caseNo,
     '患者名': caseObj.patientName || '',
     '動物種': caseObj.species || '',
+    '品種': caseObj.breed || '',
+    '性別': caseObj.sex || '',
+    '生年月日': caseObj.birthdate || '',
+    '年齢': formatAgeYM(caseObj.ageY, caseObj.ageM),
     '体重': caseObj.weight || '',
     'ASA': caseObj.asaps || '',
     'ASA緊急': caseObj.asapsE ? 'TRUE' : 'FALSE',
