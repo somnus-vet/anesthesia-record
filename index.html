@@ -1900,6 +1900,7 @@ function onFacilityChange(val) {
   sheetsConfig.facility = val;
   saveSheetsConfig();
   updateFacilityBadge();
+  renderCasesList(); // 施設フィルタを即時反映
   if (sheetsConfig.enabled) syncFromSheets();
 }
 function onSheetsConfigChange() {
@@ -2062,15 +2063,29 @@ function saveStorage() {
 // ─────────────────────────────────────────────────
 function renderCasesList() {
   const el = document.getElementById('casesList');
-  if (!cases.length) {
+  const currentFacility = (sheetsConfig && sheetsConfig.facility) || '';
+  // 施設フィルタ: 現在施設の症例 + 施設未設定（legacy）症例
+  const filtered = currentFacility
+    ? cases.filter(c => !c.facility || c.facility === currentFacility)
+    : cases;
+  if (!filtered.length) {
+    const facName = currentFacility ? (facilityMap[currentFacility] || currentFacility) : '';
     el.innerHTML = `<div class="empty">
       <div class="empty-icon">📋</div>
-      <div class="empty-text">症例がありません</div>
+      <div class="empty-text">${facName ? esc(facName)+'の' : ''}症例がありません</div>
       <div class="empty-sub">右上の「新規症例」から作成してください</div>
     </div>`;
     return;
   }
-  const sorted = [...cases].sort((a,b) => b.id - a.id);
+  // 新しい順: 日付降順 → updated_at降順 → IDタイムスタンプ降順
+  const idTs = id => parseInt((String(id || '').match(/\d{10,}/) || ['0'])[0], 10);
+  const sorted = [...filtered].sort((a, b) => {
+    const d = String(b.date || '').localeCompare(String(a.date || ''));
+    if (d !== 0) return d;
+    const u = String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
+    if (u !== 0) return u;
+    return idTs(b.id) - idTs(a.id);
+  });
   el.innerHTML = sorted.map(c => {
     const sp = c.species === 'dog' ? '🐶' : c.species === 'cat' ? '🐱' : c.species === 'rabbit' ? '🐰' : '🐾';
     const name = [c.patientName, c.ownerName ? `(${c.ownerName})` : ''].filter(Boolean).join(' ') || '—';
