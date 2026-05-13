@@ -1210,19 +1210,84 @@ const PRESET_DESC = {
   senior_risk: 'α2回避・低用量',
 };
 
-// localStorageから読込み・保存
+// プリセット: Sheets権威 → localStorage キャッシュ → デフォルト
 let userPresets = null;
-function loadPresets() {
+
+async function loadPresetsFromSheets() {
+  if (!sheetsConfig || !sheetsConfig.spreadsheetId) return null;
   try {
-    const stored = localStorage.getItem('vet_presets');
-    if (stored) userPresets = JSON.parse(stored);
-  } catch(e) {}
-  // 不足キーがあればデフォルトで補完
+    let csv = await fetch(csvUrl('プリセット'), {cache:'no-store'}).then(r => r.text());
+    csv = csv.replace(/^﻿/, '');
+    if (!csv || csv.startsWith('<')) return null; // sheet not found returns HTML error
+    const rows = parseCSV(csv);
+    if (!rows.length) return null;
+    const presets = {};
+    rows.forEach(r => {
+      const key = r['プリセットキー'];
+      if (!key) return;
+      if (!presets[key]) presets[key] = { label: r['表示名'] || key, drugs: {} };
+      if (r['薬剤キー']) {
+        presets[key].drugs[r['薬剤キー']] = {
+          dose: r['用量'] || '',
+          route: r['経路'] || ''
+        };
+      }
+    });
+    return Object.keys(presets).length > 0 ? presets : null;
+  } catch(e) {
+    console.warn('loadPresetsFromSheets failed:', e);
+    return null;
+  }
+}
+
+async function pushPresetsToSheets() {
+  if (!sheetsConfig || !sheetsConfig.enabled || !sheetsConfig.webappUrl) return false;
+  try {
+    const res = await fetch(sheetsConfig.webappUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({action: 'savePresets', presets: userPresets})
+    });
+    const text = await res.text();
+    let result = {};
+    try { result = JSON.parse(text); } catch(e) {}
+    return !!result.ok;
+  } catch(e) {
+    console.warn('pushPresetsToSheets failed:', e);
+    return false;
+  }
+}
+
+async function loadPresets() {
+  // 1) Sheets 権威で読込み
+  const fromSheets = await loadPresetsFromSheets();
+  if (fromSheets) {
+    userPresets = fromSheets;
+    savePresetsToStorage(); // localStorage キャッシュ更新
+  } else {
+    // 2) localStorage フォールバック
+    let fromLocal = null;
+    try {
+      const stored = localStorage.getItem('vet_presets');
+      if (stored) fromLocal = JSON.parse(stored);
+    } catch(e) {}
+    if (fromLocal && Object.keys(fromLocal).length > 0) {
+      userPresets = fromLocal;
+      // Sheets が空ならlocalStorage内容をpush（初回移行）
+      if (sheetsConfig && sheetsConfig.enabled) pushPresetsToSheets();
+    } else {
+      // 3) デフォルト
+      userPresets = JSON.parse(JSON.stringify(DRUG_PRESETS));
+    }
+  }
+  // 不足キーをデフォルトで補完
   if (!userPresets || typeof userPresets !== 'object') userPresets = {};
   Object.keys(DRUG_PRESETS).forEach(k => {
     if (!userPresets[k]) userPresets[k] = JSON.parse(JSON.stringify(DRUG_PRESETS[k]));
   });
+  renderPresetBar();
 }
+
 function savePresetsToStorage() {
   try { localStorage.setItem('vet_presets', JSON.stringify(userPresets)); } catch(e){}
 }
@@ -1376,13 +1441,20 @@ function resetPresetToDefault() {
   renderPresetEditor();
 }
 
-function savePresetEditor() {
+async function savePresetEditor() {
   if (!editingPreset) return;
   userPresets = editingPreset;
   savePresetsToStorage();
   renderPresetBar();
   closePresetEditor();
-  showToast('プリセットを保存しました');
+  // Sheets への push（成功/失敗をトーストで知らせる）
+  if (sheetsConfig && sheetsConfig.enabled && sheetsConfig.webappUrl) {
+    showToast('💾 プリセット保存中…');
+    const ok = await pushPresetsToSheets();
+    showToast(ok ? '✓ プリセットを Sheets に保存' : '⚠️ ローカルのみ保存（Sheets失敗）');
+  } else {
+    showToast('プリセットを保存しました（ローカルのみ）');
+  }
 }
 
 // ─────────────────────────────────────────────────
@@ -3208,11 +3280,11 @@ function showToast(msg) {
 // INIT
 // ─────────────────────────────────────────────────
 loadStorage();
-loadPresets();
 loadSheetsConfig();
 updateFacilityBadge();
 setSyncStatus(sheetsConfig.enabled ? 'ok' : null);
 renderCasesList();
+loadPresets(); // async（sheetsConfig をロード後に呼ぶ必要あり）
 if (sheetsConfig.enabled) {
   loadFacilityMap();
   startSyncTimer();
