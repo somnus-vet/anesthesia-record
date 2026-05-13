@@ -648,11 +648,12 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           <!-- メイン溶液パネル -->
           <div style="background:#f0f4f8;border:1px solid var(--border);border-radius:7px;padding:8px;margin-bottom:8px">
             <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">🧪 メイン溶液 (Mixture)</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">各薬剤の目標mg/kg＋合計溶液量を入力</div>
             <div id="mixtureDrugs"></div>
             <button type="button" class="btn-mixture-add" onclick="addMixtureDrug()" style="background:#fff;border:1.5px dashed var(--blue);color:var(--blue);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;min-height:34px;margin-top:4px">+ 薬剤を追加</button>
             <div class="frow" style="margin-top:6px">
-              <span class="flabel">生食</span>
-              <input class="fin fin-sm" type="text" inputmode="decimal" id="f_mixSaline" placeholder="0" oninput="updateMixture()">
+              <span class="flabel">合計溶液量</span>
+              <input class="fin fin-sm" type="text" inputmode="decimal" id="f_mixTotalVolume" placeholder="0" oninput="updateMixture()">
               <span class="unit">mL</span>
             </div>
             <div id="mixtureSummary" style="font-size:12px;color:var(--navy);background:#fff;padding:6px 8px;border-radius:5px;margin-top:6px;border:1px solid var(--border);line-height:1.6"></div>
@@ -1136,9 +1137,14 @@ const LOCAL_BLOCKS_BY_CATEGORY = [
 function getBlockDef(key) { return LOCAL_BLOCKS.find(b => b.key === key); }
 
 // ─────────────── メイン溶液 (Mixture) ───────────────
+// モデル: 各薬剤の目標mg/kg を 合計溶液量(totalVolume) mL に溶解
 function ensureMixture() {
-  if (!current.localMixture) current.localMixture = { drugs: [], saline: '' };
+  if (!current.localMixture) current.localMixture = { drugs: [], totalVolume: '' };
   if (!Array.isArray(current.localMixture.drugs)) current.localMixture.drugs = [];
+  // 旧スキーマ（concentration/volume/saline）からの移行：捨てて空に
+  if (current.localMixture.saline !== undefined && current.localMixture.totalVolume === undefined) {
+    current.localMixture.totalVolume = '';
+  }
   return current.localMixture;
 }
 
@@ -1152,21 +1158,18 @@ function renderMixture() {
       <select onchange="setMixtureField(${i},'name',this.value)" style="flex:1;min-width:90px;font-size:14px;padding:6px;border:1.5px solid var(--border);border-radius:6px;background:#fff;min-height:36px">
         <option value="">薬剤…</option>${opts}
       </select>
-      <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(d.concentration||'')}" oninput="setMixtureField(${i},'concentration',this.value)" style="width:55px">
-      <span class="unit">%</span>
-      <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(d.volume||'')}" oninput="setMixtureField(${i},'volume',this.value)" style="width:55px">
-      <span class="unit">mL</span>
+      <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(d.mgkg||'')}" oninput="setMixtureField(${i},'mgkg',this.value)" style="width:60px">
+      <span class="unit">mg/kg</span>
       <button type="button" onclick="removeMixtureDrug(${i})" style="background:#fff;border:1.5px solid #f5c2c7;color:#dc3545;border-radius:6px;width:32px;height:32px;font-size:14px;cursor:pointer">×</button>
     </div>`;
   }).join('');
-  setVal('f_mixSaline', mix.saline);
+  setVal('f_mixTotalVolume', mix.totalVolume);
   renderMixtureSummary();
 }
 
 function addMixtureDrug() {
   const mix = ensureMixture();
-  // デフォルトはリドカイン2%
-  mix.drugs.push({ name: 'リドカイン', concentration: '2', volume: '' });
+  mix.drugs.push({ name: 'リドカイン', mgkg: '' });
   renderMixture();
   autoSave();
 }
@@ -1176,6 +1179,7 @@ function removeMixtureDrug(idx) {
   mix.drugs.splice(idx, 1);
   renderMixture();
   updateBlockSummary();
+  renderSelectedBlocks();
   autoSave();
 }
 
@@ -1183,39 +1187,32 @@ function setMixtureField(idx, field, value) {
   const mix = ensureMixture();
   if (!mix.drugs[idx]) return;
   mix.drugs[idx][field] = value;
-  // 薬剤名変更時、デフォルト濃度を補完
-  if (field === 'name' && !mix.drugs[idx].concentration) {
-    const def = LA_DRUG_OPTIONS.find(o => o.name === value);
-    if (def) mix.drugs[idx].concentration = String(def.defaultConc);
-  }
-  renderMixtureSummary();
-  updateBlockSummary();
-  renderSelectedBlocks(); // 各ブロックの自動計算更新
-  autoSave();
-}
-
-function updateMixture() {
-  const mix = ensureMixture();
-  mix.saline = (document.getElementById('f_mixSaline')?.value || '').trim();
   renderMixtureSummary();
   updateBlockSummary();
   renderSelectedBlocks();
   autoSave();
 }
 
-// 混合溶液の総量・各薬剤の最終濃度を計算
+function updateMixture() {
+  const mix = ensureMixture();
+  mix.totalVolume = (document.getElementById('f_mixTotalVolume')?.value || '').trim();
+  renderMixtureSummary();
+  updateBlockSummary();
+  renderSelectedBlocks();
+  autoSave();
+}
+
+// 混合溶液の総量・各薬剤の総mg・mg/mLを計算
 function computeMixtureInfo() {
   const mix = ensureMixture();
-  const saline = parseFloat(mix.saline) || 0;
-  let totalVol = saline;
-  mix.drugs.forEach(d => { totalVol += parseFloat(d.volume) || 0; });
-  const info = { totalVol, drugs: [] };
+  const totalVol = parseFloat(mix.totalVolume) || 0;
+  const weight = parseFloat(current && current.weight) || 0;
+  const info = { totalVol, weight, drugs: [] };
   mix.drugs.forEach(d => {
-    const conc = parseFloat(d.concentration) || 0;
-    const vol = parseFloat(d.volume) || 0;
-    const finalConc = totalVol > 0 ? (conc * vol / totalVol) : 0;
-    const mgPerMl = finalConc * 10;  // 1% = 10mg/mL
-    info.drugs.push({ name: d.name, finalConc, mgPerMl });
+    const mgkg = parseFloat(d.mgkg) || 0;
+    const totalMg = mgkg * weight;
+    const mgPerMl = totalVol > 0 ? totalMg / totalVol : 0;
+    info.drugs.push({ name: d.name, mgkg, totalMg, mgPerMl });
   });
   return info;
 }
@@ -1224,14 +1221,20 @@ function renderMixtureSummary() {
   const el = document.getElementById('mixtureSummary');
   if (!el) return;
   const info = computeMixtureInfo();
-  if (info.totalVol <= 0 && info.drugs.length === 0) {
-    el.innerHTML = '<span style="color:var(--muted)">薬剤と量を入力してください</span>';
+  if (!info.totalVol && info.drugs.length === 0) {
+    el.innerHTML = '<span style="color:var(--muted)">薬剤(mg/kg)と合計溶液量を入力してください</span>';
     return;
   }
-  let html = `<strong>📊 総量: ${info.totalVol.toFixed(2)}mL</strong>`;
+  const isCat = current && current.species === 'cat';
+  const wStr = info.weight ? `体重${info.weight}kg` : '体重未入力';
+  let html = `<strong>📊 総量 ${info.totalVol.toFixed(2)}mL</strong> <span style="font-size:11px;color:var(--muted)">（${wStr}, ${isCat?'猫':'犬'}基準）</span>`;
   info.drugs.forEach(d => {
     if (!d.name) return;
-    html += `<br>${esc(d.name)}: <strong>${d.mgPerMl.toFixed(2)}mg/mL</strong> (${d.finalConc.toFixed(3)}%)`;
+    const drugDef = LA_DRUG_OPTIONS.find(o => o.name === d.name);
+    const maxDose = drugDef ? (isCat ? drugDef.maxCat : drugDef.maxDog) : null;
+    const over = maxDose && d.mgkg > maxDose;
+    const tag = over ? '<span style="color:#c0392b">⚠️超過</span>' : (maxDose && d.mgkg > 0 ? '✓' : '');
+    html += `<br>${esc(d.name)} <strong>${d.mgkg}mg/kg</strong>: ${d.totalMg.toFixed(2)}mg → <strong>${d.mgPerMl.toFixed(2)}mg/mL</strong> ${tag}${maxDose?` <span style="font-size:11px;color:var(--muted)">(max ${maxDose}mg/kg)</span>`:''}`;
   });
   el.innerHTML = html;
 }
@@ -1306,7 +1309,7 @@ function removeBlock(key) {
   autoSave();
 }
 
-// 累計サマリー
+// 累計サマリー：実際の使用量に基づく
 function updateBlockSummary() {
   const el = document.getElementById('blockSummary');
   if (!el || !current) return;
@@ -1321,25 +1324,24 @@ function updateBlockSummary() {
     el.style.display = 'none';
     return;
   }
-  const weight = parseFloat(current.weight) || 0;
+  const weight = info.weight;
   const isCat = current.species === 'cat';
-  // 全ブロックの合計
   let usedMl = 0;
   selectedKeys.forEach(k => {
     const d = blocks[k];
     usedMl += (parseFloat(d.volume) || 0) * (parseFloat(d.sites) || 0);
   });
   const remainMl = info.totalVol - usedMl;
-  let html = `<div style="font-weight:700;color:var(--navy)">📊 累計 (体重${weight||'-'}kg, ${isCat?'猫':'犬'}基準)</div>`;
-  html += `<div>使用 <strong>${usedMl.toFixed(2)}mL</strong> / 残 <strong>${remainMl.toFixed(2)}mL</strong></div>`;
+  let html = `<div style="font-weight:700;color:var(--navy)">📊 実際の累計使用量</div>`;
+  html += `<div>使用 <strong>${usedMl.toFixed(2)}mL</strong> / 残 <strong style="color:${remainMl<0?'#c0392b':'var(--text)'}">${remainMl.toFixed(2)}mL</strong></div>`;
   info.drugs.forEach(d => {
     if (!d.name) return;
-    const totalMg = usedMl * d.mgPerMl;
-    const mgkg = weight > 0 ? (totalMg / weight) : 0;
+    const actualMg = usedMl * d.mgPerMl;
+    const actualMgkg = weight > 0 ? (actualMg / weight) : 0;
     const drugDef = LA_DRUG_OPTIONS.find(o => o.name === d.name);
     const maxDose = drugDef ? (isCat ? drugDef.maxCat : drugDef.maxDog) : null;
-    const overdose = maxDose && mgkg > maxDose;
-    html += `<div>${esc(d.name)}: <strong>${totalMg.toFixed(2)}mg</strong> = <strong style="color:${overdose?'#c0392b':'var(--green)'}">${mgkg.toFixed(2)}mg/kg</strong>${maxDose?` (max ${maxDose}mg/kg)`:''} ${overdose?'⚠️':'✓'}</div>`;
+    const overdose = maxDose && actualMgkg > maxDose;
+    html += `<div>${esc(d.name)}: <strong>${actualMg.toFixed(2)}mg</strong> = <strong style="color:${overdose?'#c0392b':'var(--green)'}">${actualMgkg.toFixed(2)}mg/kg</strong>${maxDose?` (max ${maxDose}mg/kg)`:''} ${overdose?'⚠️':'✓'}</div>`;
   });
   el.innerHTML = html;
   el.style.display = 'block';
@@ -2310,7 +2312,7 @@ function makeCase() {
     maintIsoflurane:false, maintSevoflurane:false, maintPropofol:false,
     maintConc:'', maintO2:'', ventilation:'',
     fluidType:'', fluidRate:'',
-    localMixture: { drugs: [], saline: '' },
+    localMixture: { drugs: [], totalVolume: '' },
     localBlocks: {}, localCustom1:'', localCustom2:'',
     // intra-op timeline
     anesthStart:'', inductionTime:'', intubationTime:'', localAnesthTime:'',
@@ -3384,28 +3386,22 @@ function generatePrintHTML(c) {
     ${(() => {
       const blocks = LOCAL_BLOCKS.filter(b => (c.localBlocks||{})[b.key]?.use);
       const customs = [c.localCustom1, c.localCustom2].filter(Boolean);
-      const mix = c.localMixture || {drugs:[], saline:''};
-      const hasMix = (mix.drugs||[]).some(d => d.name) || mix.saline;
+      const mix = c.localMixture || {drugs:[], totalVolume:''};
+      const hasMix = (mix.drugs||[]).some(d => d.name) || mix.totalVolume;
       if (!blocks.length && !customs.length && !hasMix) return '';
-      // メイン溶液の計算
-      const saline = parseFloat(mix.saline) || 0;
-      let totalVol = saline;
-      (mix.drugs||[]).forEach(d => { totalVol += parseFloat(d.volume) || 0; });
-      const mixDrugs = (mix.drugs||[]).map(d => {
-        const conc = parseFloat(d.concentration) || 0;
-        const vol = parseFloat(d.volume) || 0;
-        const finalConc = totalVol > 0 ? (conc * vol / totalVol) : 0;
-        return { name: d.name, finalConc, mgPerMl: finalConc * 10, vol, conc };
-      }).filter(d => d.name);
       const weight = parseFloat(c.weight) || 0;
-      // ミクスチャ表示
+      const totalVol = parseFloat(mix.totalVolume) || 0;
+      const mixDrugs = (mix.drugs||[]).map(d => {
+        const mgkg = parseFloat(d.mgkg) || 0;
+        const totalMg = mgkg * weight;
+        return { name: d.name, mgkg, totalMg, mgPerMl: totalVol > 0 ? totalMg / totalVol : 0 };
+      }).filter(d => d.name);
       let mixHtml = '';
       if (hasMix) {
-        mixHtml = `<div class="p-block"><strong>メイン溶液:</strong> 総量${totalVol.toFixed(2)}mL`;
+        mixHtml = `<div class="p-block"><strong>メイン溶液:</strong> 合計${totalVol.toFixed(2)}mL`;
         mixDrugs.forEach(d => {
-          mixHtml += ` / ${esc(d.name)} ${d.conc}%×${d.vol}mL → 最終${d.mgPerMl.toFixed(2)}mg/mL`;
+          mixHtml += ` / ${esc(d.name)} ${d.mgkg}mg/kg = ${d.totalMg.toFixed(1)}mg → ${d.mgPerMl.toFixed(2)}mg/mL`;
         });
-        if (saline) mixHtml += ` / 生食${saline}mL`;
         mixHtml += `</div>`;
       }
       // ブロック行
