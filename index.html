@@ -1188,8 +1188,11 @@ function setMixtureField(idx, field, value) {
   if (!mix.drugs[idx]) return;
   mix.drugs[idx][field] = value;
   renderMixtureSummary();
+  // 各ブロックの計算表示のみ更新（入力欄は触らない）
+  Object.keys(current.localBlocks || {}).forEach(k => {
+    if (current.localBlocks[k]?.use) refreshBlockCalc(k);
+  });
   updateBlockSummary();
-  renderSelectedBlocks();
   autoSave();
 }
 
@@ -1197,8 +1200,10 @@ function updateMixture() {
   const mix = ensureMixture();
   mix.totalVolume = (document.getElementById('f_mixTotalVolume')?.value || '').trim();
   renderMixtureSummary();
+  Object.keys(current.localBlocks || {}).forEach(k => {
+    if (current.localBlocks[k]?.use) refreshBlockCalc(k);
+  });
   updateBlockSummary();
-  renderSelectedBlocks();
   autoSave();
 }
 
@@ -1243,10 +1248,17 @@ function renderMixtureSummary() {
 function ensureBlockData(key) {
   if (!current.localBlocks) current.localBlocks = {};
   if (!current.localBlocks[key]) {
-    current.localBlocks[key] = { use:true, volume:'', sites:'1', note:'' };
+    current.localBlocks[key] = { use:true, volume:'', sites:'1', side:'', note:'' };
   }
   return current.localBlocks[key];
 }
+
+// 左右指定が有効なブロック（中心線/部位非依存は除外）
+const BLOCKS_WITH_SIDE = new Set([
+  'infraorbital','maxillary','inferior_alveolar','mental','retrobulbar',
+  'brachial','rumm_distal','rumm_proximal','femoral','sciatic','ls_plexus',
+  'tap','ql','esp','intercostal','intratesticular'
+]);
 
 function renderSelectedBlocks() {
   const el = document.getElementById('selectedBlocksList');
@@ -1257,36 +1269,79 @@ function renderSelectedBlocks() {
     el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">まだブロックが選択されていません</div>';
     return;
   }
-  const info = computeMixtureInfo();
-  el.innerHTML = selectedKeys.map(key => {
-    const def = getBlockDef(key);
-    if (!def) return '';
-    const d = blocks[key];
-    const vol = parseFloat(d.volume) || 0;
-    const sites = parseFloat(d.sites) || 0;
-    const totalMl = vol * sites;
-    let drugsHtml = '';
-    info.drugs.forEach(dr => {
-      if (!dr.name) return;
-      const mg = totalMl * dr.mgPerMl;
-      drugsHtml += `<span style="color:var(--blue);font-weight:600;font-size:11px;margin-right:6px">${esc(dr.name)}: ${mg.toFixed(2)}mg</span>`;
-    });
-    return `<div style="background:#fff;border:1.5px solid var(--border);border-radius:7px;padding:8px;margin-bottom:6px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-        <span style="font-weight:700;font-size:13px;color:var(--navy)">${esc(def.label)}</span>
-        <button type="button" onclick="removeBlock('${key}')" style="background:#fff;border:1.5px solid #f5c2c7;color:#dc3545;border-radius:6px;width:28px;height:28px;font-size:13px;cursor:pointer">×</button>
-      </div>
-      <div class="frow" style="gap:4px;flex-wrap:wrap">
-        <input class="fdose" type="text" inputmode="decimal" value="${esc(d.volume||'')}" placeholder="0" oninput="setBlockField('${key}','volume',this.value)" style="width:54px">
-        <span class="unit">mL/site ×</span>
-        <input class="fdose" type="text" inputmode="numeric" value="${esc(d.sites||'1')}" placeholder="1" oninput="setBlockField('${key}','sites',this.value)" style="width:42px">
-        <span class="unit">部位 = <strong>${totalMl.toFixed(2)}mL</strong></span>
-      </div>
-      <div style="margin:4px 0">${drugsHtml || '<span style="color:var(--muted);font-size:11px">メイン溶液を設定すると総mg計算</span>'}</div>
-      <input class="block-note" type="text" value="${esc(d.note||'')}" placeholder="メモ（部位・効果等）" oninput="setBlockField('${key}','note',this.value)" style="width:100%;font-size:13px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;background:#f8fafc;min-height:34px">
-    </div>`;
-  }).join('');
+  el.innerHTML = selectedKeys.map(key => renderBlockCard(key, blocks[key])).join('');
+  selectedKeys.forEach(k => refreshBlockCalc(k));
   updateBlockSummary();
+}
+
+function renderBlockCard(key, d) {
+  const def = getBlockDef(key);
+  if (!def) return '';
+  const hasSide = BLOCKS_WITH_SIDE.has(key);
+  let sideHtml = '';
+  if (hasSide) {
+    const sideOpts = ['','R','L','両側'].map(s => `<option value="${s}" ${d.side===s?'selected':''}>${s||'側-'}</option>`).join('');
+    sideHtml = `<span class="unit">側:</span>
+      <select onchange="onSideChange('${key}',this.value)" style="font-size:13px;padding:5px;border:1.5px solid var(--border);border-radius:5px;background:#fff;min-height:32px;min-width:56px">${sideOpts}</select>`;
+  }
+  return `<div data-block="${key}" style="background:#fff;border:1.5px solid var(--border);border-radius:7px;padding:8px;margin-bottom:6px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+      <span style="font-weight:700;font-size:13px;color:var(--navy)">${esc(def.label)}</span>
+      <button type="button" onclick="removeBlock('${key}')" style="background:#fff;border:1.5px solid #f5c2c7;color:#dc3545;border-radius:6px;width:28px;height:28px;font-size:13px;cursor:pointer">×</button>
+    </div>
+    <div class="frow" style="gap:4px;flex-wrap:wrap;align-items:center">
+      <input class="fdose b-vol" type="text" inputmode="decimal" pattern="[0-9.]*" value="${esc(d.volume||'')}" placeholder="0.0" oninput="setBlockField('${key}','volume',this.value)" style="width:60px">
+      <span class="unit">mL/site ×</span>
+      <input class="fdose b-sites" type="text" inputmode="numeric" pattern="[0-9]*" value="${esc(d.sites||'1')}" placeholder="1" oninput="setBlockField('${key}','sites',this.value)" style="width:42px">
+      <span class="unit">部位</span>
+      ${sideHtml}
+      <span class="unit">= <strong class="b-total">0.00mL</strong></span>
+    </div>
+    <div class="b-drugs" style="margin:4px 0"></div>
+    <input class="block-note b-note" type="text" value="${esc(d.note||'')}" placeholder="メモ（部位・効果等）" oninput="setBlockField('${key}','note',this.value)" style="width:100%;font-size:13px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;background:#f8fafc;min-height:34px">
+  </div>`;
+}
+
+// 左右変更時：両側選択なら sites を 2 に自動補正（明示変更されていない場合のみ）
+function onSideChange(key, value) {
+  if (!current) return;
+  const data = ensureBlockData(key);
+  data.side = value;
+  if (value === '両側' && (!data.sites || data.sites === '1')) {
+    data.sites = '2';
+    // sites入力欄の値も更新
+    const card = document.querySelector(`[data-block="${key}"]`);
+    const inp = card?.querySelector('.b-sites');
+    if (inp) inp.value = '2';
+  } else if ((value === 'R' || value === 'L') && data.sites === '2') {
+    data.sites = '1';
+    const card = document.querySelector(`[data-block="${key}"]`);
+    const inp = card?.querySelector('.b-sites');
+    if (inp) inp.value = '1';
+  }
+  refreshBlockCalc(key);
+  updateBlockSummary();
+  autoSave();
+}
+
+// 計算表示部分（合計mL・各薬剤mg）だけ書き換える（入力欄を破壊しない）
+function refreshBlockCalc(key) {
+  const card = document.querySelector(`[data-block="${key}"]`);
+  if (!card || !current || !current.localBlocks || !current.localBlocks[key]) return;
+  const d = current.localBlocks[key];
+  const vol = parseFloat(d.volume) || 0;
+  const sites = parseFloat(d.sites) || 0;
+  const totalMl = vol * sites;
+  const tEl = card.querySelector('.b-total');
+  if (tEl) tEl.textContent = totalMl.toFixed(2) + 'mL';
+  const dEl = card.querySelector('.b-drugs');
+  if (dEl) {
+    const info = computeMixtureInfo();
+    const items = info.drugs.filter(dr => dr.name).map(dr =>
+      `<span style="color:var(--blue);font-weight:600;font-size:11px;margin-right:6px">${esc(dr.name)}: ${(totalMl * dr.mgPerMl).toFixed(2)}mg</span>`
+    );
+    dEl.innerHTML = items.length ? items.join('') : '<span style="color:var(--muted);font-size:11px">メイン溶液を設定すると総mg計算</span>';
+  }
 }
 
 function setBlockField(key, field, value) {
@@ -1294,9 +1349,10 @@ function setBlockField(key, field, value) {
   const data = ensureBlockData(key);
   data[field] = value;
   data.use = true;
-  // 入力反映: volume/sites変更時は再描画
+  // 計算表示部分だけ更新（入力欄は触らずフォーカス・カーソル維持）
   if (field === 'volume' || field === 'sites') {
-    renderSelectedBlocks();
+    refreshBlockCalc(key);
+    updateBlockSummary();
   }
   autoSave();
 }
@@ -3411,7 +3467,8 @@ function generatePrintHTML(c) {
         const s = parseFloat(d.sites) || 0;
         const tMl = v * s;
         const drugsMg = mixDrugs.map(dr => `${esc(dr.name)}: ${(tMl * dr.mgPerMl).toFixed(1)}mg`).join(' / ');
-        return `<tr><td>${esc(b.label)}</td><td>${v}mL/site × ${s} = ${tMl.toFixed(2)}mL</td><td>${drugsMg}</td><td>${esc(d.note||'')}</td></tr>`;
+        const sideTag = d.side ? `<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:3px;padding:0 4px;margin-left:4px;font-size:8pt">${esc(d.side)}</span>` : '';
+        return `<tr><td>${esc(b.label)}${sideTag}</td><td>${v}mL/site × ${s} = ${tMl.toFixed(2)}mL</td><td>${drugsMg}</td><td>${esc(d.note||'')}</td></tr>`;
       }).join('');
       const customRows = customs.map(t => `<tr><td colspan="4" style="font-style:italic">${esc(t)}</td></tr>`).join('');
       // 累計
