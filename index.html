@@ -270,12 +270,8 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <input class="fin" type="text" id="f_staff" placeholder="担当獣医師" oninput="autoSave()">
           </div>
           <div class="frow">
-            <span class="flabel">オーナー</span>
-            <input class="fin" type="text" id="f_ownerName" placeholder="オーナー名" oninput="autoSave()">
-          </div>
-          <div class="frow">
-            <span class="flabel">患者名</span>
-            <input class="fin" type="text" id="f_patientName" placeholder="患者名" oninput="autoSave()">
+            <span class="flabel">氏名</span>
+            <input class="fin" type="text" id="f_patientName" placeholder="苗字 ペット名（例: 田中 ポチ）" oninput="autoSave()">
           </div>
           <div class="frow">
             <span class="flabel">動物種</span>
@@ -318,6 +314,17 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <span class="unit">kg</span>
             <input class="fin fin-sm" type="text" inputmode="decimal" id="f_bcs" placeholder="—">
             <span class="unit">/9 BCS</span>
+          </div>
+          <div class="frow">
+            <span class="flabel">ASA-PS</span>
+            <div class="seg" style="flex:1;max-width:200px">
+              <div class="seg-i on" onclick="setSeg('asaps','1',this)">Ⅰ</div>
+              <div class="seg-i" onclick="setSeg('asaps','2',this)">Ⅱ</div>
+              <div class="seg-i" onclick="setSeg('asaps','3',this)">Ⅲ</div>
+              <div class="seg-i" onclick="setSeg('asaps','4',this)">Ⅳ</div>
+              <div class="seg-i" onclick="setSeg('asaps','5',this)">Ⅴ</div>
+            </div>
+            <div class="chk-item" onclick="toggleChk(this,'asapsE')"><div class="chk-box"></div><span class="chk-label">E (緊急)</span></div>
           </div>
           <div class="frow">
             <span class="flabel">意識</span>
@@ -410,17 +417,6 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <input class="fin" type="text" id="f_anesthMonitor" placeholder="麻酔監視" oninput="autoSave()">
             <span class="flabel" style="min-width:36px">指導医</span>
             <input class="fin" type="text" id="f_anesthSupervisor" placeholder="監視指導医" oninput="autoSave()">
-          </div>
-          <div class="frow">
-            <span class="flabel flabel-w">ASA-PS</span>
-            <div class="seg" style="flex:1;max-width:240px">
-              <div class="seg-i on" onclick="setSeg('asaps','1',this)">Ⅰ</div>
-              <div class="seg-i" onclick="setSeg('asaps','2',this)">Ⅱ</div>
-              <div class="seg-i" onclick="setSeg('asaps','3',this)">Ⅲ</div>
-              <div class="seg-i" onclick="setSeg('asaps','4',this)">Ⅳ</div>
-              <div class="seg-i" onclick="setSeg('asaps','5',this)">Ⅴ</div>
-            </div>
-            <div class="chk-item" onclick="toggleChk(this,'asapsE')"><div class="chk-box"></div><span class="chk-label">E (緊急)</span></div>
           </div>
           <div class="frow">
             <span class="flabel flabel-w">予想疼痛</span>
@@ -2051,6 +2047,16 @@ function loadStorage() {
     // patientId と caseNo を同期（片方が空ならコピー）
     if (!c.patientId && c.caseNo) { c.patientId = c.caseNo; migrated = true; }
     if (!c.caseNo && c.patientId) { c.caseNo = c.patientId; migrated = true; }
+    // ownerName + patientName を統合（重複前置防止）
+    if (c.ownerName && c.patientName && !c.patientName.includes(c.ownerName)) {
+      c.patientName = c.ownerName + ' ' + c.patientName;
+      c.ownerName = '';
+      migrated = true;
+    } else if (c.ownerName && !c.patientName) {
+      c.patientName = c.ownerName;
+      c.ownerName = '';
+      migrated = true;
+    }
   });
   if (migrated) saveStorage();
 }
@@ -2088,7 +2094,10 @@ function renderCasesList() {
   });
   el.innerHTML = sorted.map(c => {
     const sp = c.species === 'dog' ? '🐶' : c.species === 'cat' ? '🐱' : c.species === 'rabbit' ? '🐰' : '🐾';
-    const name = [c.patientName, c.ownerName ? `(${c.ownerName})` : ''].filter(Boolean).join(' ') || '—';
+    // ownerNameは旧データの場合があるので、未統合なら結合表示
+    const name = (c.ownerName && c.patientName && !c.patientName.includes(c.ownerName))
+      ? `${c.ownerName} ${c.patientName}`
+      : (c.patientName || c.ownerName || '—');
     const diag = c.diagnosis || c.procedure || '診断未記載';
     const progressBadge = c.progress && c.progress !== '予約'
       ? `<span style="background:${c.progress==='完了'?'#27ae60':'#e67e22'};color:#fff;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;margin-left:6px">${esc(c.progress)}</span>`
@@ -2939,8 +2948,8 @@ function generatePrintHTML(c) {
       <h3>患者情報 / Patient</h3>
       <div class="p-row">
         ${fld('ID', c.caseNo || c.patientId)}
-        ${fld('患者名', c.patientName)}
-        ${fld('オーナー', c.ownerName)}
+        ${fld('氏名', (c.ownerName && c.patientName && !c.patientName.includes(c.ownerName)) ? `${c.ownerName} ${c.patientName}` : (c.patientName || c.ownerName || ''))}
+        ${fld('ASA', c.asaps ? c.asaps + (c.asapsE ? 'E':'') : '')}
         ${fld('動物種', speciesLabel)}
         ${fld('品種', c.breed)}
         ${fld('性別', c.sex)}
@@ -2973,7 +2982,6 @@ function generatePrintHTML(c) {
         <div class="p-row">
           ${fld('診断名', c.diagnosis)}
           ${fld('術式', c.procedure)}
-          ${fld('ASA-PS', c.asaps ? c.asaps + (c.asapsE ? 'E':''):'')}
           ${fld('予想疼痛', c.expectedPain)}
         </div>
         <div class="p-row">
@@ -3153,7 +3161,7 @@ function exportCSV() {
   if (!cases.length) { showToast('症例データがありません'); return; }
   collectForm();
   const headers = [
-    '日付','症例番号','担当者','患者ID','患者名','オーナー','動物種','品種','生年月日','年齢','体重(kg)',
+    '日付','症例番号','担当者','患者ID','氏名','動物種','品種','生年月日','年齢','体重(kg)',
     '性別','診断名','術式','ASA-PS',
     '麻酔開始','手術開始','手術終了','抜管','麻酔時間(分)','手術時間(分)',
     '覚醒の様子','疼痛スコア',
@@ -3161,7 +3169,8 @@ function exportCSV() {
     '改善点/申し送り'
   ];
   const rows = cases.map(c => [
-    c.date, c.caseNo, c.staff, c.patientId, c.patientName, c.ownerName,
+    c.date, c.caseNo, c.staff, c.patientId,
+    ((c.ownerName && c.patientName && !c.patientName.includes(c.ownerName)) ? `${c.ownerName} ${c.patientName}` : (c.patientName || c.ownerName || '')),
     c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : c.species === 'rabbit' ? 'うさぎ' : '他',
     c.breed, c.birthdate, `${c.ageY||''}歳${c.ageM||''}ヶ月`, c.weight,
     c.sex, c.diagnosis, c.procedure, c.asaps + (c.asapsE ? 'E':''),
