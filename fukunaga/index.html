@@ -1563,7 +1563,7 @@ async function loadPresets() {
     // 2) localStorage フォールバック
     let fromLocal = null;
     try {
-      const stored = localStorage.getItem('vet_presets');
+      const stored = localStorage.getItem('vet_fah_presets');
       if (stored) fromLocal = JSON.parse(stored);
     } catch(e) {}
     if (fromLocal && Object.keys(fromLocal).length > 0) {
@@ -1584,7 +1584,7 @@ async function loadPresets() {
 }
 
 function savePresetsToStorage() {
-  try { localStorage.setItem('vet_presets', JSON.stringify(userPresets)); } catch(e){}
+  try { localStorage.setItem('vet_fah_presets', JSON.stringify(userPresets)); } catch(e){}
 }
 
 // プリセットバーを描画
@@ -1780,19 +1780,19 @@ const PUSH_DEDUP_WINDOW_MS = 5000;
 
 function loadSheetsConfig() {
   try {
-    const stored = localStorage.getItem('vet_sheets_config');
+    const stored = localStorage.getItem('vet_fah_sheets_config');
     if (stored) sheetsConfig = { ...SHEETS_DEFAULT, ...JSON.parse(stored) };
   } catch(e) {}
   try {
-    const q = localStorage.getItem('vet_push_queue');
+    const q = localStorage.getItem('vet_fah_push_queue');
     if (q) pushQueue = JSON.parse(q);
   } catch(e) { pushQueue = []; }
 }
 function saveSheetsConfig() {
-  try { localStorage.setItem('vet_sheets_config', JSON.stringify(sheetsConfig)); } catch(e){}
+  try { localStorage.setItem('vet_fah_sheets_config', JSON.stringify(sheetsConfig)); } catch(e){}
 }
 function savePushQueue() {
-  try { localStorage.setItem('vet_push_queue', JSON.stringify(pushQueue)); } catch(e){}
+  try { localStorage.setItem('vet_fah_push_queue', JSON.stringify(pushQueue)); } catch(e){}
 }
 
 function csvUrl(sheet) {
@@ -2402,7 +2402,7 @@ function makeCase() {
 // STORAGE
 // ─────────────────────────────────────────────────
 function loadStorage() {
-  try { cases = JSON.parse(localStorage.getItem('vet_cases') || '[]'); }
+  try { cases = JSON.parse(localStorage.getItem('vet_fah_cases') || '[]'); }
   catch(e) { cases = []; }
   // データのbackfill
   let migrated = false;
@@ -2429,7 +2429,7 @@ function loadStorage() {
   if (migrated) saveStorage();
 }
 function saveStorage() {
-  try { localStorage.setItem('vet_cases', JSON.stringify(cases)); } catch(e){}
+  try { localStorage.setItem('vet_fah_cases', JSON.stringify(cases)); } catch(e){}
 }
 
 // ─────────────────────────────────────────────────
