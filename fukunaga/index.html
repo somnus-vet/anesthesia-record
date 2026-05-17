@@ -186,6 +186,56 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .btn-add-row{width:100%;padding:10px;border:2px dashed var(--border);border-radius:var(--r-sm);background:none;color:var(--muted);font-size:14px;cursor:pointer;margin-top:9px}
 .btn-del{background:none;border:none;color:#ddd;font-size:18px;cursor:pointer;padding:4px;min-height:36px}
 
+/* QUICK DOSE BAR */
+.qdose-bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.qdose-btn{display:flex;align-items:center;gap:5px;background:var(--blue-bg);border:1.5px solid var(--blue);color:var(--blue);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;-webkit-user-select:none}
+.qdose-btn:active{background:var(--blue);color:#fff}
+.qdose-btn.on{background:var(--blue);color:#fff}
+.qdose-plus{font-size:11px;font-weight:700;opacity:.7}
+.qdose-badge{font-size:10px;font-weight:700;background:var(--blue);color:#fff;border-radius:10px;padding:1px 7px;margin-left:3px}
+
+/* INTRA-OP TIMELINE (events + drugs merged) */
+.evt-empty{font-size:12px;color:var(--muted);padding:8px 2px}
+.tl-row{display:flex;align-items:center;gap:6px;padding:6px 0 6px 7px;border-bottom:1px solid #f0f4f8;border-left:3px solid transparent}
+.tl-row:last-child{border-bottom:none}
+.tl-row.tl-event{border-left-color:var(--blue)}
+.tl-row.tl-drug{border-left-color:var(--green)}
+.tl-time-in{flex:0 0 56px;min-height:38px;text-align:center;font-weight:700;padding:6px 2px}
+.tl-name{flex:1;min-width:0;font-size:14px;font-weight:600}
+.tl-drug-name{flex:2;min-width:0;min-height:38px}
+.tl-drug-dose{flex:1.6;min-width:0;min-height:38px}
+.tl-drug-route{flex:0 0 52px;min-width:0;min-height:38px;text-align:center;padding:6px 2px}
+
+/* ELAPSED-TIME COUNTERS */
+.dur-bar{display:flex;gap:8px;padding:10px 12px}
+.dur-box{flex:1;background:#eaf3fb;border-radius:9px;padding:7px 5px;text-align:center;display:flex;flex-direction:column;gap:1px}
+.dur-box.dur-stopped{background:#eef0f2}
+.dur-lbl{font-size:11px;font-weight:700;color:var(--muted)}
+.dur-val{font-size:20px;font-weight:800;color:var(--navy);line-height:1.15}
+.dur-val .dur-unit{font-size:11px;font-weight:700;margin-left:1px}
+.dur-box.dur-stopped .dur-val{color:var(--muted)}
+.dur-sub{font-size:9px;color:var(--muted)}
+
+/* DOSE SELECT PANEL */
+.dose-opts{display:flex;flex-direction:column;gap:7px}
+.dose-opt{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;border:1.5px solid var(--border);border-radius:9px;padding:11px 13px;cursor:pointer;text-align:left;width:100%;min-height:48px}
+.dose-opt:active{background:var(--blue-bg);border-color:var(--blue)}
+.dose-opt-label{font-size:15px;font-weight:700;color:var(--text)}
+.dose-opt-val{font-size:12px;color:var(--muted);text-align:right}
+
+/* 狭い画面（iPhone等）では薬剤ログ表をカード式に */
+@media (max-width:600px){
+  .dtable thead{display:none}
+  .dtable,.dtable tbody,.dtable tr,.dtable td{display:block;width:auto}
+  .dtable tr{border:1.5px solid var(--border);border-radius:9px;margin-bottom:9px;padding:7px 9px;background:#fff}
+  .dtable td{border:none!important;padding:4px 0;display:flex;align-items:center;gap:8px}
+  .dtable td::before{content:attr(data-label);flex-shrink:0;width:46px;font-size:11px;font-weight:700;color:var(--muted)}
+  .dtable td .fin{flex:1;width:auto}
+  .dtable td>div{flex:1}
+  .dtable td:last-child{justify-content:flex-end;padding:0}
+  .dtable td:last-child::before{display:none}
+}
+
 /* TOAST */
 .toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:9px 20px;border-radius:20px;font-size:14px;font-weight:600;pointer-events:none;z-index:1000;opacity:0;transition:opacity .3s;white-space:nowrap}
 .toast.show{opacity:1}
@@ -249,8 +299,8 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
     <div class="tab on" onclick="switchTab(0)"><span class="ti">🐶</span>患者/術前</div>
     <div class="tab" onclick="switchTab(1)"><span class="ti">🔧</span>手術/器材</div>
     <div class="tab" onclick="switchTab(2)"><span class="ti">💉</span>麻酔PL</div>
-    <div class="tab" onclick="switchTab(3)"><span class="ti">⏱️</span>術中/合併</div>
-    <div class="tab" onclick="switchTab(4)"><span class="ti">📋</span>回復/薬剤</div>
+    <div class="tab" onclick="switchTab(3)"><span class="ti">⏱️</span>術中/薬剤</div>
+    <div class="tab" onclick="switchTab(4)"><span class="ti">📋</span>合併/回復</div>
   </nav>
   <div class="form-main">
 
@@ -433,31 +483,21 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
           <!-- 低血圧 -->
           <div class="comp-block">
-            <div class="chk-item comp-main" onclick="toggleChk(this,'expectedHypotension')"><div class="chk-box"></div><span class="chk-label">⚠️ 低血圧</span></div>
+            <div class="chk-item comp-main on"><div class="chk-box"></div><span class="chk-label">⚠️ 低血圧</span></div>
             <div class="comp-sub">
               <div class="emerg-row">
                 <div class="chk-item" onclick="toggleChk(this,'hpot_miniFluid')"><div class="chk-box"></div><span class="chk-label">ミニフルイド 5mL/kg × 5min</span></div>
                 <span class="emerg-calc" data-emerg="miniFluid"></span>
               </div>
-              <div class="emerg-row">
-                <div class="chk-item" onclick="toggleChk(this,'hpot_atropine')"><div class="chk-box"></div><span class="chk-label">アトロピン 5-10μg/kg</span></div>
-                <span class="emerg-calc" data-emerg="atropine_e"></span>
-              </div>
-              <div class="emerg-row">
-                <div class="chk-item" onclick="toggleChk(this,'hpot_ephedrine')"><div class="chk-box"></div><span class="chk-label">エフェドリン (100倍希釈) 0.1-0.2mL/kg</span></div>
-                <span class="emerg-calc" data-emerg="ephedrine_e"></span>
-              </div>
-              <div class="emerg-row">
-                <div class="chk-item" onclick="toggleChk(this,'hpot_norad')"><div class="chk-box"></div><span class="chk-label">ノルアドレナリン (50倍希釈) 0.1μg/kg/min CRI〜</span></div>
-                <span class="emerg-calc" data-emerg="norad_e"></span>
-              </div>
+              <div style="font-size:11px;color:var(--muted);margin:6px 0 2px">昇圧剤・循環作動薬（麻酔PLの登録を参照／体重から自動計算）</div>
+              <div id="hypotensionDrugs"></div>
               <input class="fin" type="text" id="f_hpot_notes" placeholder="メモ" oninput="autoSave()">
             </div>
           </div>
 
           <!-- 低体温 -->
           <div class="comp-block">
-            <div class="chk-item comp-main" onclick="toggleChk(this,'expectedHypothermia')"><div class="chk-box"></div><span class="chk-label">❄️ 低体温</span></div>
+            <div class="chk-item comp-main on"><div class="chk-box"></div><span class="chk-label">❄️ 低体温</span></div>
             <div class="comp-sub">
               <div class="chk-item" onclick="toggleChk(this,'hthm_warmAir')"><div class="chk-box"></div><span class="chk-label">温風加温装置</span></div>
               <div class="chk-item" onclick="toggleChk(this,'hthm_warmMat')"><div class="chk-box"></div><span class="chk-label">保温マット</span></div>
@@ -468,7 +508,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
           <!-- 低換気 -->
           <div class="comp-block">
-            <div class="chk-item comp-main" onclick="toggleChk(this,'expectedHypovent')"><div class="chk-box"></div><span class="chk-label">🫁 低換気</span></div>
+            <div class="chk-item comp-main on"><div class="chk-box"></div><span class="chk-label">🫁 低換気</span></div>
             <div class="comp-sub">
               <div class="emerg-row">
                 <div class="chk-item" onclick="toggleChk(this,'hvent_pcv')"><div class="chk-box"></div><span class="chk-label">PCV</span></div>
@@ -496,7 +536,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
           <!-- アナフィラキシー / 心停止 -->
           <div class="comp-block">
-            <div class="chk-item comp-main" onclick="toggleChk(this,'expectedAnaphylaxis')"><div class="chk-box"></div><span class="chk-label">⚡ アナフィラキシー / 心停止</span></div>
+            <div class="chk-item comp-main on"><div class="chk-box"></div><span class="chk-label">⚡ アナフィラキシー / 心停止</span></div>
             <div class="comp-sub">
               <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心拍動時) 1μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_normal"></span></div>
               <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心停止時) 10μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_arrest"></span></div>
@@ -508,7 +548,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
           <!-- 悪性高熱 -->
           <div class="comp-block">
-            <div class="chk-item comp-main" onclick="toggleChk(this,'expectedMH')"><div class="chk-box"></div><span class="chk-label">🔥 悪性高熱</span></div>
+            <div class="chk-item comp-main on"><div class="chk-box"></div><span class="chk-label">🔥 悪性高熱</span></div>
             <div class="comp-sub">
               <div class="emerg-info"><span class="emerg-info-label">ダントロレン 1-3mg/kg IV</span><span class="emerg-calc" data-emerg="dantrolene"></span></div>
               <div class="emerg-note-warn">※ ダントリウム静注 20mg/瓶 → 60mL注射用水で希釈（0.333mg/mL）</div>
@@ -625,6 +665,11 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <span class="flabel">種類</span>
             <input class="fin" type="text" id="f_fluidType" placeholder="生食/乳酸リンゲル…" oninput="autoSave()">
           </div>
+          <div class="qdose-bar" style="margin:6px 0 2px">
+            <button type="button" class="qdose-btn" onclick="setFluidType('乳酸リンゲル(LR)')">LR</button>
+            <button type="button" class="qdose-btn" onclick="setFluidType('酢酸リンゲル(AR)')">AR</button>
+            <button type="button" class="qdose-btn" onclick="setFluidType('生理食塩水(NaCl)')">NaCl</button>
+          </div>
           <div class="frow">
             <span class="flabel">速度</span>
             <input class="fin fin-sm" type="text" inputmode="decimal" id="f_fluidRate" placeholder="5" oninput="autoSave()">
@@ -639,6 +684,9 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
           <div class="sec-title">昇圧剤 / 循環作動薬</div>
           <div id="drugList_vasopressors"></div>
+
+          <div class="sec-title">拮抗薬 Antagonists</div>
+          <div id="drugList_antagonists"></div>
 
           <div class="sec-title">術後鎮痛 Post-op Analgesia</div>
           <div id="drugList_postAnalg"></div>
@@ -679,93 +727,73 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       </div>
     </div>
 
-    <!-- ========== TAB 3: 術中/合併症 ========== -->
+    <!-- ========== TAB 3: 術中/薬剤 ========== -->
     <div class="panel" id="panel3">
 
       <div class="card">
-        <div class="c-hdr">5. 術中経過 <span class="c-hdr-en">Intra-op</span></div>
-        <div class="c-body">
-          <div class="frow">
-            <span class="flabel flabel-w">前投薬</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_anesthStart" placeholder="00:00" oninput="onTimelineInput('anesthStart',this.value)">
-              <button class="btn-now" onclick="setNow('f_anesthStart')">今</button>
-            </div>
-            <span class="flabel" style="min-width:36px">導入</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_inductionTime" placeholder="00:00" oninput="autoSave()">
-              <button class="btn-now" onclick="setNow('f_inductionTime')">今</button>
-            </div>
+        <div class="c-body dur-bar">
+          <input type="hidden" id="f_anesthDur">
+          <input type="hidden" id="f_surgDur">
+          <div class="dur-box" id="durBoxAnesth">
+            <span class="dur-lbl">麻酔時間</span>
+            <span class="dur-val" id="durValAnesth">—</span>
+            <span class="dur-sub">前投薬から</span>
           </div>
-          <div class="frow">
-            <span class="flabel flabel-w">挿管</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_intubationTime" placeholder="00:00" oninput="autoSave()">
-              <button class="btn-now" onclick="setNow('f_intubationTime')">今</button>
-            </div>
-            <span class="flabel" style="min-width:36px">局所麻酔</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_localAnesthTime" placeholder="00:00" oninput="autoSave()">
-              <button class="btn-now" onclick="setNow('f_localAnesthTime')">今</button>
-            </div>
+          <div class="dur-box" id="durBoxAbx">
+            <span class="dur-lbl">抗菌薬</span>
+            <span class="dur-val" id="durValAbx">—</span>
+            <span class="dur-sub">直近投与から</span>
           </div>
-          <div class="frow">
-            <span class="flabel flabel-w">抗菌薬</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_antibioticTime" placeholder="00:00" oninput="autoSave()">
-              <button class="btn-now" onclick="setNow('f_antibioticTime')">今</button>
-            </div>
-            <span class="flabel" style="min-width:36px">手術開始</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_surgStart" placeholder="00:00" oninput="onTimelineInput('surgStart',this.value)">
-              <button class="btn-now" onclick="setNow('f_surgStart')">今</button>
-            </div>
+          <div class="dur-box" id="durBoxSurg">
+            <span class="dur-lbl">手術時間</span>
+            <span class="dur-val" id="durValSurg">—</span>
+            <span class="dur-sub">手術開始から</span>
           </div>
-          <div class="frow">
-            <span class="flabel flabel-w">縫合開始</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_sutureStart" placeholder="00:00" oninput="autoSave()">
-              <button class="btn-now" onclick="setNow('f_sutureStart')">今</button>
-            </div>
-            <span class="flabel" style="min-width:36px">手術終了</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_surgEnd" placeholder="00:00" oninput="onTimelineInput('surgEnd',this.value)">
-              <button class="btn-now" onclick="setNow('f_surgEnd')">今</button>
-            </div>
-          </div>
-          <div class="frow">
-            <span class="flabel flabel-w">拮抗薬</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_antagonistTime" placeholder="00:00" oninput="autoSave()">
-              <button class="btn-now" onclick="setNow('f_antagonistTime')">今</button>
-            </div>
-            <span class="flabel" style="min-width:36px">抜管</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_extubation" placeholder="00:00" oninput="autoSave()">
-              <button class="btn-now" onclick="setNow('f_extubation')">今</button>
-            </div>
-          </div>
-          <div class="frow">
-            <span class="flabel flabel-w">帰舎</span>
-            <div class="tgrp">
-              <input class="fin" type="text" id="f_returnToWard" placeholder="00:00" oninput="onTimelineInput('returnToWard',this.value)">
-              <button class="btn-now" onclick="setNow('f_returnToWard')">今</button>
-            </div>
-          </div>
-          <div class="frow">
-            <span class="flabel flabel-w">麻酔時間</span>
-            <input class="fin fin-md" type="text" inputmode="numeric" id="f_anesthDur" placeholder="自動" oninput="autoSave()" readonly style="background:#eaf3fb;color:var(--navy);font-weight:700">
-            <span class="unit">分（前投薬→帰舎）</span>
-          </div>
-          <div class="frow">
-            <span class="flabel flabel-w">手術時間</span>
-            <input class="fin fin-md" type="text" inputmode="numeric" id="f_surgDur" placeholder="自動" oninput="autoSave()" readonly style="background:#eaf3fb;color:var(--navy);font-weight:700">
-            <span class="unit">分（手術開始→終了）</span>
-          </div>
-          <div style="font-size:13px;color:var(--muted);margin:8px 0 5px">術中イベント・バイタル変動・対応</div>
-          <textarea class="ftxt" style="min-height:120px" id="f_events" placeholder="イベントを時系列で記載" oninput="autoSave()"></textarea>
         </div>
       </div>
+
+      <div class="card">
+        <div class="c-hdr">⚡ 緊急薬 <span class="c-hdr-en">Emergency drugs</span></div>
+        <div class="c-body">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">体重から希釈・容量を自動計算（アナフィラキシー / 心停止 / 悪性高熱）</div>
+          <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心拍動時) 1μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_normal"></span></div>
+          <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心停止時) 10μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_arrest"></span></div>
+          <div class="emerg-info"><span class="emerg-info-label">ジフェンヒドラミン 1-2mg/kg</span><span class="emerg-calc" data-emerg="diphenhydramine"></span></div>
+          <div class="emerg-info"><span class="emerg-info-label">デキサメタゾン 0.1-0.2mg/kg</span><span class="emerg-calc" data-emerg="dexamethasone"></span></div>
+          <div class="emerg-info"><span class="emerg-info-label">ダントロレン 1-3mg/kg IV</span><span class="emerg-calc" data-emerg="dantrolene"></span></div>
+          <div class="emerg-note-warn">※ ダントリウム静注 20mg/瓶 → 60mL注射用水で希釈（0.333mg/mL）</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="c-hdr">5. 術中タイムライン <span class="c-hdr-en">Intra-op Timeline</span></div>
+        <div class="c-body">
+          <input type="hidden" id="f_anesthStart">
+          <input type="hidden" id="f_inductionTime">
+          <input type="hidden" id="f_intubationTime">
+          <input type="hidden" id="f_localAnesthTime">
+          <input type="hidden" id="f_antibioticTime">
+          <input type="hidden" id="f_surgStart">
+          <input type="hidden" id="f_sutureStart">
+          <input type="hidden" id="f_surgEnd">
+          <input type="hidden" id="f_antagonistTime">
+          <input type="hidden" id="f_extubation">
+          <input type="hidden" id="f_returnToWard">
+          <input type="hidden" id="f_events">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">⏱ イベントを記録 <span style="opacity:.7">— タップした時刻で記録</span></div>
+          <div id="eventBtnBar" class="qdose-bar"></div>
+          <div style="font-size:12px;color:var(--muted);margin:12px 0 6px">💊 薬剤を記録 <span style="opacity:.7">— タップで用量を選んで記録</span></div>
+          <div id="quickDoseBar" class="qdose-bar"></div>
+          <button class="btn-add-row" onclick="addDrugLogRow()" style="margin-top:6px">＋ 薬剤行を追加</button>
+          <div style="font-size:12px;color:var(--muted);font-weight:700;margin:14px 0 5px">📋 記録（時刻順）</div>
+          <div id="timelineList"></div>
+          <button class="btn-add-row" onclick="renderTimelineList()" style="margin-top:9px">⏱ 時刻順に整列</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 4: 合併症/回復/申し送り ========== -->
+    <div class="panel" id="panel4">
 
       <div class="card">
         <div class="c-hdr">6. 合併症 <span class="c-hdr-en">Complications</span></div>
@@ -852,10 +880,6 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           <textarea class="ftxt" id="f_compDetails" style="min-height:80px" placeholder="詳細を記載" oninput="autoSave()"></textarea>
         </div>
       </div>
-    </div>
-
-    <!-- ========== TAB 4: 回復/薬剤/申し送り ========== -->
-    <div class="panel" id="panel4">
 
       <div class="card">
         <div class="c-hdr">7. 覚醒・回復 <span class="c-hdr-en">Recovery</span></div>
@@ -898,30 +922,6 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       </div>
 
       <div class="card">
-        <div class="c-hdr">B. 薬剤用量記録 <span class="c-hdr-en">Drug Dosage Log</span></div>
-        <div class="c-body">
-          <button class="btn-add-row" onclick="autoFillDrugLog()" style="margin-bottom:10px;border:1px solid var(--blue);color:var(--blue);background:var(--blue-bg)">
-            ⚡️ プロトコルから自動入力
-          </button>
-          <div style="overflow-x:auto">
-            <table class="dtable">
-              <thead>
-                <tr>
-                  <th style="min-width:110px">薬剤名</th>
-                  <th style="min-width:80px">用量</th>
-                  <th style="min-width:70px">投与経路</th>
-                  <th style="min-width:70px">時刻</th>
-                  <th style="width:36px"></th>
-                </tr>
-              </thead>
-              <tbody id="drugLogBody"></tbody>
-            </table>
-          </div>
-          <button class="btn-add-row" onclick="addDrugLogRow()">＋ 行を追加</button>
-        </div>
-      </div>
-
-      <div class="card">
         <div class="c-hdr">8. 改善点・申し送り <span class="c-hdr-en">Notes</span></div>
         <div class="c-body">
           <textarea class="ftxt" id="f_notes" style="min-height:180px" placeholder="次回のための気付き・申し送り事項…" oninput="autoSave()"></textarea>
@@ -949,10 +949,25 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
     </div>
     <div class="modal-body">
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">編集するプリセット</div>
-      <select id="presetSelect" onchange="renderPresetEditor()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:12px;min-height:44px"></select>
+      <select id="presetSelect" onchange="renderPresetEditor()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:8px;min-height:44px"></select>
+      <button type="button" class="preset-edit-btn" onclick="addNewPreset()" style="margin-bottom:12px">＋ 新規プリセットを追加</button>
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">表示名</div>
       <input id="presetLabel" type="text" oninput="onPresetLabelInput(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px">
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">維持薬</div>
+      <div class="qdose-bar" id="presetMaintBar" style="margin-bottom:14px"></div>
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">輸液</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input id="presetFluidType" type="text" placeholder="種類（生食/乳酸リンゲル…）" oninput="setPresetFluidType(this.value)" style="flex:2;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;background:#f8fafc;min-height:40px">
+        <input id="presetFluidRate" type="text" inputmode="decimal" placeholder="速度" oninput="setPresetFluidRate(this.value)" style="flex:1;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;background:#f8fafc;min-height:40px">
+      </div>
+      <div class="qdose-bar" style="margin-bottom:14px">
+        <button type="button" class="qdose-btn" onclick="presetFluidQuick('乳酸リンゲル(LR)')">LR</button>
+        <button type="button" class="qdose-btn" onclick="presetFluidQuick('酢酸リンゲル(AR)')">AR</button>
+        <button type="button" class="qdose-btn" onclick="presetFluidQuick('生理食塩水(NaCl)')">NaCl</button>
+      </div>
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">薬剤・用量・経路</div>
       <div id="presetDrugList"></div>
@@ -963,7 +978,8 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn-reset" onclick="resetPresetToDefault()">デフォルトに戻す</button>
+      <button type="button" class="btn-reset" onclick="deletePreset()" style="background:#fdecea;border-color:#f5c2c7;color:#c0392b">削除</button>
+      <button type="button" class="btn-reset" onclick="resetPresetToDefault()">既定に戻す</button>
       <button type="button" onclick="closePresetEditor()">キャンセル</button>
       <button type="button" class="btn-save" onclick="savePresetEditor()">保存</button>
     </div>
@@ -982,6 +998,13 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px">この端末で記録する病院。Sheetsからこの施設の予約だけ読み込みます</div>
       <select id="settingFacility" onchange="onFacilityChange(this.value)" style="width:100%;padding:11px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px">
         <option value="FAH">FAH — フクナガ動物病院</option>
+        <option value="TAC">TAC — たむら動物クリニック</option>
+        <option value="ANG">ANG — 姉ヶ崎どうぶつ病院</option>
+        <option value="BDY">BDY — BUDDY動物病院</option>
+        <option value="CKE">CKE — クッキー動物病院</option>
+        <option value="FDC">FDC — 福岡犬猫歯科&口腔外科</option>
+        <option value="KSN">KSN — くすの木動物病院</option>
+        <option value="HDM">HDM — ひだまり動物病院</option>
       </select>
 
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;border-top:1px solid var(--border);padding-top:10px">🔗 Google Sheets連携</div>
@@ -1032,6 +1055,16 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
   </div>
 </div>
 
+<div class="modal-overlay" id="doseSelectModal" onclick="if(event.target===this)closeDoseSelect()">
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-hdr">
+      <span id="doseSelectTitle">薬剤を記録</span>
+      <button class="modal-close" onclick="closeDoseSelect()">×</button>
+    </div>
+    <div class="modal-body" id="doseSelectBody"></div>
+  </div>
+</div>
+
 <script>
 // ─────────────────────────────────────────────────
 // DRUG DEFINITIONS
@@ -1041,13 +1074,13 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 const DRUG_GROUPS = {
   premeds: [
     { key:'medetomidine',   label:'メデトミジン',     unit:'μg/kg', dog:'5〜40',      cat:'40〜80',     routes:['IV','IM','SC'], def:'IM', conc:1000 },
-    { key:'midazolam',      label:'ミダゾラム',       unit:'mg/kg', dog:'0.1〜0.3',   cat:'0.1〜0.3',  routes:['IV','IM'],      def:'IV', conc:5 },
+    { key:'midazolam',      label:'ミダゾラム',       unit:'mg/kg', dog:'0.1〜0.3',   cat:'0.1〜0.3',  routes:['IV','IM','SC'], def:'IV', conc:5 },
     { key:'butorphanol',    label:'ブトルファノール',  unit:'mg/kg', dog:'0.1〜0.4',   cat:'0.1〜0.4',  routes:['IV','IM','SC'], def:'IM', conc:5 },
-    { key:'atropine_p',     label:'アトロピン',       unit:'mg/kg', dog:'0.02〜0.04', cat:'0.02〜0.04',routes:['IV','IM','SC'], def:'SC', conc:0.5 },
-    { key:'nicardipine',    label:'ニカルジピン',      unit:'μg/kg', dog:'1〜5',       cat:'1〜5',      routes:['IV'],           def:'IV', conc:1000 },
+    { key:'atropine_p',     label:'アトロピン',       unit:'μg/kg', dog:'20〜40',      cat:'20〜40',     routes:['IV','IM','SC'], def:'SC', conc:500 },
+    { key:'nicardipine',    label:'ニカルジピン',      unit:'μg/kg', dog:'1〜5',       cat:'1〜5',      routes:['IV','IM','SC'], def:'IV', conc:1000 },
     { key:'alfaxalone_p',   label:'アルファキサロン',  unit:'mg/kg', dog:'2〜3',       cat:'2〜5',      routes:['IV','IM'],      def:'IM', conc:10 },
     { key:'fentanyl_p',     label:'フェンタニル',     unit:'μg/kg', dog:'2〜5',       cat:'2〜5',      routes:['IV'],           def:'IV', conc:50 },
-    { key:'buprenorphine_p',label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',     cat:'10〜20',    routes:['IV','IM','SC'], def:'IM', conc:300 },
+    { key:'buprenorphine_p',label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',     cat:'10〜20',    routes:['IV','IM','SC'], def:'IM', conc:200 },
   ],
   induction: [
     { key:'propofol',       label:'プロポフォール',   unit:'mg/kg', dog:'4〜6',  cat:'6〜8',  routes:['IV'], def:'IV', conc:10 },
@@ -1063,19 +1096,27 @@ const DRUG_GROUPS = {
     { key:'medetomidine_c', label:'メデトミジン',     unit:'μg/kg/hr',  dog:'1〜3',    cat:'1〜3',    routes:['IV'], def:'IV' },
     { key:'lidocaine_c',    label:'リドカイン',       unit:'mg/kg/hr',  dog:'1.5〜3',  cat:'—',       routes:['IV'], def:'IV' },
     { key:'ketamine_c',     label:'ケタミン',         unit:'mg/kg/hr',  dog:'0.1〜0.6',cat:'0.1〜0.6',routes:['IV'], def:'IV' },
+    { key:'noradrenaline_c',label:'ノルアドレナリン', unit:'μg/kg/min', dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'], def:'IV' },
+    { key:'phenylephrine_c',label:'フェニレフリン',   unit:'μg/kg/min', dog:'1〜5',     cat:'1〜5',      routes:['IV'], def:'IV' },
   ],
   vasopressors: [
-    { key:'atropine_v',     label:'アトロピン',       unit:'mg/kg', dog:'0.02〜0.04',cat:'0.02〜0.04',routes:['IV','IM'], def:'IV', conc:0.5 },
-    { key:'ephedrine',      label:'エフェドリン',     unit:'mg/kg', dog:'0.05〜0.1', cat:'0.05〜0.1', routes:['IV'],     def:'IV', conc:4 },
+    { key:'atropine_v',     label:'アトロピン',       unit:'μg/kg', dog:'20〜40',     cat:'20〜40',     routes:['IV','IM','SC'], def:'IV', conc:500 },
+    { key:'ephedrine',      label:'エフェドリン',     unit:'μg/kg', dog:'50〜100',   cat:'50〜100',   routes:['IV'],     def:'IV', conc:4000 },
     { key:'phenylephrine',  label:'フェニレフリン',   unit:'μg/kg', dog:'1〜3',      cat:'1〜3',      routes:['IV'],     def:'IV', conc:1000 },
     { key:'noradrenaline',  label:'ノルアドレナリン', unit:'μg/kg/min',dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'],   def:'IV' },
     { key:'adrenaline',     label:'アドレナリン',     unit:'μg/kg', dog:'10〜20',    cat:'10〜20',    routes:['IV','IM'],def:'IV', conc:1000 },
+    { key:'dopamine',       label:'ドパミン',         unit:'μg/kg/min', dog:'3〜10', cat:'3〜10', routes:['IV'], def:'IV' },
+    { key:'dobutamine',     label:'ドブタミン',       unit:'μg/kg/min', dog:'2〜10', cat:'2〜10', routes:['IV'], def:'IV' },
+  ],
+  antagonists: [
+    { key:'atipamezole',    label:'アチパメゾール',   unit:'mg/kg', dog:'0.04〜0.2', cat:'0.04〜0.2', routes:['IM','IV','SC'], def:'IM', conc:5 },
+    { key:'sugammadex',     label:'スガマデクス',     unit:'mg/kg', dog:'2〜4',      cat:'2〜4',      routes:['IV'],           def:'IV', conc:100 },
   ],
   postAnalg: [
     { key:'meloxicam',      label:'メロキシカム',      unit:'mg/kg', dog:'0.1〜0.2',cat:'0.1',       routes:['SC','IV','PO'], def:'SC', conc:5 },
     { key:'robenacoxib',    label:'ロベナコキシブ',    unit:'mg/kg', dog:'2',       cat:'0.5mg/head',routes:['SC','PO'],      def:'SC', conc:20 },
-    { key:'prednisolone',   label:'プレドニゾロン',    unit:'mg/kg', dog:'0.5〜1',  cat:'0.5〜1',    routes:['IV','IM'],      def:'IV', conc:5 },
-    { key:'buprenorphine',  label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',  cat:'10〜20',    routes:['IV','IM','SC'], def:'IV', conc:300 },
+    { key:'prednisolone',   label:'プレドニゾロン',    unit:'mg/kg', dog:'0.5〜1',  cat:'0.5〜1',    routes:['IV','IM','SC'], def:'IV', conc:5 },
+    { key:'buprenorphine',  label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',  cat:'10〜20',    routes:['IV','IM','SC'], def:'IV', conc:200 },
     { key:'tramadol',       label:'トラマドール',      unit:'mg/kg', dog:'2〜5',    cat:'2〜4',      routes:['IV','SC'],      def:'IV', conc:50 },
     { key:'acetaminophen',  label:'アセトアミノフェン',unit:'mg/kg', dog:'10〜15',  cat:'⚠️禁忌',   routes:['IV'],           def:'IV', conc:10 },
   ],
@@ -1451,7 +1492,7 @@ const DRUG_PRESETS = {
       medetomidine:   { dose: '10',   route: 'IM' },
       midazolam:      { dose: '0.2',  route: 'IV' },
       butorphanol:    { dose: '0.2',  route: 'IM' },
-      atropine_p:     { dose: '0.02', route: 'SC' },
+      atropine_p:     { dose: '20', route: 'SC' },
       propofol:       { dose: '4',    route: 'IV' },
       cefazolin:      { dose: '22',   route: 'IV' },
       meloxicam:      { dose: '0.1',  route: 'SC' },
@@ -1523,6 +1564,16 @@ async function loadPresetsFromSheets() {
         };
       }
     });
+    // Sheetsには維持薬・輸液の列が無いため、localStorageキャッシュから補完
+    try {
+      const cached = JSON.parse(localStorage.getItem('vet_fah_presets') || '{}');
+      Object.keys(presets).forEach(k => {
+        if (!cached[k]) return;
+        if (cached[k].maint !== undefined) presets[k].maint = cached[k].maint;
+        if (cached[k].fluidType !== undefined) presets[k].fluidType = cached[k].fluidType;
+        if (cached[k].fluidRate !== undefined) presets[k].fluidRate = cached[k].fluidRate;
+      });
+    } catch(e) {}
     return Object.keys(presets).length > 0 ? presets : null;
   } catch(e) {
     console.warn('loadPresetsFromSheets failed:', e);
@@ -1575,11 +1626,10 @@ async function loadPresets() {
       userPresets = JSON.parse(JSON.stringify(DRUG_PRESETS));
     }
   }
-  // 不足キーをデフォルトで補完
-  if (!userPresets || typeof userPresets !== 'object') userPresets = {};
-  Object.keys(DRUG_PRESETS).forEach(k => {
-    if (!userPresets[k]) userPresets[k] = JSON.parse(JSON.stringify(DRUG_PRESETS[k]));
-  });
+  // プリセットが空のときだけデフォルトを投入（ユーザーの削除を尊重）
+  if (!userPresets || typeof userPresets !== 'object' || Object.keys(userPresets).length === 0) {
+    userPresets = JSON.parse(JSON.stringify(DRUG_PRESETS));
+  }
   renderPresetBar();
 }
 
@@ -1610,6 +1660,15 @@ function applyPreset(key) {
   Object.entries(preset.drugs).forEach(([k, s]) => {
     current.drugs[k] = { use:true, dose:s.dose, route:s.route };
   });
+  // 維持薬（プリセットに設定があれば反映）
+  if (preset.maint !== undefined) {
+    current.maintIsoflurane = preset.maint === 'isoflurane';
+    current.maintSevoflurane = preset.maint === 'sevoflurane';
+    current.maintPropofol = preset.maint === 'propofol';
+  }
+  // 輸液（プリセットに設定があれば反映）
+  if (preset.fluidType) current.fluidType = preset.fluidType;
+  if (preset.fluidRate) current.fluidRate = preset.fluidRate;
   populateForm();
   showToast(`プリセット適用: ${preset.label}`);
   autoSave();
@@ -1645,6 +1704,16 @@ function renderPresetEditor() {
   if (!preset) return;
   document.getElementById('presetLabel').value = preset.label;
 
+  // 維持薬セレクタ
+  const maintOpts = [['','なし'],['isoflurane','イソフルラン'],['sevoflurane','セボフルラン'],['propofol','プロポフォール']];
+  const curMaint = preset.maint || '';
+  document.getElementById('presetMaintBar').innerHTML = maintOpts.map(([v, lbl]) =>
+    `<button type="button" class="qdose-btn ${curMaint === v ? 'on' : ''}" onclick="setPresetMaint('${v}')">${lbl}</button>`
+  ).join('');
+  // 輸液
+  document.getElementById('presetFluidType').value = preset.fluidType || '';
+  document.getElementById('presetFluidRate').value = preset.fluidRate || '';
+
   const allDrugs = Object.values(DRUG_GROUPS).flat();
   const list = document.getElementById('presetDrugList');
   const drugEntries = Object.entries(preset.drugs);
@@ -1669,7 +1738,7 @@ function renderPresetEditor() {
   }
 
   // 追加ドロップダウン（既に追加済みは除外）
-  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', postAnalg:'術後鎮痛'};
+  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛'};
   const sel = document.getElementById('addDrugSelect');
   sel.innerHTML = '<option value="">+ 薬剤を選択して追加…</option>' +
     Object.entries(DRUG_GROUPS).map(([gk, drugs]) => {
@@ -1723,9 +1792,64 @@ function addDrugToPreset() {
   renderPresetEditor();
 }
 
+// 維持薬・輸液の編集
+function setPresetMaint(val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]) editingPreset[key].maint = val;
+  renderPresetEditor();
+}
+function setPresetFluidType(val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]) editingPreset[key].fluidType = val;
+}
+function setPresetFluidRate(val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]) editingPreset[key].fluidRate = val;
+}
+function presetFluidQuick(v) {
+  const el = document.getElementById('presetFluidType');
+  if (el) el.value = v;
+  setPresetFluidType(v);
+}
+
+// 新規プリセットを追加
+function addNewPreset() {
+  if (!editingPreset) return;
+  const name = prompt('新しいプリセットの名前を入力してください', '新規プリセット');
+  if (name === null) return;
+  const key = 'custom_' + Date.now();
+  editingPreset[key] = { label: (name.trim() || '新規プリセット'), drugs:{}, maint:'', fluidType:'', fluidRate:'' };
+  const sel = document.getElementById('presetSelect');
+  const opt = document.createElement('option');
+  opt.value = key;
+  opt.textContent = editingPreset[key].label;
+  sel.appendChild(opt);
+  sel.value = key;
+  renderPresetEditor();
+}
+
+// プリセットを削除
+function deletePreset() {
+  if (!editingPreset) return;
+  const sel = document.getElementById('presetSelect');
+  const key = sel.value;
+  if (Object.keys(editingPreset).length <= 1) { showToast('プリセットは1つ以上必要です'); return; }
+  if (!confirm(`プリセット「${editingPreset[key].label}」を削除しますか？`)) return;
+  delete editingPreset[key];
+  sel.innerHTML = Object.entries(editingPreset).map(([k, p]) =>
+    `<option value="${k}">${esc(p.label)}</option>`
+  ).join('');
+  sel.value = Object.keys(editingPreset)[0];
+  renderPresetEditor();
+}
+
 function resetPresetToDefault() {
   if (!editingPreset) return;
   const key = document.getElementById('presetSelect').value;
+  if (!DRUG_PRESETS[key]) { showToast('このプリセットに既定値はありません'); return; }
   if (!confirm(`「${editingPreset[key].label}」をデフォルト設定に戻しますか？`)) return;
   editingPreset[key] = JSON.parse(JSON.stringify(DRUG_PRESETS[key]));
   // セレクトのラベルも更新
@@ -2334,20 +2458,20 @@ function makeCase() {
     diagnosis:'', procedure:'', surgeon:'', assistant:'', scrubNurse:'',
     anesthMonitor:'', anesthSupervisor:'', asaps:'1', asapsE:false, expectedPain:'light',
     // 低血圧
-    expectedHypotension:false,
+    expectedHypotension:true,
     hpot_miniFluid:false, hpot_atropine:false, hpot_ephedrine:false, hpot_norad:false, hpot_notes:'',
     // 低体温
-    expectedHypothermia:false,
+    expectedHypothermia:true,
     hthm_warmAir:false, hthm_warmMat:false, hthm_warmWater:false, hthm_notes:'',
     // 低換気
-    expectedHypovent:false,
+    expectedHypovent:true,
     hvent_pcv:false, hvent_pcvPIP:'', hvent_pcvRR:'',
     hvent_vcv:false, hvent_vcvVT:'', hvent_vcvRR:'',
     hvent_manual:false, hvent_notes:'',
     // アナフィラキシー
-    expectedAnaphylaxis:false, anaphy_notes:'',
+    expectedAnaphylaxis:true, anaphy_notes:'',
     // 悪性高熱
-    expectedMH:false, mh_notes:'',
+    expectedMH:true, mh_notes:'',
     // 低血糖
     expectedHypo:false, hypoTx:'',
     otherComplications:'',
@@ -2668,6 +2792,10 @@ function populateForm() {
     }
   });
 
+  // 「予想される合併症」5項目は常に選択（HTML側で常時on表示）
+  ['expectedHypotension','expectedHypothermia','expectedHypovent','expectedAnaphylaxis','expectedMH']
+    .forEach(k => { current[k] = true; });
+
   // Drugs
   Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
     drugs.forEach(d => {
@@ -2705,8 +2833,8 @@ function populateForm() {
   // Recovery quality
   setQuality(current.recQuality, false);
 
-  // Drug log
-  renderDrugLog();
+  // 術中タイムライン（イベント＋薬剤）
+  renderTimeline();
 
   // Weight pill
   updateWeightPill(current.weight);
@@ -2750,20 +2878,8 @@ function collectForm() {
   ];
   fields.forEach(k => { current[k] = getVal('f_' + k); });
 
-  // Drug data already kept in sync via event handlers
-  // Collect drug log
-  current.drugLog = [];
-  document.querySelectorAll('#drugLogBody tr').forEach(tr => {
-    const cells = tr.querySelectorAll('td');
-    if (cells.length < 4) return;
-    const row = {
-      drug: cells[0].querySelector('input')?.value || '',
-      dose: cells[1].querySelector('input')?.value || '',
-      route: cells[2].querySelector('input')?.value || '',
-      time: cells[3].querySelector('input')?.value || '',
-    };
-    if (row.drug || row.dose || row.route || row.time) current.drugLog.push(row);
-  });
+  // 薬剤ログ・術中イベントはタイムラインUIが current に直接保持するため、ここでは触らない
+  if (!Array.isArray(current.drugLog)) current.drugLog = [];
 }
 
 function getVal(id) {
@@ -2896,19 +3012,19 @@ const EMERG_FORMULAS = {
   vt_range: w => `(目安: ${(8*w).toFixed(0)}〜${(15*w).toFixed(0)} mL = 8-15mL/kg)`,
   epinephrine_normal: w => {
     const ug = 1*w;
-    return `= ${ug.toFixed(1)} μg = ${(ug/1000).toFixed(3)} mg = ${(ug/1000).toFixed(3)} mL @1mg/mL (1:1000)`;
+    return `= ${ug.toFixed(1)} μg ／ 原液 ${(ug/1000).toFixed(3)}mL ・ 10倍希釈 ${(ug/100).toFixed(2)}mL ・ 100倍希釈 ${(ug/10).toFixed(2)}mL`;
   },
   epinephrine_arrest: w => {
     const ug = 10*w;
-    return `= ${ug.toFixed(1)} μg = ${(ug/1000).toFixed(2)} mg = ${(ug/1000).toFixed(2)} mL @1mg/mL (1:1000)`;
+    return `= ${ug.toFixed(1)} μg ／ 原液 ${(ug/1000).toFixed(2)}mL ・ 10倍希釈 ${(ug/100).toFixed(2)}mL ・ 100倍希釈 ${(ug/10).toFixed(1)}mL`;
   },
   diphenhydramine: w => {
     const lo = 1*w, hi = 2*w;
-    return `= ${lo.toFixed(1)}〜${hi.toFixed(1)} mg (${(lo/10).toFixed(2)}〜${(hi/10).toFixed(2)} mL @10mg/mL)`;
+    return `= ${lo.toFixed(1)}〜${hi.toFixed(1)} mg (${(lo/15).toFixed(2)}〜${(hi/15).toFixed(2)} mL @15mg/mL)`;
   },
   dexamethasone: w => {
     const lo = 0.1*w, hi = 0.2*w;
-    return `= ${lo.toFixed(2)}〜${hi.toFixed(2)} mg (${(lo/4).toFixed(2)}〜${(hi/4).toFixed(2)} mL @4mg/mL)`;
+    return `= ${lo.toFixed(2)}〜${hi.toFixed(2)} mg (${(lo/1).toFixed(2)}〜${(hi/1).toFixed(2)} mL @1mg/mL 動物用)`;
   },
   dantrolene: w => {
     const lo = 1*w, hi = 3*w;
@@ -2925,6 +3041,48 @@ function updateEmergencyDoses(weight) {
       el.textContent = (!isNaN(w) && w > 0) ? EMERG_FORMULAS[key](w) : '— 体重未入力';
     }
   });
+  renderHypotensionDrugs();
+}
+
+// 範囲文字列 "0.02〜0.04" を [lo,hi] にパース（不正なら null）
+function parseRange(s) {
+  const parts = String(s || '').split(/[〜~]/);
+  if (parts.length !== 2) return null;
+  const lo = parseFloat(parts[0]), hi = parseFloat(parts[1]);
+  return (isNaN(lo) || isNaN(hi)) ? null : [lo, hi];
+}
+
+// 昇圧剤1剤の体重あたり用量を計算（低血圧対応の表示用）
+function vasoDoseCalc(d, w) {
+  if (isNaN(w) || w <= 0) return '— 体重未入力';
+  const r = parseRange(d.dog) || parseRange(d.cat);
+  if (!r) return '';
+  const f = n => String(Math.round(n * 100) / 100);
+  const u = d.unit.replace('/kg', '');
+  let s = `= ${f(r[0] * w)}〜${f(r[1] * w)} ${u}`;
+  if (d.conc && d.conc > 0 && !/\/(min|hr)/.test(d.unit)) {
+    s += ` (${f(r[0] * w / d.conc)}〜${f(r[1] * w / d.conc)} mL)`;
+  }
+  return s;
+}
+
+// 低血圧対応の薬剤一覧を「麻酔PLで選択中の昇圧剤」から描画
+function renderHypotensionDrugs() {
+  const el = document.getElementById('hypotensionDrugs');
+  if (!el) return;
+  const w = parseFloat(current && current.weight);
+  const used = (DRUG_GROUPS.vasopressors || [])
+    .filter(d => current && current.drugs && current.drugs[d.key] && current.drugs[d.key].use);
+  if (!used.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 2px">麻酔PLの「昇圧剤 / 循環作動薬」で薬剤を選択すると、ここに自動表示されます</div>';
+    return;
+  }
+  el.innerHTML = used.map(d => {
+    const perKg = parseFloat(current.drugs[d.key].dose);
+    // 麻酔PLで用量が入力されていればその用量で計算、未入力なら参考範囲
+    const calc = !isNaN(perKg) ? `選択 ${esc(formatDose(d, perKg))}` : vasoDoseCalc(d, w);
+    return `<div class="emerg-info"><span class="emerg-info-label">${esc(d.label)} <span style="font-weight:400;color:var(--muted)">🐶${esc(d.dog)} / 🐱${esc(d.cat)} ${esc(d.unit)}</span></span><span class="emerg-calc">${calc}</span></div>`;
+  }).join('');
 }
 
 function updateWeightPill(val) {
@@ -3030,7 +3188,45 @@ function updateDurations() {
     current.surgDur = String(surg);
     setVal('f_surgDur', surg);
   }
+  updateLiveTimers();
 }
+
+// 上部の経過時間カウンター（麻酔時間／抗菌薬／手術時間）
+// 麻酔=前投薬→帰舎、手術=手術開始→手術終了、抗菌薬=直近投与→手術終了。
+// 終了イベント未入力なら現在時刻まで＝ライブ表示。
+function updateLiveTimers() {
+  if (!current) return;
+  const now = nowTime();
+  setTimerBox('Anesth', current.anesthStart, current.returnToWard, now);
+  setTimerBox('Abx', latestAntibioticTime(), current.surgEnd, now);
+  setTimerBox('Surg', current.surgStart, current.surgEnd, now);
+}
+
+function setTimerBox(suffix, startT, endT, now) {
+  const valEl = document.getElementById('durVal' + suffix);
+  const boxEl = document.getElementById('durBox' + suffix);
+  if (!valEl || !boxEl) return;
+  const start = (startT || '').trim();
+  if (!start) { valEl.textContent = '—'; boxEl.classList.remove('dur-stopped'); return; }
+  const stopped = !!((endT || '').trim());
+  const mins = calcMinutesBetween(start, stopped ? endT : now);
+  if (mins === null) { valEl.textContent = '—'; boxEl.classList.remove('dur-stopped'); return; }
+  valEl.innerHTML = mins + '<span class="dur-unit">分</span>';
+  boxEl.classList.toggle('dur-stopped', stopped);
+}
+
+// 直近の抗菌薬投与時刻（抗菌薬イベント＋薬剤ログ内の抗菌薬から最新を採用）
+function latestAntibioticTime() {
+  const abxLabels = (DRUG_GROUPS.antibiotics || []).map(d => d.label);
+  let best = '', bestMin = -1;
+  const consider = t => { const m = timeToMin(t); if (m !== null && m > bestMin) { bestMin = m; best = t; } };
+  if ((current.antibioticTime || '').trim()) consider(current.antibioticTime);
+  (current.drugLog || []).forEach(r => { if (r.time && abxLabels.includes(r.drug)) consider(r.time); });
+  return best;
+}
+
+// 30秒ごとに経過時間カウンターを更新（ライブ表示）
+setInterval(() => { if (current) updateLiveTimers(); }, 30000);
 
 function onTimelineInput(key, val) {
   if (current) current[key] = val;
@@ -3068,64 +3264,285 @@ function setQuality(val, doSave = true) {
 // ─────────────────────────────────────────────────
 // DRUG LOG TABLE
 // ─────────────────────────────────────────────────
-function renderDrugLog() {
-  const tbody = document.getElementById('drugLogBody');
-  if (!tbody || !current) return;
-  tbody.innerHTML = '';
-  (current.drugLog || []).forEach((row, i) => addDrugLogRow(row));
+// 統合タイムライン全体を再描画（イベントボタン＋薬剤ボタン＋記録リスト）
+function renderTimeline() {
+  renderEventButtons();
+  renderQuickDoseBar();
+  renderTimelineList();
+  updateLiveTimers();
 }
 
-function addDrugLogRow(data) {
-  const tbody = document.getElementById('drugLogBody');
-  if (!tbody) return;
-  const r = data || {};
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input class="fin" type="text" value="${esc(r.drug||'')}" placeholder="薬剤名" oninput="autoSave()" autocomplete="off"></td>
-    <td><input class="fin" type="text" inputmode="decimal" value="${esc(r.dose||'')}" placeholder="0.0mg" oninput="autoSave()" autocomplete="off"></td>
-    <td><input class="fin" type="text" value="${esc(r.route||'')}" placeholder="IV" oninput="autoSave()" autocomplete="off"></td>
-    <td>
-      <div style="display:flex;gap:4px;align-items:center">
-        <input class="fin" type="text" value="${esc(r.time||'')}" placeholder="00:00" style="min-width:60px" oninput="autoSave()" autocomplete="off">
-        <button class="btn-now" onclick="setRowTime(this)" style="font-size:11px;padding:6px 7px;min-height:36px">今</button>
-      </div>
-    </td>
-    <td><button class="btn-del" onclick="this.closest('tr').remove();autoSave()">✕</button></td>`;
-  tbody.appendChild(tr);
+// 未記録の術中イベントをタップボタンで表示
+function renderEventButtons() {
+  const bar = document.getElementById('eventBtnBar');
+  if (!bar || !current) return;
+  const unset = INTRAOP_EVENTS.filter(e => !((current[e.key] || '').trim()));
+  bar.innerHTML = unset.length
+    ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}<span class="qdose-plus">＋今</span></button>`).join('')
+    : '<div class="evt-empty">全イベント記録済み</div>';
 }
 
-function setRowTime(btn) {
-  const input = btn.previousElementSibling;
-  if (input) { input.value = nowTime(); autoSave(); }
-}
-
-function autoFillDrugLog() {
-  if (!current) return;
-  const tbody = document.getElementById('drugLogBody');
-  if (!tbody) return;
-  let added = 0;
-  Object.values(DRUG_GROUPS).flat().forEach(d => {
-    const drugData = current.drugs[d.key];
-    if (!drugData || !drugData.use) return;
-    const dose = drugData.dose || '';
-    const route = drugData.route || d.def;
-    const w = parseFloat(current.weight);
-    let doseStr = dose;
-    if (dose && !isNaN(parseFloat(dose)) && w) {
-      const totalNum = parseFloat(dose) * w;
-      const total = totalNum.toFixed(2);
-      const dispUnit = d.unit.replace('/kg','').replace('/hr','').replace('/min','');
-      let volPart = '';
-      if (d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) {
-        volPart = ` (${(totalNum / d.conc).toFixed(2)}mL)`;
-      }
-      doseStr = `${dose}${d.unit} = ${total}${dispUnit}${volPart}`;
-    }
-    addDrugLogRow({ drug: d.label, dose: doseStr, route, time: '' });
-    added++;
+// イベント＋薬剤を時刻順に統合して1本のリストに描画
+function renderTimelineList() {
+  const list = document.getElementById('timelineList');
+  if (!list || !current) return;
+  if (!Array.isArray(current.drugLog)) current.drugLog = [];
+  const entries = [];
+  INTRAOP_EVENTS.forEach(e => {
+    if ((current[e.key] || '').trim()) entries.push({ type:'event', key:e.key, label:e.label, time:current[e.key] });
   });
-  if (!added) { showToast('チェックされた薬剤がありません'); return; }
-  showToast(`${added}件の薬剤を入力しました`);
+  current.drugLog.forEach((d, i) => {
+    entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'' });
+  });
+  entries.sort((a, b) => {
+    const ta = timeToMin(a.time), tb = timeToMin(b.time);
+    if (ta === null && tb === null) return 0;
+    if (ta === null) return 1;
+    if (tb === null) return -1;
+    return tb - ta;  // 新しい時刻ほど上
+  });
+  if (!entries.length) {
+    list.innerHTML = '<div class="evt-empty">上のボタンをタップすると、イベント・薬剤が時刻つきで記録されます</div>';
+    return;
+  }
+  list.innerHTML = entries.map(en => {
+    if (en.type === 'event') {
+      return `<div class="tl-row tl-event">
+        <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
+        <span class="tl-name">${en.label}</span>
+        <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
+      </div>`;
+    }
+    return `<div class="tl-row tl-drug">
+      <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
+      <input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
+      <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(en.dose)}" placeholder="用量" oninput="editDrugLog(${en.idx},'dose',this.value)" autocomplete="off">
+      <input class="fin tl-drug-route" type="text" value="${esc(en.route)}" placeholder="経路" oninput="editDrugLog(${en.idx},'route',this.value)" autocomplete="off">
+      <button class="btn-del" onclick="removeDrugLog(${en.idx})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// 薬剤ログ1件の項目を直接更新（描画しない＝入力フォーカス維持）
+function editDrugLog(idx, field, val) {
+  if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
+  current.drugLog[idx][field] = val;
+  if (field === 'drug') renderQuickDoseBar();
+  autoSave();
+}
+
+// 薬剤ログ1件の時刻を現在時刻に
+function drugRowNow(idx) {
+  if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
+  current.drugLog[idx].time = nowTime();
+  renderTimeline();
+  autoSave();
+}
+
+// 薬剤ログ1件を削除
+function removeDrugLog(idx) {
+  if (!current || !Array.isArray(current.drugLog)) return;
+  current.drugLog.splice(idx, 1);
+  renderTimeline();
+  autoSave();
+}
+
+// 時刻文字列(HH:MM)を分に変換。空欄・不正は null
+function timeToMin(t) {
+  const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+// DRUG_GROUPS から key で薬剤定義を取得
+function findDrugDef(key) {
+  let found = null;
+  Object.values(DRUG_GROUPS).flat().forEach(d => { if (d.key === key) found = d; });
+  return found;
+}
+
+// 薬剤定義 d と 体重あたり用量 perKg(数値) から用量表示文字列を組み立てる
+function formatDose(d, perKg) {
+  if (perKg == null || isNaN(perKg)) return '';
+  const dispUnit = d.unit.replace('/kg', '').replace('/hr', '').replace('/min', '');
+  const w = parseFloat(current.weight);
+  if (!w) return `${perKg}${d.unit}`;
+  const totalNum = perKg * w;
+  let volPart = '';
+  if (d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) {
+    volPart = ` (${(totalNum / d.conc).toFixed(2)}mL)`;
+  }
+  return `${perKg}${d.unit} = ${totalNum.toFixed(2)}${dispUnit}${volPart}`;
+}
+
+// プロトコルの標準用量（数値）。未設定なら NaN
+function stdDoseOf(key) {
+  return parseFloat((current.drugs && current.drugs[key] && current.drugs[key].dose) || '');
+}
+
+// 薬剤定義 d とプロトコル標準用量から用量表示文字列を組み立てる（一括入力用）
+function computeDoseStr(d) {
+  const raw = (current.drugs && current.drugs[d.key] && current.drugs[d.key].dose) || '';
+  const perKg = parseFloat(raw);
+  return isNaN(perKg) ? raw : formatDose(d, perKg);
+}
+
+// プロトコルでチェックした薬剤をワンタップ投与ボタンとして表示（投与回数バッジ付き）
+function renderQuickDoseBar() {
+  const bar = document.getElementById('quickDoseBar');
+  if (!bar || !current) return;
+  const used = Object.values(DRUG_GROUPS).flat()
+    .filter(d => current.drugs && current.drugs[d.key] && current.drugs[d.key].use);
+  if (!used.length) {
+    bar.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:2px 0">「A. 麻酔プロトコル」で薬剤をチェックすると、ここにワンタップ投与ボタンが出ます</div>';
+    return;
+  }
+  const log = current.drugLog || [];
+  bar.innerHTML = used.map(d => {
+    const hits = log.filter(r => r.drug === d.label && r.time);
+    let badge = '';
+    if (hits.length) {
+      let last = '', lastMin = -1;
+      hits.forEach(r => { const m = timeToMin(r.time); if (m !== null && m > lastMin) { lastMin = m; last = r.time; } });
+      badge = `<span class="qdose-badge">×${hits.length}${last ? ' ⏱' + esc(last) : ''}</span>`;
+    }
+    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}<span class="qdose-plus">＋今</span>${badge}</button>`;
+  }).join('');
+}
+
+// ワンタップ投与：用量選択パネルを開く
+let doseSelectKey = null;
+function quickDose(key) {
+  if (!current) return;
+  const d = findDrugDef(key);
+  if (!d) return;
+  doseSelectKey = key;
+  document.getElementById('doseSelectTitle').textContent = `${d.label} を記録`;
+  const std = stdDoseOf(key);
+  const body = document.getElementById('doseSelectBody');
+  let html = '';
+  if (!isNaN(std)) {
+    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">標準量 ${std}${d.unit} — 用量を選んでください</div>`;
+    html += `<div class="dose-opts">`;
+    html += doseOptBtn(d, +(std * 0.25).toFixed(4), '×0.25');
+    html += doseOptBtn(d, +(std * 0.5).toFixed(4), '×0.5');
+    html += doseOptBtn(d, std, '標準');
+    html += doseOptBtn(d, +(std * 1.5).toFixed(4), '×1.5');
+    html += doseOptBtn(d, +(std * 2).toFixed(4), '×2');
+    html += `</div>`;
+  } else {
+    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">プロトコルに標準量が未設定です。用量を入力してください。</div>`;
+  }
+  html += `<div style="display:flex;gap:6px;margin-top:11px;align-items:center">
+      <input id="doseCustomInput" class="fin" type="text" inputmode="decimal" placeholder="手入力 (${d.unit})" style="flex:1" autocomplete="off">
+      <button type="button" class="qdose-btn" onclick="confirmCustomDose()">この量で記録</button>
+    </div>`;
+  body.innerHTML = html;
+  document.getElementById('doseSelectModal').classList.add('on');
+}
+
+function doseOptBtn(d, perKg, label) {
+  return `<button type="button" class="dose-opt" onclick="commitDose(${perKg})">
+      <span class="dose-opt-label">${label}</span>
+      <span class="dose-opt-val">${esc(formatDose(d, perKg))}</span>
+    </button>`;
+}
+
+function confirmCustomDose() {
+  const v = parseFloat(document.getElementById('doseCustomInput')?.value || '');
+  if (isNaN(v)) { showToast('用量を入力してください'); return; }
+  commitDose(v);
+}
+
+// 選んだ用量・現在時刻で薬剤ログに1件追加
+function commitDose(perKg) {
+  if (!current || !doseSelectKey) return;
+  const d = findDrugDef(doseSelectKey);
+  if (!d) return;
+  collectForm();
+  if (!Array.isArray(current.drugLog)) current.drugLog = [];
+  const drugData = (current.drugs && current.drugs[doseSelectKey]) || {};
+  const t = nowTime();
+  current.drugLog.push({ drug: d.label, dose: formatDose(d, perKg), route: drugData.route || d.def, time: t });
+  renderTimeline();
+  autoSave();
+  closeDoseSelect();
+  showToast(`✅ ${d.label} を ${t} に記録`);
+}
+
+function closeDoseSelect() {
+  document.getElementById('doseSelectModal').classList.remove('on');
+  doseSelectKey = null;
+}
+
+// ─────────────────────────────────────────────────
+// 術中イベント・タイムライン
+// ─────────────────────────────────────────────────
+// 11イベントは current[key] と隠しフィールド f_<key> に保持し、
+// 麻酔時間の自動計算・Sheets/AnesLog連携はそのまま機能する。
+const INTRAOP_EVENTS = [
+  { key:'anesthStart',     label:'前投薬' },
+  { key:'inductionTime',   label:'導入' },
+  { key:'intubationTime',  label:'挿管' },
+  { key:'localAnesthTime', label:'局所麻酔' },
+  { key:'antibioticTime',  label:'抗菌薬' },
+  { key:'surgStart',       label:'手術開始' },
+  { key:'sutureStart',     label:'縫合開始' },
+  { key:'surgEnd',         label:'手術終了' },
+  { key:'antagonistTime',  label:'拮抗薬' },
+  { key:'extubation',      label:'抜管' },
+  { key:'returnToWard',    label:'帰舎' },
+];
+
+function evtLabel(key) {
+  const e = INTRAOP_EVENTS.find(x => x.key === key);
+  return e ? e.label : key;
+}
+
+// イベントを現在時刻で記録（既存値があれば上書き）
+function recordEvent(key) {
+  if (!current) return;
+  const t = nowTime();
+  current[key] = t;
+  setVal('f_' + key, t);
+  updateDurations();
+  renderTimeline();
+  autoSave();
+  showToast(`✅ ${evtLabel(key)} を ${t} に記録`);
+}
+
+// 記録済み時刻の手書き修正（描画はしない＝入力フォーカス維持）
+function editEventTime(key, val) {
+  if (!current) return;
+  current[key] = val;
+  setVal('f_' + key, val);
+  updateDurations();
+  autoSave();
+}
+
+// イベントの記録を取り消し
+function clearEvent(key) {
+  if (!current) return;
+  current[key] = '';
+  setVal('f_' + key, '');
+  updateDurations();
+  renderTimeline();
+  autoSave();
+}
+
+// 薬剤行を1件追加（現在時刻つき＝リスト最上部に表示）
+function addDrugLogRow() {
+  if (!current) return;
+  if (!Array.isArray(current.drugLog)) current.drugLog = [];
+  current.drugLog.push({ drug:'', dose:'', route:'', time: nowTime() });
+  renderTimelineList();
+  autoSave();
+}
+
+// 輸液の種類をボタンで設定（自由記載欄に反映、その後の手入力も可）
+function setFluidType(v) {
+  setVal('f_fluidType', v);
+  if (current) current.fluidType = v;
   autoSave();
 }
 
@@ -3135,6 +3552,10 @@ function autoFillDrugLog() {
 function switchTab(i) {
   document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('on', idx === i));
   document.querySelectorAll('.panel').forEach((p,idx) => p.classList.toggle('on', idx === i));
+  // 「手術/器材」タブを開いたら、低血圧の昇圧剤一覧を最新の選択状態で再描画
+  if (i === 1) renderHypotensionDrugs();
+  // 「術中/薬剤」タブを開いたら、統合タイムラインを再描画
+  if (i === 3) renderTimeline();
 }
 
 // ─────────────────────────────────────────────────
@@ -3216,7 +3637,7 @@ function generatePrintHTML(c) {
   const chip = (label, warn) => `<span class="p-chip${warn?' p-chip-warn':''}">${esc(label)}</span>`;
 
   // 選択された薬剤
-  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', postAnalg:'術後鎮痛'};
+  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛'};
   const selectedDrugs = [];
   Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
     drugs.forEach(d => {
