@@ -200,7 +200,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tl-row:last-child{border-bottom:none}
 .tl-row.tl-event{border-left-color:var(--blue)}
 .tl-row.tl-drug{border-left-color:var(--green)}
-.tl-time-in{flex:0 0 56px;min-height:38px;text-align:center;font-weight:700;padding:6px 2px}
+.tl-time-in{flex:0 0 84px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
 .tl-name{flex:1;min-width:0;font-size:14px;font-weight:600}
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
 .tl-drug-dose{flex:1.6;min-width:0;min-height:38px}
@@ -2437,7 +2437,7 @@ function today() {
 
 function nowTime() {
   const d = new Date();
-  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 }
 
 function makeCase() {
@@ -3168,8 +3168,8 @@ function clearBirthdate() {
 // ─────────────────────────────────────────────────
 function calcMinutesBetween(start, end) {
   if (!start || !end) return null;
-  const m1 = String(start).match(/^(\d{1,2}):(\d{2})$/);
-  const m2 = String(end).match(/^(\d{1,2}):(\d{2})$/);
+  const m1 = String(start).match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  const m2 = String(end).match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (!m1 || !m2) return null;
   const startMin = parseInt(m1[1],10) * 60 + parseInt(m1[2],10);
   let endMin = parseInt(m2[1],10) * 60 + parseInt(m2[2],10);
@@ -3297,7 +3297,7 @@ function renderTimelineList() {
     entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'' });
   });
   entries.sort((a, b) => {
-    const ta = timeToMin(a.time), tb = timeToMin(b.time);
+    const ta = timeToSec(a.time), tb = timeToSec(b.time);
     if (ta === null && tb === null) return 0;
     if (ta === null) return 1;
     if (tb === null) return -1;
@@ -3310,13 +3310,13 @@ function renderTimelineList() {
   list.innerHTML = entries.map(en => {
     if (en.type === 'event') {
       return `<div class="tl-row tl-event">
-        <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
+        <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
         <span class="tl-name">${en.label}</span>
         <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
       </div>`;
     }
     return `<div class="tl-row tl-drug">
-      <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
+      <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
       <input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
       <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(en.dose)}" placeholder="用量" oninput="editDrugLog(${en.idx},'dose',this.value)" autocomplete="off">
       <input class="fin tl-drug-route" type="text" value="${esc(en.route)}" placeholder="経路" oninput="editDrugLog(${en.idx},'route',this.value)" autocomplete="off">
@@ -3349,11 +3349,18 @@ function removeDrugLog(idx) {
   autoSave();
 }
 
-// 時刻文字列(HH:MM)を分に変換。空欄・不正は null
+// 時刻文字列(HH:MM または HH:MM:SS)を分に変換。空欄・不正は null
 function timeToMin(t) {
-  const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
+  const m = String(t || '').match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
   if (!m) return null;
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+// 時刻文字列(HH:MM または HH:MM:SS)を秒に変換。並び替え用（秒単位の順序保持）。空欄・不正は null
+function timeToSec(t) {
+  const m = String(t || '').match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + (m[3] ? parseInt(m[3], 10) : 0);
 }
 
 // DRUG_GROUPS から key で薬剤定義を取得
