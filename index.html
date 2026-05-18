@@ -996,16 +996,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
     <div class="modal-body">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px">🏥 現在の施設</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px">この端末で記録する病院。Sheetsからこの施設の予約だけ読み込みます</div>
-      <select id="settingFacility" onchange="onFacilityChange(this.value)" style="width:100%;padding:11px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px">
-        <option value="FAH">FAH — フクナガ動物病院</option>
-        <option value="TAC">TAC — たむら動物クリニック</option>
-        <option value="ANG">ANG — 姉ヶ崎どうぶつ病院</option>
-        <option value="BDY">BDY — BUDDY動物病院</option>
-        <option value="CKE">CKE — クッキー動物病院</option>
-        <option value="FDC">FDC — 福岡犬猫歯科&口腔外科</option>
-        <option value="KSN">KSN — くすの木動物病院</option>
-        <option value="HDM">HDM — ひだまり動物病院</option>
-      </select>
+      <select id="settingFacility" onchange="onFacilityChange(this.value)" style="width:100%;padding:11px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px"></select>
 
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;border-top:1px solid var(--border);padding-top:10px">🔗 Google Sheets連携</div>
 
@@ -2371,8 +2362,19 @@ function stopSyncTimer() {
   if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
 }
 
+// 施設選択ドロップダウンを FACILITY_LABELS_FALLBACK から生成
+// （この病院ビルドが扱う施設のみ。フクナガ版はFAH 1件のみになる）
+function renderFacilityOptions() {
+  const sel = document.getElementById('settingFacility');
+  if (!sel) return;
+  sel.innerHTML = Object.entries(FACILITY_LABELS_FALLBACK)
+    .map(([code, name]) => `<option value="${code}">${code} — ${esc(name)}</option>`)
+    .join('');
+}
+
 // 設定モーダル
 function openSettings() {
+  renderFacilityOptions();
   document.getElementById('settingFacility').value = sheetsConfig.facility;
   document.getElementById('settingSpreadsheetId').value = sheetsConfig.spreadsheetId || '';
   document.getElementById('settingWebAppUrl').value = sheetsConfig.webappUrl || '';
