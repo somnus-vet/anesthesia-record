@@ -2024,6 +2024,13 @@ async function syncFromSheets() {
     console.warn('syncFromSheets failed:', e);
     setSyncStatus('error');
     updateDiagnostics();
+    // エラー内容を画面（同期診断）に表示。file:// 起動時は CORS で必ず失敗するため明示。
+    const _msg = (location.protocol === 'file:')
+      ? '⚠️ ローカルファイル(file://)では同期できません。配布されたWebアドレス(https://…)で開いてください'
+      : '⚠️ 取得エラー: ' + ((e && e.message) || e);
+    const _stEl = document.getElementById('diagSyncState');
+    if (_stEl) { _stEl.textContent = _msg; _stEl.style.color = 'var(--red)'; }
+    try { showToast(_msg); } catch (_) {}
   }
   // キューに溜まっているpushを再送
   flushPushQueue();
