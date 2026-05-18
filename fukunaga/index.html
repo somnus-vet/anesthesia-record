@@ -452,6 +452,12 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
             <span class="flabel flabel-w">術式</span>
             <input class="fin" type="text" id="f_procedure" placeholder="術式" oninput="autoSave()">
           </div>
+          <div class="qdose-bar" style="margin:6px 0 2px">
+            <button type="button" class="qdose-btn" onclick="setProcedure('CAST')">CAST</button>
+            <button type="button" class="qdose-btn" onclick="setProcedure('SPAY')">SPAY</button>
+            <button type="button" class="qdose-btn" onclick="setProcedure('CT')">CT</button>
+            <button type="button" class="qdose-btn" onclick="setProcedure('歯科処置')">歯科処置</button>
+          </div>
           <div class="frow">
             <span class="flabel flabel-w">術者</span>
             <input class="fin" type="text" id="f_surgeon" placeholder="術者" oninput="autoSave()">
@@ -3554,6 +3560,13 @@ function addDrugLogRow() {
 function setFluidType(v) {
   setVal('f_fluidType', v);
   if (current) current.fluidType = v;
+  autoSave();
+}
+
+// 術式をボタンで設定（よく使う術式のクイック入力。その後の手入力も可）
+function setProcedure(v) {
+  setVal('f_procedure', v);
+  if (current) current.procedure = v;
   autoSave();
 }
 
