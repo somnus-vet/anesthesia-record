@@ -450,7 +450,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           </div>
           <div class="frow">
             <span class="flabel flabel-w">術式</span>
-            <input class="fin" type="text" id="f_procedure" placeholder="術式" oninput="autoSave()">
+            <input class="fin" type="text" id="f_procedure" placeholder="術式" oninput="autoSave();renderEventButtons()">
           </div>
           <div class="qdose-bar" style="margin:6px 0 2px">
             <button type="button" class="qdose-btn" onclick="setProcedure('CAST')">CAST</button>
@@ -2525,6 +2525,8 @@ function makeCase() {
     painMethod:'', painScore:'', postopPain:'', recNotes:'',
     // drug log
     drugLog: [],
+    // 術式特異イベント { key: 'HH:MM:SS' }（CAST/SPAY/CT）
+    procEvents: {},
     // notes
     notes:'',
   };
@@ -2888,6 +2890,7 @@ function collectForm() {
 
   // 薬剤ログ・術中イベントはタイムラインUIが current に直接保持するため、ここでは触らない
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
+  if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
 }
 
 function getVal(id) {
@@ -3283,11 +3286,15 @@ function renderTimeline() {
   updateLiveTimers();
 }
 
-// 未記録の術中イベントをタップボタンで表示
+// 未記録の術中イベントをタップボタンで表示（術式特異イベントも術式に応じて追加）
 function renderEventButtons() {
   const bar = document.getElementById('eventBtnBar');
   if (!bar || !current) return;
-  const unset = INTRAOP_EVENTS.filter(e => !((current[e.key] || '').trim()));
+  if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
+  const all = INTRAOP_EVENTS.concat(getActiveProcEvents());
+  const unset = all.filter(e => isProcEventKey(e.key)
+    ? !((current.procEvents[e.key] || '').trim())
+    : !((current[e.key] || '').trim()));
   bar.innerHTML = unset.length
     ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}<span class="qdose-plus">＋今</span></button>`).join('')
     : '<div class="evt-empty">全イベント記録済み</div>';
@@ -3298,9 +3305,13 @@ function renderTimelineList() {
   const list = document.getElementById('timelineList');
   if (!list || !current) return;
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
+  if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
   const entries = [];
   INTRAOP_EVENTS.forEach(e => {
     if ((current[e.key] || '').trim()) entries.push({ type:'event', key:e.key, label:e.label, time:current[e.key] });
+  });
+  Object.entries(current.procEvents).forEach(([key, t]) => {
+    if (t && String(t).trim()) entries.push({ type:'event', key, label:evtLabel(key), time:t });
   });
   current.drugLog.forEach((d, i) => {
     entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'' });
@@ -3496,7 +3507,7 @@ function closeDoseSelect() {
 // ─────────────────────────────────────────────────
 // 術中イベント・タイムライン
 // ─────────────────────────────────────────────────
-// 11イベントは current[key] と隠しフィールド f_<key> に保持し、
+// 術中イベント10項目は current[key] と隠しフィールド f_<key> に保持し、
 // 麻酔時間の自動計算・Sheets/AnesLog連携はそのまま機能する。
 const INTRAOP_EVENTS = [
   { key:'anesthStart',     label:'前投薬' },
@@ -3511,18 +3522,62 @@ const INTRAOP_EVENTS = [
   { key:'returnToWard',    label:'帰舎' },
 ];
 
+// 術式特異イベント。術式欄(f_procedure)が CAST/SPAY/CT を含むとき、
+// 該当イベントがタイムラインのボタン＆リストに追加される。
+// 記録値は current.procEvents = { <key>: 'HH:MM:SS' } に保持（drugLog同様）。
+const PROCEDURE_EVENTS = {
+  CAST: [
+    { key:'pe_cast_rorch', label:'右精巣摘出' },
+    { key:'pe_cast_lorch', label:'左精巣摘出' },
+  ],
+  SPAY: [
+    { key:'pe_spay_rovary', label:'右卵巣切除' },
+    { key:'pe_spay_lovary', label:'左卵巣切除' },
+    { key:'pe_spay_uterus', label:'子宮切除' },
+  ],
+  CT: [
+    { key:'pe_ct_start',    label:'撮影開始' },
+    { key:'pe_ct_contrast', label:'造影剤投与' },
+    { key:'pe_ct_end',      label:'撮影終了' },
+  ],
+};
+
+// 術式特異イベントのキーか（pe_ 接頭辞）
+function isProcEventKey(key) {
+  return String(key).indexOf('pe_') === 0;
+}
+
+// 現在の術式欄の値に対応する術式特異イベント配列を返す（該当なしは空配列）
+function getActiveProcEvents() {
+  const proc = (getVal('f_procedure') || (current && current.procedure) || '').toUpperCase();
+  for (const k of Object.keys(PROCEDURE_EVENTS)) {
+    if (proc.indexOf(k) !== -1) return PROCEDURE_EVENTS[k];
+  }
+  return [];
+}
+
 function evtLabel(key) {
   const e = INTRAOP_EVENTS.find(x => x.key === key);
-  return e ? e.label : key;
+  if (e) return e.label;
+  for (const arr of Object.values(PROCEDURE_EVENTS)) {
+    const p = arr.find(x => x.key === key);
+    if (p) return p.label;
+  }
+  return key;
 }
 
 // イベントを現在時刻で記録（既存値があれば上書き）
 function recordEvent(key) {
   if (!current) return;
   const t = nowTime();
-  current[key] = t;
-  setVal('f_' + key, t);
-  updateDurations();
+  if (isProcEventKey(key)) {
+    if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
+    current.procEvents[key] = t;
+  } else {
+    current[key] = t;
+    setVal('f_' + key, t);
+    updateDurations();
+  }
   renderTimeline();
   autoSave();
   showToast(`✅ ${evtLabel(key)} を ${t} に記録`);
@@ -3531,18 +3586,27 @@ function recordEvent(key) {
 // 記録済み時刻の手書き修正（描画はしない＝入力フォーカス維持）
 function editEventTime(key, val) {
   if (!current) return;
-  current[key] = val;
-  setVal('f_' + key, val);
-  updateDurations();
+  if (isProcEventKey(key)) {
+    if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
+    current.procEvents[key] = val;
+  } else {
+    current[key] = val;
+    setVal('f_' + key, val);
+    updateDurations();
+  }
   autoSave();
 }
 
 // イベントの記録を取り消し
 function clearEvent(key) {
   if (!current) return;
-  current[key] = '';
-  setVal('f_' + key, '');
-  updateDurations();
+  if (isProcEventKey(key)) {
+    if (current.procEvents) delete current.procEvents[key];
+  } else {
+    current[key] = '';
+    setVal('f_' + key, '');
+    updateDurations();
+  }
   renderTimeline();
   autoSave();
 }
@@ -3567,6 +3631,7 @@ function setFluidType(v) {
 function setProcedure(v) {
   setVal('f_procedure', v);
   if (current) current.procedure = v;
+  renderEventButtons();
   autoSave();
 }
 
@@ -3950,6 +4015,7 @@ function generatePrintHTML(c) {
         ${fld('帰舎', c.returnToWard)}
         ${fld('麻酔時間', c.anesthDur ? c.anesthDur+'分':'')}
         ${fld('手術時間', c.surgDur ? c.surgDur+'分':'')}
+        ${Object.entries(c.procEvents || {}).filter(([k,t]) => t && String(t).trim()).map(([k,t]) => fld(evtLabel(k), t)).join('')}
       </div>
       ${c.events ? `<div class="p-block"><span class="p-label">経過: </span><span class="p-text">${esc(c.events)}</span></div>` : ''}
     </div>
