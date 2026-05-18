@@ -3219,13 +3219,16 @@ function setTimerBox(suffix, startT, endT, now) {
   boxEl.classList.toggle('dur-stopped', stopped);
 }
 
-// 直近の抗菌薬投与時刻（抗菌薬イベント＋薬剤ログ内の抗菌薬から最新を採用）
-function latestAntibioticTime() {
+// 直近の抗菌薬投与時刻。薬剤ログ内のセファゾリン/アンピシリン投与の最新時刻を採用し、
+// 追加投与のたびにタイマーが計り直される。旧データは抗菌薬イベントも後方互換で考慮。
+function latestAntibioticTime(c) {
+  c = c || current;
+  if (!c) return '';
   const abxLabels = (DRUG_GROUPS.antibiotics || []).map(d => d.label);
-  let best = '', bestMin = -1;
-  const consider = t => { const m = timeToMin(t); if (m !== null && m > bestMin) { bestMin = m; best = t; } };
-  if ((current.antibioticTime || '').trim()) consider(current.antibioticTime);
-  (current.drugLog || []).forEach(r => { if (r.time && abxLabels.includes(r.drug)) consider(r.time); });
+  let best = '', bestSec = -1;
+  const consider = t => { const s = timeToSec(t); if (s !== null && s > bestSec) { bestSec = s; best = t; } };
+  if ((c.antibioticTime || '').trim()) consider(c.antibioticTime);
+  (c.drugLog || []).forEach(r => { if (r.time && abxLabels.includes(r.drug)) consider(r.time); });
   return best;
 }
 
@@ -3496,7 +3499,6 @@ const INTRAOP_EVENTS = [
   { key:'inductionTime',   label:'導入' },
   { key:'intubationTime',  label:'挿管' },
   { key:'localAnesthTime', label:'局所麻酔' },
-  { key:'antibioticTime',  label:'抗菌薬' },
   { key:'surgStart',       label:'手術開始' },
   { key:'sutureStart',     label:'縫合開始' },
   { key:'surgEnd',         label:'手術終了' },
@@ -3928,7 +3930,7 @@ function generatePrintHTML(c) {
         ${fld('導入', c.inductionTime)}
         ${fld('挿管', c.intubationTime)}
         ${fld('局所麻酔', c.localAnesthTime)}
-        ${fld('抗菌薬', c.antibioticTime)}
+        ${fld('抗菌薬', latestAntibioticTime(c))}
         ${fld('手術開始', c.surgStart)}
         ${fld('縫合開始', c.sutureStart)}
         ${fld('手術終了', c.surgEnd)}
