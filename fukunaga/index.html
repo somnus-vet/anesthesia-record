@@ -2055,9 +2055,14 @@ async function backfillInternalIdsToSheets(rows) {
 
 function mergeReservations(rows, onUpdate) {
   rows.forEach(r => {
-    if (!r['日付'] || !r['カルテNo']) return;
     let detail = {};
     try { if (r['詳細']) detail = JSON.parse(r['詳細']); } catch(e) {}
+    // gvizのCSV書き出しでカルテNo/日付列が空になることがあるため詳細JSONで補完
+    if (!r['カルテNo'] && (detail.caseNo || detail.patientId)) {
+      r['カルテNo'] = String(detail.caseNo || detail.patientId);
+    }
+    if (!r['日付'] && detail.date) r['日付'] = String(detail.date);
+    if (!r['日付'] || !r['カルテNo']) return;
     // 1) 内部ID で照合（最優先）
     let existing = null;
     const remoteId = r['内部ID'] || detail.id || '';
