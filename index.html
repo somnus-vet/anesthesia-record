@@ -205,6 +205,12 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
 .tl-drug-dose{flex:1.6;min-width:0;min-height:38px}
 .tl-drug-route{flex:0 0 52px;min-width:0;min-height:38px;text-align:center;padding:6px 2px}
+.tl-tube-in{flex:0 0 50px;min-width:0;min-height:38px;text-align:center;padding:6px 2px;font-size:13px}
+.tl-unit{font-size:11px;font-weight:700;color:var(--muted)}
+.tl-name-c{flex:0 0 auto}
+.tl-spacer{flex:1;min-width:0}
+.tl-diff{flex:0 0 auto;font-size:12px;font-weight:700;padding:7px 9px;border:1.5px solid var(--border);border-radius:6px;background:#f8fafc;color:var(--text);white-space:nowrap;min-height:38px;cursor:pointer}
+.tl-diff.on{background:#ffe1e1;border-color:var(--red);color:var(--red)}
 
 /* ELAPSED-TIME COUNTERS */
 .dur-bar{display:flex;gap:8px;padding:10px 12px}
@@ -2506,7 +2512,8 @@ function makeCase() {
     equipTemp:true, equipECG:true, equipHR:true, equipRR:true,
     equipEtCO2:true, equipSpO2:true, equipABP:false, equipGas:true,
     equipOscillo:false, equipDoppler:true, equipArterial:false,
-    circuit:'rebreath', tubeSize:'', bagSize:'',
+    circuit:'rebreath', tubeSize:'', tubeSizeFr:'', bagSize:'',
+    intubationDifficult:false,
     ivLF:false, ivRF:false, ivLR:false, ivRR:false,
     aLF:false, aRF:false, aLR:false, aRR:false,
     // protocol
@@ -3348,9 +3355,16 @@ function renderTimelineList() {
   }
   list.innerHTML = entries.map(en => {
     if (en.type === 'event') {
+      let extra = '';
+      if (en.key === 'intubationTime') {
+        extra = `<input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(current.tubeSize||'')}" placeholder="-" oninput="editIntubField('tubeSize',this.value)" autocomplete="off"><span class="tl-unit">mm</span>`
+          + `<input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(current.tubeSizeFr||'')}" placeholder="-" oninput="editIntubField('tubeSizeFr',this.value)" autocomplete="off"><span class="tl-unit">Fr</span>`
+          + `<button type="button" class="tl-diff${current.intubationDifficult?' on':''}" onclick="toggleIntubDifficult()">挿管困難 ${current.intubationDifficult?'有':'無'}</button>`;
+      }
       return `<div class="tl-row tl-event">
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
-        <span class="tl-name">${en.label}</span>
+        <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>
+        ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
       </div>`;
     }
@@ -3626,6 +3640,22 @@ function clearEvent(key) {
     setVal('f_' + key, '');
     updateDurations();
   }
+  renderTimeline();
+  autoSave();
+}
+
+// 挿管行のチューブサイズ等を更新（描画しない＝入力フォーカス維持）
+function editIntubField(field, val) {
+  if (!current) return;
+  current[field] = val;
+  if (field === 'tubeSize') setVal('f_tubeSize', val);
+  autoSave();
+}
+
+// 挿管困難の有無をトグル
+function toggleIntubDifficult() {
+  if (!current) return;
+  current.intubationDifficult = !current.intubationDifficult;
   renderTimeline();
   autoSave();
 }
@@ -4072,7 +4102,8 @@ function generatePrintHTML(c) {
         ${equip.length ? `<div>${equip.map(e => chip(e)).join('')}</div>` : ''}
         <div class="p-row" style="margin-top:3px">
           ${fld('回路', c.circuit)}
-          ${fld('チューブ', c.tubeSize)}
+          ${fld('チューブ', [c.tubeSize?c.tubeSize+'mm':'', c.tubeSizeFr?c.tubeSizeFr+'Fr':''].filter(Boolean).join(' / '))}
+          ${c.intubationDifficult?fld('挿管困難','有'):''}
           ${fld('バッグ', c.bagSize)}
           ${ivs.length ? fld('静脈', ivs.join('・')) : ''}
           ${arts.length ? fld('動脈', arts.join('・')) : ''}
