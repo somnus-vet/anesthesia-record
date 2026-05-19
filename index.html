@@ -1900,6 +1900,7 @@ let lastPushStatus = null;
 let lastPushDuration = null;
 // 短時間の重複push防止
 let recentPushKeys = {}; // {key: timestamp}
+let dedupRetryTimer = null; // 重複防止スキップ後の再送タイマー
 const PUSH_DEDUP_WINDOW_MS = 5000;
 
 function loadSheetsConfig() {
@@ -2170,6 +2171,9 @@ async function pushToSheets(caseObj, options = {}) {
   if (recentPushKeys[dedupKey] && (now - recentPushKeys[dedupKey]) < PUSH_DEDUP_WINDOW_MS) {
     lastPushStatus = `⏭ 重複防止スキップ (前回 ${Math.round((now-recentPushKeys[dedupKey])/1000)}秒前)`;
     updateDiagnostics();
+    // 連続操作で最新状態を取りこぼさないよう、ウィンドウ明けに1回だけ再送
+    clearTimeout(dedupRetryTimer);
+    dedupRetryTimer = setTimeout(() => pushToSheets(caseObj), PUSH_DEDUP_WINDOW_MS);
     return true;
   }
   recentPushKeys[dedupKey] = now;
@@ -3664,10 +3668,16 @@ let saveTimer = null;
 function autoSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
+    if (!current) return;
     collectForm();
     const idx = cases.findIndex(c => c.id === current.id);
     if (idx >= 0) cases[idx] = current;
     saveStorage();
+    // 薬剤・イベントボタン等の変更を「保存」ボタンなしで Sheets へ自動同期。
+    // pushToSheets 内に重複防止(5秒)＋ウィンドウ明け再送があり連打にも安全。
+    if (sheetsConfig.enabled && current.caseNo && current.date) {
+      pushToSheets(current);
+    }
   }, 800);
 }
 
