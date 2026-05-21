@@ -3322,7 +3322,7 @@ function renderEventButtons() {
     ? !((current.procEvents[e.key] || '').trim())
     : !((current[e.key] || '').trim()));
   bar.innerHTML = unset.length
-    ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}<span class="qdose-plus">＋今</span></button>`).join('')
+    ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}</button>`).join('')
     : '<div class="evt-empty">全イベント記録済み</div>';
 }
 
@@ -3392,6 +3392,7 @@ function drugRowNow(idx) {
   current.drugLog[idx].time = nowTime();
   renderTimeline();
   autoSave();
+  pushCurrentToSheets();
 }
 
 // 薬剤ログ1件を削除
@@ -3400,6 +3401,7 @@ function removeDrugLog(idx) {
   current.drugLog.splice(idx, 1);
   renderTimeline();
   autoSave();
+  pushCurrentToSheets();
 }
 
 // 時刻文字列(HH:MM または HH:MM:SS)を分に変換。空欄・不正は null
@@ -3468,7 +3470,7 @@ function renderQuickDoseBar() {
       hits.forEach(r => { const m = timeToMin(r.time); if (m !== null && m > lastMin) { lastMin = m; last = r.time; } });
       badge = `<span class="qdose-badge">×${hits.length}${last ? ' ⏱' + esc(last) : ''}</span>`;
     }
-    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}<span class="qdose-plus">＋今</span>${badge}</button>`;
+    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${badge}</button>`;
   }).join('');
 }
 
@@ -3528,6 +3530,7 @@ function commitDose(perKg) {
   current.drugLog.push({ drug: d.label, dose: formatDose(d, perKg), route: drugData.route || d.def, time: t });
   renderTimeline();
   autoSave();
+  pushCurrentToSheets();
   closeDoseSelect();
   showToast(`✅ ${d.label} を ${t} に記録`);
 }
@@ -3613,6 +3616,7 @@ function recordEvent(key) {
   }
   renderTimeline();
   autoSave();
+  pushCurrentToSheets();
   showToast(`✅ ${evtLabel(key)} を ${t} に記録`);
 }
 
@@ -3642,6 +3646,7 @@ function clearEvent(key) {
   }
   renderTimeline();
   autoSave();
+  pushCurrentToSheets();
 }
 
 // 挿管行のチューブサイズ等を更新（描画しない＝入力フォーカス維持）
@@ -3658,6 +3663,7 @@ function toggleIntubDifficult() {
   current.intubationDifficult = !current.intubationDifficult;
   renderTimeline();
   autoSave();
+  pushCurrentToSheets();
 }
 
 // 薬剤行を1件追加（現在時刻つき＝リスト最上部に表示）
@@ -3667,6 +3673,7 @@ function addDrugLogRow() {
   current.drugLog.push({ drug:'', dose:'', route:'', time: nowTime() });
   renderTimelineList();
   autoSave();
+  pushCurrentToSheets();
 }
 
 // 輸液の種類をボタンで設定（自由記載欄に反映、その後の手入力も可）
@@ -3708,12 +3715,20 @@ function autoSave() {
     const idx = cases.findIndex(c => c.id === current.id);
     if (idx >= 0) cases[idx] = current;
     saveStorage();
-    // 薬剤・イベントボタン等の変更を「保存」ボタンなしで Sheets へ自動同期。
-    // pushToSheets 内に重複防止(5秒)＋ウィンドウ明け再送があり連打にも安全。
-    if (sheetsConfig.enabled && current.caseNo && current.date) {
-      pushToSheets(current);
-    }
+    // 注意: 通常フィールドの入力途中で Sheets push されると未確定データが
+    // クラウドに送られて混乱するため、autoSave は localStorage 保存だけにする。
+    // Sheets push は (a) 術中タイムラインのボタン操作 (b) 戻る/保存ボタン
+    // のみで発火させる（pushCurrentToSheets を呼ぶ箇所を参照）。
   }, 800);
+}
+
+// 術中タイムラインの押下系操作から呼ぶ Sheets 同期。
+// 必須項目チェック＋重複防止は pushToSheets 内で行う。
+function pushCurrentToSheets() {
+  if (!current) return;
+  if (!sheetsConfig.enabled) return;
+  if (!current.caseNo || !current.date) return;
+  pushToSheets(current);
 }
 
 function saveCase() {
