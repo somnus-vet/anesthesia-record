@@ -708,11 +708,11 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           <!-- メイン溶液パネル -->
           <div style="background:#f0f4f8;border:1px solid var(--border);border-radius:7px;padding:8px;margin-bottom:8px">
             <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">🧪 メイン溶液 (Mixture)</div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">各薬剤の目標mg/kg＋合計溶液量を入力</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">薬剤(濃度)×ストック量(mL)を選び、合計薬液量(mL)に希釈</div>
             <div id="mixtureDrugs"></div>
             <button type="button" class="btn-mixture-add" onclick="addMixtureDrug()" style="background:#fff;border:1.5px dashed var(--blue);color:var(--blue);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;min-height:34px;margin-top:4px">+ 薬剤を追加</button>
             <div class="frow" style="margin-top:6px">
-              <span class="flabel">合計溶液量</span>
+              <span class="flabel">合計薬液量</span>
               <input class="fin fin-sm" type="text" inputmode="decimal" id="f_mixTotalVolume" placeholder="0" oninput="updateMixture()">
               <span class="unit">mL</span>
             </div>
@@ -1157,13 +1157,30 @@ const LOCAL_BLOCKS = [
   { key:'wound_soaker',       label:'創部留置カテーテル',  desc:'持続注入' },
 ];
 
-// 局所麻酔薬の選択肢と標準濃度（%）
+// 局所麻酔薬の選択肢（薬剤名 × 濃度% の組み合わせ）
+// 各薬剤の最大用量 (mg/kg) は薬剤名に対して一意（濃度依存しない）
 const LA_DRUG_OPTIONS = [
-  { name: 'リドカイン',   defaultConc: 2,    maxDog: 6, maxCat: 3 },
-  { name: 'ブピバカイン', defaultConc: 0.5,  maxDog: 2, maxCat: 1.5 },
-  { name: 'ロピバカイン', defaultConc: 0.5,  maxDog: 3, maxCat: 2 },
-  { name: 'メピバカイン', defaultConc: 2,    maxDog: 5, maxCat: 3 },
+  { name: 'リドカイン',   conc: 1,     maxDog: 6, maxCat: 3 },
+  { name: 'リドカイン',   conc: 2,     maxDog: 6, maxCat: 3 },
+  { name: 'ブピバカイン', conc: 0.125, maxDog: 2, maxCat: 1.5 },
+  { name: 'ブピバカイン', conc: 0.25,  maxDog: 2, maxCat: 1.5 },
+  { name: 'ブピバカイン', conc: 0.5,   maxDog: 2, maxCat: 1.5 },
+  { name: 'ロピバカイン', conc: 0.2,   maxDog: 3, maxCat: 2 },
+  { name: 'ロピバカイン', conc: 0.5,   maxDog: 3, maxCat: 2 },
 ];
+
+// 「リドカイン|2」形式の文字列から { name, conc } を取り出す
+function parseLaDrugKey(key) {
+  const [name, concStr] = String(key || '').split('|');
+  const conc = parseFloat(concStr);
+  return { name: name || '', conc: isNaN(conc) ? '' : conc };
+}
+function laDrugKey(name, conc) {
+  return `${name}|${conc}`;
+}
+function laDrugLabel(name, conc) {
+  return `${name} ${conc}%`;
+}
 
 const LOCAL_BLOCKS_BY_CATEGORY = [
   { cat: '浸潤系', keys: ['incisional','intraperitoneal','intratesticular'] },
@@ -1177,7 +1194,8 @@ const LOCAL_BLOCKS_BY_CATEGORY = [
 function getBlockDef(key) { return LOCAL_BLOCKS.find(b => b.key === key); }
 
 // ─────────────── メイン溶液 (Mixture) ───────────────
-// モデル: 各薬剤の目標mg/kg を 合計溶液量(totalVolume) mL に溶解
+// モデル: 各薬剤(濃度%) のストック液 stockMl を 合計溶液量(totalVolume) mL に溶解
+// 例: リドカイン 2% × 5mL を 合計 20mL に希釈 → 100mg を 5mg/mL で含む
 function ensureMixture() {
   if (!current.localMixture) current.localMixture = { drugs: [], totalVolume: '' };
   if (!Array.isArray(current.localMixture.drugs)) current.localMixture.drugs = [];
@@ -1185,6 +1203,20 @@ function ensureMixture() {
   if (current.localMixture.saline !== undefined && current.localMixture.totalVolume === undefined) {
     current.localMixture.totalVolume = '';
   }
+  // 旧スキーマ {name, mgkg} → 新スキーマ {name, conc, stockMl} へ移行
+  // mgkg は濃度を知らないと stockMl に逆算できないので破棄。デフォルト濃度を当てる。
+  current.localMixture.drugs.forEach(d => {
+    if (d.mgkg !== undefined && d.stockMl === undefined) {
+      delete d.mgkg;
+      d.stockMl = '';
+      if (d.conc === undefined || d.conc === '') {
+        if (d.name === 'リドカイン') d.conc = 2;
+        else if (d.name === 'ブピバカイン') d.conc = 0.5;
+        else if (d.name === 'ロピバカイン') d.conc = 0.5;
+        else d.conc = '';
+      }
+    }
+  });
   return current.localMixture;
 }
 
@@ -1193,13 +1225,17 @@ function renderMixture() {
   if (!el || !current) return;
   const mix = ensureMixture();
   el.innerHTML = mix.drugs.map((d, i) => {
-    const opts = LA_DRUG_OPTIONS.map(o => `<option value="${esc(o.name)}" ${d.name===o.name?'selected':''}>${esc(o.name)}</option>`).join('');
-    return `<div class="frow" style="gap:5px">
-      <select onchange="setMixtureField(${i},'name',this.value)" style="flex:1;min-width:90px;font-size:14px;padding:6px;border:1.5px solid var(--border);border-radius:6px;background:#fff;min-height:36px">
-        <option value="">薬剤…</option>${opts}
+    const curKey = laDrugKey(d.name, d.conc);
+    const opts = LA_DRUG_OPTIONS.map(o => {
+      const k = laDrugKey(o.name, o.conc);
+      return `<option value="${esc(k)}" ${curKey===k?'selected':''}>${esc(laDrugLabel(o.name, o.conc))}</option>`;
+    }).join('');
+    return `<div class="frow" style="gap:5px;align-items:center">
+      <select onchange="setMixtureDrugKey(${i}, this.value)" style="flex:1;min-width:140px;font-size:14px;padding:6px;border:1.5px solid var(--border);border-radius:6px;background:#fff;min-height:36px">
+        <option value="">薬剤+濃度…</option>${opts}
       </select>
-      <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(d.mgkg||'')}" oninput="setMixtureField(${i},'mgkg',this.value)" style="width:60px">
-      <span class="unit">mg/kg</span>
+      <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(d.stockMl||'')}" oninput="setMixtureField(${i},'stockMl',this.value)" style="width:60px">
+      <span class="unit">mL</span>
       <button type="button" onclick="removeMixtureDrug(${i})" style="background:#fff;border:1.5px solid #f5c2c7;color:#dc3545;border-radius:6px;width:32px;height:32px;font-size:14px;cursor:pointer">×</button>
     </div>`;
   }).join('');
@@ -1207,9 +1243,24 @@ function renderMixture() {
   renderMixtureSummary();
 }
 
+// 「薬剤名|濃度」セレクトの値変更で name と conc を同時更新
+function setMixtureDrugKey(idx, value) {
+  const mix = ensureMixture();
+  if (!mix.drugs[idx]) return;
+  const parsed = parseLaDrugKey(value);
+  mix.drugs[idx].name = parsed.name;
+  mix.drugs[idx].conc = parsed.conc;
+  renderMixtureSummary();
+  Object.keys(current.localBlocks || {}).forEach(k => {
+    if (current.localBlocks[k]?.use) refreshBlockCalc(k);
+  });
+  updateBlockSummary();
+  autoSave();
+}
+
 function addMixtureDrug() {
   const mix = ensureMixture();
-  mix.drugs.push({ name: 'リドカイン', mgkg: '' });
+  mix.drugs.push({ name: 'リドカイン', conc: 2, stockMl: '' });
   renderMixture();
   autoSave();
 }
@@ -1248,16 +1299,18 @@ function updateMixture() {
 }
 
 // 混合溶液の総量・各薬剤の総mg・mg/mLを計算
+// 各薬剤の総mg = ストック濃度% × 10 × stockMl   ( X% = X g/100mL = 10X mg/mL )
 function computeMixtureInfo() {
   const mix = ensureMixture();
   const totalVol = parseFloat(mix.totalVolume) || 0;
   const weight = parseFloat(current && current.weight) || 0;
   const info = { totalVol, weight, drugs: [] };
   mix.drugs.forEach(d => {
-    const mgkg = parseFloat(d.mgkg) || 0;
-    const totalMg = mgkg * weight;
+    const conc = parseFloat(d.conc) || 0;
+    const stockMl = parseFloat(d.stockMl) || 0;
+    const totalMg = conc * 10 * stockMl;
     const mgPerMl = totalVol > 0 ? totalMg / totalVol : 0;
-    info.drugs.push({ name: d.name, mgkg, totalMg, mgPerMl });
+    info.drugs.push({ name: d.name, conc, stockMl, totalMg, mgPerMl });
   });
   return info;
 }
@@ -1267,19 +1320,14 @@ function renderMixtureSummary() {
   if (!el) return;
   const info = computeMixtureInfo();
   if (!info.totalVol && info.drugs.length === 0) {
-    el.innerHTML = '<span style="color:var(--muted)">薬剤(mg/kg)と合計溶液量を入力してください</span>';
+    el.innerHTML = '<span style="color:var(--muted)">薬剤+濃度・ストック量(mL)と合計薬液量を入力してください</span>';
     return;
   }
-  const isCat = current && current.species === 'cat';
   const wStr = info.weight ? `体重${info.weight}kg` : '体重未入力';
-  let html = `<strong>📊 総量 ${info.totalVol.toFixed(2)}mL</strong> <span style="font-size:11px;color:var(--muted)">（${wStr}, ${isCat?'猫':'犬'}基準）</span>`;
+  let html = `<strong>📊 合計薬液量 ${info.totalVol.toFixed(2)}mL</strong> <span style="font-size:11px;color:var(--muted)">（${wStr}）</span>`;
   info.drugs.forEach(d => {
     if (!d.name) return;
-    const drugDef = LA_DRUG_OPTIONS.find(o => o.name === d.name);
-    const maxDose = drugDef ? (isCat ? drugDef.maxCat : drugDef.maxDog) : null;
-    const over = maxDose && d.mgkg > maxDose;
-    const tag = over ? '<span style="color:#c0392b">⚠️超過</span>' : (maxDose && d.mgkg > 0 ? '✓' : '');
-    html += `<br>${esc(d.name)} <strong>${d.mgkg}mg/kg</strong>: ${d.totalMg.toFixed(2)}mg → <strong>${d.mgPerMl.toFixed(2)}mg/mL</strong> ${tag}${maxDose?` <span style="font-size:11px;color:var(--muted)">(max ${maxDose}mg/kg)</span>`:''}`;
+    html += `<br>${esc(d.name)} <strong>${d.conc}%</strong> × <strong>${d.stockMl||0}mL</strong> → ${d.totalMg.toFixed(2)}mg / <strong>${d.mgPerMl.toFixed(2)}mg/mL</strong>`;
   });
   el.innerHTML = html;
 }
@@ -4022,16 +4070,18 @@ function generatePrintHTML(c) {
       if (!blocks.length && !customs.length && !hasMix) return '';
       const weight = parseFloat(c.weight) || 0;
       const totalVol = parseFloat(mix.totalVolume) || 0;
+      // 新スキーマ {name, conc%, stockMl}: 総mg = conc × 10 × stockMl
       const mixDrugs = (mix.drugs||[]).map(d => {
-        const mgkg = parseFloat(d.mgkg) || 0;
-        const totalMg = mgkg * weight;
-        return { name: d.name, mgkg, totalMg, mgPerMl: totalVol > 0 ? totalMg / totalVol : 0 };
+        const conc = parseFloat(d.conc) || 0;
+        const stockMl = parseFloat(d.stockMl) || 0;
+        const totalMg = conc * 10 * stockMl;
+        return { name: d.name, conc, stockMl, totalMg, mgPerMl: totalVol > 0 ? totalMg / totalVol : 0 };
       }).filter(d => d.name);
       let mixHtml = '';
       if (hasMix) {
-        mixHtml = `<div class="p-block"><strong>メイン溶液:</strong> 合計${totalVol.toFixed(2)}mL`;
+        mixHtml = `<div class="p-block"><strong>メイン溶液:</strong> 合計薬液量 ${totalVol.toFixed(2)}mL`;
         mixDrugs.forEach(d => {
-          mixHtml += ` / ${esc(d.name)} ${d.mgkg}mg/kg = ${d.totalMg.toFixed(1)}mg → ${d.mgPerMl.toFixed(2)}mg/mL`;
+          mixHtml += ` / ${esc(d.name)} ${d.conc}% × ${d.stockMl}mL = ${d.totalMg.toFixed(1)}mg → ${d.mgPerMl.toFixed(2)}mg/mL`;
         });
         mixHtml += `</div>`;
       }
