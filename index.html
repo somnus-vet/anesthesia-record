@@ -1243,13 +1243,57 @@ function renderMixture() {
   renderMixtureSummary();
 }
 
+// ─── 中毒量チェック（メイン溶液の総薬剤量 ÷ 体重）───
+// 中毒量の判定基準は LA_DRUG_OPTIONS の maxDog/maxCat（種で切替）。
+// mg/kg は totalVolume に依存しない（希釈率は関係なく、入れた総mg / 体重）。
+function laMaxDose(name) {
+  const opt = LA_DRUG_OPTIONS.find(o => o.name === name);
+  if (!opt) return null;
+  const isCat = current && current.species === 'cat';
+  return isCat ? opt.maxCat : opt.maxDog;
+}
+function mgkgOfMixtureDrug(d) {
+  const conc = parseFloat(d && d.conc) || 0;
+  const stockMl = parseFloat(d && d.stockMl) || 0;
+  const weight = parseFloat(current && current.weight) || 0;
+  if (!weight) return 0;
+  return (conc * 10 * stockMl) / weight;
+}
+// 変更前(oldData)は OK だったのに変更後に max を超える場合だけ確認ダイアログを出す。
+// すでに超過状態からさらに増やすケースでは何度も出さない。
+// 戻り値: true=このまま進める / false=ユーザがキャンセル → 呼び出し側で値を戻す
+function confirmIfCrossedOverdose(newData, oldData) {
+  if (!newData || !newData.name) return true;
+  const max = laMaxDose(newData.name);
+  if (max == null) return true;
+  const newMgkg = mgkgOfMixtureDrug(newData);
+  if (newMgkg <= max) return true;
+  const oldMgkg = mgkgOfMixtureDrug(oldData);
+  if (oldMgkg > max) return true; // 元から超過 → 再確認しない
+  const species = (current && current.species === 'cat') ? '猫' : '犬';
+  return confirm(
+    `⚠️ 中毒量超過のおそれ\n\n` +
+    `${newData.name} ${newData.conc}% × ${newData.stockMl}mL\n` +
+    `→ ${newMgkg.toFixed(2)} mg/kg は ${species}の最大用量 ${max} mg/kg を超えています。\n\n` +
+    `このまま設定を続けますか？`
+  );
+}
+
 // 「薬剤名|濃度」セレクトの値変更で name と conc を同時更新
 function setMixtureDrugKey(idx, value) {
   const mix = ensureMixture();
   if (!mix.drugs[idx]) return;
+  const oldData = { ...mix.drugs[idx] };
   const parsed = parseLaDrugKey(value);
   mix.drugs[idx].name = parsed.name;
   mix.drugs[idx].conc = parsed.conc;
+  if (!confirmIfCrossedOverdose(mix.drugs[idx], oldData)) {
+    // 取り消し: 元の薬剤+濃度に戻す
+    mix.drugs[idx].name = oldData.name;
+    mix.drugs[idx].conc = oldData.conc;
+    renderMixture(); // セレクト要素を旧値に再描画（入力テキストではないのでOK）
+    return;
+  }
   renderMixtureSummary();
   Object.keys(current.localBlocks || {}).forEach(k => {
     if (current.localBlocks[k]?.use) refreshBlockCalc(k);
@@ -1277,7 +1321,18 @@ function removeMixtureDrug(idx) {
 function setMixtureField(idx, field, value) {
   const mix = ensureMixture();
   if (!mix.drugs[idx]) return;
+  const oldData = { ...mix.drugs[idx] };
   mix.drugs[idx][field] = value;
+  // stockMl 変更時のみ中毒量チェック。閾値を跨いだ瞬間に確認ダイアログ
+  if (field === 'stockMl' && !confirmIfCrossedOverdose(mix.drugs[idx], oldData)) {
+    mix.drugs[idx][field] = oldData[field];
+    // 入力欄の値だけ戻す（全体再描画は避けてフォーカス維持）
+    const rows = document.querySelectorAll('#mixtureDrugs .frow');
+    const inp = rows[idx] && rows[idx].querySelector('.fdose');
+    if (inp) inp.value = oldData[field] || '';
+    renderMixtureSummary();
+    return;
+  }
   renderMixtureSummary();
   // 各ブロックの計算表示のみ更新（入力欄は触らない）
   Object.keys(current.localBlocks || {}).forEach(k => {
@@ -1298,8 +1353,9 @@ function updateMixture() {
   autoSave();
 }
 
-// 混合溶液の総量・各薬剤の総mg・mg/mLを計算
+// 混合溶液の総量・各薬剤の総mg・mg/mL・mg/kgを計算
 // 各薬剤の総mg = ストック濃度% × 10 × stockMl   ( X% = X g/100mL = 10X mg/mL )
+// mg/kg = 総mg / 体重（メイン溶液を全量使った場合の最大被曝量）
 function computeMixtureInfo() {
   const mix = ensureMixture();
   const totalVol = parseFloat(mix.totalVolume) || 0;
@@ -1310,7 +1366,8 @@ function computeMixtureInfo() {
     const stockMl = parseFloat(d.stockMl) || 0;
     const totalMg = conc * 10 * stockMl;
     const mgPerMl = totalVol > 0 ? totalMg / totalVol : 0;
-    info.drugs.push({ name: d.name, conc, stockMl, totalMg, mgPerMl });
+    const mgkg = weight > 0 ? totalMg / weight : 0;
+    info.drugs.push({ name: d.name, conc, stockMl, totalMg, mgPerMl, mgkg });
   });
   return info;
 }
@@ -1323,12 +1380,32 @@ function renderMixtureSummary() {
     el.innerHTML = '<span style="color:var(--muted)">薬剤+濃度・ストック量(mL)と合計薬液量を入力してください</span>';
     return;
   }
+  const isCat = current && current.species === 'cat';
+  const species = isCat ? '猫' : '犬';
   const wStr = info.weight ? `体重${info.weight}kg` : '体重未入力';
-  let html = `<strong>📊 合計薬液量 ${info.totalVol.toFixed(2)}mL</strong> <span style="font-size:11px;color:var(--muted)">（${wStr}）</span>`;
+  let html = `<strong>📊 合計薬液量 ${info.totalVol.toFixed(2)}mL</strong> <span style="font-size:11px;color:var(--muted)">（${wStr} / ${species}基準）</span>`;
+  let anyOver = false;
   info.drugs.forEach(d => {
     if (!d.name) return;
-    html += `<br>${esc(d.name)} <strong>${d.conc}%</strong> × <strong>${d.stockMl||0}mL</strong> → ${d.totalMg.toFixed(2)}mg / <strong>${d.mgPerMl.toFixed(2)}mg/mL</strong>`;
+    const drugDef = LA_DRUG_OPTIONS.find(o => o.name === d.name);
+    const maxDose = drugDef ? (isCat ? drugDef.maxCat : drugDef.maxDog) : null;
+    const over = maxDose != null && d.mgkg > maxDose && d.mgkg > 0;
+    if (over) anyOver = true;
+    let dosageTag = '';
+    if (maxDose != null && info.weight > 0) {
+      dosageTag = over
+        ? ` · <strong style="color:#c0392b">⚠️ ${d.mgkg.toFixed(2)} mg/kg &gt; 最大 ${maxDose} mg/kg</strong>`
+        : ` · <span style="color:var(--green)">✓ ${d.mgkg.toFixed(2)} mg/kg / 最大 ${maxDose} mg/kg</span>`;
+    } else if (info.weight > 0) {
+      dosageTag = ` · ${d.mgkg.toFixed(2)} mg/kg`;
+    } else {
+      dosageTag = ' · <span style="color:var(--muted)">mg/kg は体重未入力</span>';
+    }
+    html += `<br>${esc(d.name)} <strong>${d.conc}%</strong> × <strong>${d.stockMl||0}mL</strong> → ${d.totalMg.toFixed(2)}mg / <strong>${d.mgPerMl.toFixed(2)}mg/mL</strong>${dosageTag}`;
   });
+  if (anyOver) {
+    html += `<br><div style="margin-top:6px;padding:6px 8px;background:#fdecea;border:1px solid #e74c3c;border-radius:5px;color:#922b21;font-weight:700">⚠️ メイン溶液全量を使うと中毒量を超えます。stockMlか濃度を見直してください。</div>`;
+  }
   el.innerHTML = html;
 }
 
