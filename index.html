@@ -3724,11 +3724,14 @@ function autoSave() {
 
 // 術中タイムラインの押下系操作から呼ぶ Sheets 同期。
 // 必須項目チェック＋重複防止は pushToSheets 内で行う。
+// skipFollowupSync: ボタン押下直後の自動再同期(populateForm)を抑止し、
+//   入力中のチューブサイズ/IV経路等が再描画で消えるのを防ぐ。
+//   30秒ポーリングで他端末からの差分は拾えるので問題なし。
 function pushCurrentToSheets() {
   if (!current) return;
   if (!sheetsConfig.enabled) return;
   if (!current.caseNo || !current.date) return;
-  pushToSheets(current);
+  pushToSheets(current, {skipFollowupSync: true});
 }
 
 function saveCase() {
