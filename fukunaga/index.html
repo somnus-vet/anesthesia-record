@@ -205,6 +205,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tl-row.tl-fluid{border-left-color:#2980b9}
 .tl-row.tl-vent{border-left-color:#16a085}
 .tl-row.tl-spont{border-left-color:#27ae60}
+.tl-row.tl-gas{border-left-color:#d35400}
 .tl-time-in{flex:0 0 84px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
 .tl-name{flex:1;min-width:0;font-size:14px;font-weight:600}
 .tl-kind{flex:0 0 auto;font-size:12px;font-weight:700;padding:4px 7px;border-radius:5px;white-space:nowrap}
@@ -213,6 +214,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tl-kind-fluid{background:#d8ecf7;color:#1a5478}
 .tl-kind-vent{background:#d4ede5;color:#0a6b53}
 .tl-kind-spont{background:#dcefd4;color:#1f6b34}
+.tl-kind-gas{background:#fae6d5;color:#a3501a}
 .tl-from{flex:0 0 44px;min-height:38px;line-height:38px;text-align:center;font-size:13px;color:var(--muted);font-weight:700;background:#f3f5f8;border-radius:5px}
 .tl-arrow{flex:0 0 auto;font-size:14px;color:var(--muted);font-weight:700;padding:0 1px}
 .tl-to-in{flex:0 0 70px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
@@ -2695,6 +2697,7 @@ function makeCase() {
     //   memo/position: { time, kind, text }
     //   fluid/vent:    { time, kind, from, to }  // 輸液速度・気道内圧 変化記録
     //   cri:           { time, kind, drugKey, drugLabel, unit, from, to }
+    //   gas:           { time, kind, drugKey, drugLabel, unit, from, to }  // 揮発性麻酔薬濃度
     //   spont:         { time, kind }  // 自発呼吸マーカー
     freeNotes: [],
     // notes
@@ -3102,6 +3105,10 @@ function setSegVal(key, val) {
 function toggleChk(el, key) {
   el.classList.toggle('on');
   if (current) current[key] = el.classList.contains('on');
+  // 維持薬(maint*) の変更を術中タイムラインの動的ボタンに即反映
+  if (key && key.indexOf('maint') === 0) {
+    try { renderEventButtons(); } catch (_) {}
+  }
   autoSave();
 }
 
@@ -3117,6 +3124,8 @@ function toggleDrug(key, event) {
   current.drugs[key].use = !current.drugs[key].use;
   const row = document.getElementById('drow_' + key);
   if (row) row.classList.toggle('on', current.drugs[key].use);
+  // CRI薬剤のチェック状態を術中タイムラインの動的ボタンに即反映（タブ切替を待たずに）
+  try { renderEventButtons(); } catch (_) {}
   autoSave();
 }
 
@@ -3474,6 +3483,14 @@ function renderEventButtons() {
     + `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="addFreeNote('fluid')">＋輸液</button>`
     + `<button type="button" class="qdose-btn" style="background:#d4ede5;border-color:#5cba9d;color:#0a6b53" onclick="addFreeNote('vent')">＋人工呼吸</button>`
     + `<button type="button" class="qdose-btn" style="background:#dcefd4;border-color:#7ac257;color:#1f6b34" onclick="addFreeNote('spont')">＋自発呼吸</button>`;
+  // プロトコルでチェック済みの維持薬(揮発性麻酔薬) を動的ボタン化（濃度の変化記録）
+  const gasBtns = [
+    ['iso',  current.maintIsoflurane,  'イソフルラン'],
+    ['sevo', current.maintSevoflurane, 'セボフルラン'],
+  ].filter(g => g[1]).map(g => {
+    const opts = `{drugKey:'${g[0]}',drugLabel:'${esc(g[2])}',unit:'%'}`;
+    return `<button type="button" class="qdose-btn" style="background:#fae6d5;border-color:#e8a96b;color:#a3501a" onclick="addFreeNote('gas',${opts})">＋${esc(g[2])}</button>`;
+  }).join('');
   // プロトコルでチェック済みのCRI薬剤を動的ボタン化（薬剤特異の変化記録）
   const criBtns = (DRUG_GROUPS.cri || [])
     .filter(d => current.drugs && current.drugs[d.key] && current.drugs[d.key].use)
@@ -3484,7 +3501,7 @@ function renderEventButtons() {
   bar.innerHTML = (unset.length
     ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}</button>`).join('')
     : '<div class="evt-empty" style="margin-right:8px">全イベント記録済み</div>')
-    + freeBtns + criBtns;
+    + freeBtns + gasBtns + criBtns;
 }
 
 // イベント＋薬剤を時刻順に統合して1本のリストに描画
@@ -3535,13 +3552,16 @@ function renderTimelineList() {
     }
     if (en.type === 'free') {
       const k = en.kind || 'memo';
-      // 値変化型（輸液 / 人工呼吸気道内圧 / CRI薬剤）: [from] → [to入力] [unit]
-      if (k === 'fluid' || k === 'vent' || k === 'cri') {
+      // 値変化型（輸液 / 気道内圧 / CRI / 維持薬gas）: [from] → [to入力] [unit]
+      if (k === 'fluid' || k === 'vent' || k === 'cri' || k === 'gas') {
         let lbl, kindCls, rowCls, unitStr;
         if (k === 'fluid') {
           lbl = '輸液'; kindCls = 'tl-kind-fluid'; rowCls = 'tl-fluid'; unitStr = 'mL/kg/h';
         } else if (k === 'vent') {
           lbl = '気道内圧'; kindCls = 'tl-kind-vent'; rowCls = 'tl-vent'; unitStr = 'cmH₂O';
+        } else if (k === 'gas') {
+          lbl = esc(en.drugLabel || '維持薬');
+          kindCls = 'tl-kind-gas'; rowCls = 'tl-gas'; unitStr = esc(en.unit || '%');
         } else {
           lbl = `${esc(en.drugLabel || 'CRI')}(CRI)`;
           kindCls = 'tl-kind-fluid'; rowCls = 'tl-fluid'; unitStr = esc(en.unit || '');
@@ -3615,13 +3635,13 @@ function removeDrugLog(idx) {
 }
 
 // フリー記載イベントを現在時刻で1件追加（複数回登録可）
-// kind: 'memo' | 'position' | 'fluid' | 'vent' | 'spont' | 'cri'
-// opts (CRIのみ): { drugKey, drugLabel, unit }
-// 値変化型（fluid/vent/cri）は同種の最新 to を新 from に自動引継ぎ。無ければ '0'。
+// kind: 'memo' | 'position' | 'fluid' | 'vent' | 'spont' | 'cri' | 'gas'
+// opts (cri/gasのみ): { drugKey, drugLabel, unit }
+// 値変化型（fluid/vent/cri/gas）は同種(+CRI/gasは同薬剤)の最新 to を新 from に自動引継ぎ。無ければ '0'。
 function addFreeNote(kind, opts) {
   if (!current) return;
   if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
-  const valid = ['memo','position','fluid','vent','spont','cri'];
+  const valid = ['memo','position','fluid','vent','spont','cri','gas'];
   const k = valid.indexOf(kind) >= 0 ? kind : 'memo';
   const entry = { time: nowTime(), kind: k };
   if (k === 'memo' || k === 'position') {
@@ -3633,14 +3653,14 @@ function addFreeNote(kind, opts) {
     }
     entry.from = prev || '0';
     entry.to = '';
-  } else if (k === 'cri') {
+  } else if (k === 'cri' || k === 'gas') {
     entry.drugKey = (opts && opts.drugKey) || '';
     entry.drugLabel = (opts && opts.drugLabel) || '';
-    entry.unit = (opts && opts.unit) || '';
+    entry.unit = (opts && opts.unit) || (k === 'gas' ? '%' : '');
     let prev = '';
     for (let i = current.freeNotes.length - 1; i >= 0; i--) {
       const r = current.freeNotes[i];
-      if (r.kind === 'cri' && r.drugKey === entry.drugKey) { prev = r.to || ''; break; }
+      if (r.kind === k && r.drugKey === entry.drugKey) { prev = r.to || ''; break; }
     }
     entry.from = prev || '0';
     entry.to = '';
@@ -4153,12 +4173,12 @@ function generatePrintHTML(c) {
   const drugLogRows = (c.drugLog || []).filter(r => r.drug || r.dose || r.time)
     .map(r => `<tr><td>${esc(r.time||'')}</td><td>${esc(r.drug||'')}</td><td>${esc(r.dose||'')}</td><td>${esc(r.route||'')}</td><td>${esc(r.note||'')}</td></tr>`).join('');
 
-  // フリー記載イベント（メモ/体位変換/輸液/気道内圧/CRI/自発呼吸）
+  // フリー記載イベント（メモ/体位変換/輸液/気道内圧/CRI/維持薬/自発呼吸）
   const freeNoteRows = (c.freeNotes || []).filter(n => {
     if (!n) return false;
     const k = n.kind || 'memo';
     if (k === 'spont') return !!n.time;
-    if (k === 'fluid' || k === 'vent' || k === 'cri') return !!(n.time && (n.from || n.to));
+    if (k === 'fluid' || k === 'vent' || k === 'cri' || k === 'gas') return !!(n.time && (n.from || n.to));
     return !!(n.time || n.text);
   }).map(n => {
     const k = n.kind || 'memo';
@@ -4168,6 +4188,7 @@ function generatePrintHTML(c) {
     else if (k === 'vent') { kindLbl = '気道内圧'; body = `${n.from||'0'} → ${n.to||''} cmH₂O`; }
     else if (k === 'spont') { kindLbl = '自発呼吸'; body = ''; }
     else if (k === 'cri') { kindLbl = `${n.drugLabel||'CRI'}(CRI)`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||''}`; }
+    else if (k === 'gas') { kindLbl = `${n.drugLabel||'維持薬'}`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||'%'}`; }
     else { kindLbl = 'メモ'; body = n.text || ''; }
     return `<tr><td>${esc(n.time||'')}</td><td>${esc(kindLbl)}</td><td>${esc(body)}</td></tr>`;
   }).join('');
