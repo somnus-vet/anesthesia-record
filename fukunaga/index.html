@@ -200,8 +200,14 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tl-row:last-child{border-bottom:none}
 .tl-row.tl-event{border-left-color:var(--blue)}
 .tl-row.tl-drug{border-left-color:var(--green)}
+.tl-row.tl-memo{border-left-color:var(--orange)}
+.tl-row.tl-position{border-left-color:#9b59b6}
 .tl-time-in{flex:0 0 84px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
 .tl-name{flex:1;min-width:0;font-size:14px;font-weight:600}
+.tl-kind{flex:0 0 auto;font-size:12px;font-weight:700;padding:4px 7px;border-radius:5px;white-space:nowrap}
+.tl-kind-memo{background:#fdecd2;color:#b8651b}
+.tl-kind-position{background:#ece1f3;color:#6b3a8b}
+.tl-text-in{flex:1;min-width:0;min-height:38px}
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
 .tl-drug-dose{flex:1.6;min-width:0;min-height:38px}
 .tl-drug-route{flex:0 0 52px;min-width:0;min-height:38px;text-align:center;padding:6px 2px}
@@ -2675,6 +2681,8 @@ function makeCase() {
     drugLog: [],
     // 術式特異イベント { key: 'HH:MM:SS' }（CAST/SPAY/CT）
     procEvents: {},
+    // メモ/体位変換などのフリー記載イベント [{ time, kind:'memo'|'position', text }]
+    freeNotes: [],
     // notes
     notes:'',
   };
@@ -2707,6 +2715,7 @@ function loadStorage() {
       c.ownerName = '';
       migrated = true;
     }
+    if (!Array.isArray(c.freeNotes)) { c.freeNotes = []; migrated = true; }
   });
   if (migrated) saveStorage();
 }
@@ -3435,6 +3444,7 @@ function renderTimeline() {
 }
 
 // 未記録の術中イベントをタップボタンで表示（術式特異イベントも術式に応じて追加）
+// 「メモ」「体位変換」は何度でも記録できるため常時表示
 function renderEventButtons() {
   const bar = document.getElementById('eventBtnBar');
   if (!bar || !current) return;
@@ -3443,9 +3453,13 @@ function renderEventButtons() {
   const unset = all.filter(e => isProcEventKey(e.key)
     ? !((current.procEvents[e.key] || '').trim())
     : !((current[e.key] || '').trim()));
-  bar.innerHTML = unset.length
+  const freeBtns =
+      `<button type="button" class="qdose-btn" style="background:#fdecd2;border-color:#f0c074;color:#a35614" onclick="addFreeNote('memo')">＋メモ</button>`
+    + `<button type="button" class="qdose-btn" style="background:#ece1f3;border-color:#b794cd;color:#6b3a8b" onclick="addFreeNote('position')">＋体位変換</button>`;
+  bar.innerHTML = (unset.length
     ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}</button>`).join('')
-    : '<div class="evt-empty">全イベント記録済み</div>';
+    : '<div class="evt-empty" style="margin-right:8px">全イベント記録済み</div>')
+    + freeBtns;
 }
 
 // イベント＋薬剤を時刻順に統合して1本のリストに描画
@@ -3454,6 +3468,7 @@ function renderTimelineList() {
   if (!list || !current) return;
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
   if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
+  if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
   const entries = [];
   INTRAOP_EVENTS.forEach(e => {
     if ((current[e.key] || '').trim()) entries.push({ type:'event', key:e.key, label:e.label, time:current[e.key] });
@@ -3463,6 +3478,9 @@ function renderTimelineList() {
   });
   current.drugLog.forEach((d, i) => {
     entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'' });
+  });
+  current.freeNotes.forEach((n, i) => {
+    entries.push({ type:'free', idx:i, kind:n.kind||'memo', text:n.text||'', time:n.time||'' });
   });
   entries.sort((a, b) => {
     const ta = timeToSec(a.time), tb = timeToSec(b.time);
@@ -3488,6 +3506,18 @@ function renderTimelineList() {
         <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
+      </div>`;
+    }
+    if (en.type === 'free') {
+      const kindLabel = en.kind === 'position' ? '体位変換' : 'メモ';
+      const kindCls = en.kind === 'position' ? 'tl-kind-position' : 'tl-kind-memo';
+      const rowCls = en.kind === 'position' ? 'tl-position' : 'tl-memo';
+      const ph = en.kind === 'position' ? '体位（例: 右側臥位）' : 'メモ内容…';
+      return `<div class="tl-row ${rowCls}">
+        <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" autocomplete="off">
+        <span class="tl-kind ${kindCls}">${kindLabel}</span>
+        <input class="fin tl-text-in" type="text" value="${esc(en.text)}" placeholder="${ph}" oninput="editFreeNote(${en.idx},'text',this.value)" autocomplete="off">
+        <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
       </div>`;
     }
     return `<div class="tl-row tl-drug">
@@ -3521,6 +3551,32 @@ function drugRowNow(idx) {
 function removeDrugLog(idx) {
   if (!current || !Array.isArray(current.drugLog)) return;
   current.drugLog.splice(idx, 1);
+  renderTimeline();
+  autoSave();
+  pushCurrentToSheets();
+}
+
+// メモ/体位変換イベントを現在時刻で1件追加（複数回登録可）
+function addFreeNote(kind) {
+  if (!current) return;
+  if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
+  current.freeNotes.push({ time: nowTime(), kind: kind === 'position' ? 'position' : 'memo', text: '' });
+  renderTimelineList();
+  autoSave();
+  pushCurrentToSheets();
+}
+
+// メモ/体位変換1件の項目を直接更新（描画しない＝入力フォーカス維持）
+function editFreeNote(idx, field, val) {
+  if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
+  current.freeNotes[idx][field] = val;
+  autoSave();
+}
+
+// メモ/体位変換1件を削除
+function removeFreeNote(idx) {
+  if (!current || !Array.isArray(current.freeNotes)) return;
+  current.freeNotes.splice(idx, 1);
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
@@ -4011,6 +4067,10 @@ function generatePrintHTML(c) {
   const drugLogRows = (c.drugLog || []).filter(r => r.drug || r.dose || r.time)
     .map(r => `<tr><td>${esc(r.time||'')}</td><td>${esc(r.drug||'')}</td><td>${esc(r.dose||'')}</td><td>${esc(r.route||'')}</td><td>${esc(r.note||'')}</td></tr>`).join('');
 
+  // メモ/体位変換ログ
+  const freeNoteRows = (c.freeNotes || []).filter(n => n && (n.time || n.text))
+    .map(n => `<tr><td>${esc(n.time||'')}</td><td>${n.kind==='position'?'体位変換':'メモ'}</td><td>${esc(n.text||'')}</td></tr>`).join('');
+
   return `
     <div class="p-hdr">
       <div class="p-title">麻酔症例記録</div>
@@ -4258,6 +4318,14 @@ function generatePrintHTML(c) {
       <table class="p-table">
         <thead><tr><th style="width:50px">時刻</th><th>薬剤</th><th>用量</th><th style="width:42px">経路</th><th>備考</th></tr></thead>
         <tbody>${drugLogRows}</tbody>
+      </table>
+    </div>` : ''}
+
+    ${freeNoteRows ? `<div class="p-section">
+      <h3>メモ・体位変換 / Memo & Position</h3>
+      <table class="p-table">
+        <thead><tr><th style="width:50px">時刻</th><th style="width:72px">種別</th><th>内容</th></tr></thead>
+        <tbody>${freeNoteRows}</tbody>
       </table>
     </div>` : ''}
 
