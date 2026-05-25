@@ -213,6 +213,8 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tl-kind-position{background:#ece1f3;color:#6b3a8b}
 .tl-kind-fluid{background:#d8ecf7;color:#1a5478}
 .tl-kind-vent{background:#d4ede5;color:#0a6b53}
+.tl-kind-pcv{background:#d4ede5;color:#0a6b53}
+.tl-kind-vcv{background:#d9e4d0;color:#395a1e}
 .tl-kind-spont{background:#dcefd4;color:#1f6b34}
 .tl-kind-gas{background:#fae6d5;color:#a3501a}
 .tl-from{flex:0 0 44px;min-height:38px;line-height:38px;text-align:center;font-size:13px;color:var(--muted);font-weight:700;background:#f3f5f8;border-radius:5px}
@@ -2695,7 +2697,8 @@ function makeCase() {
     procEvents: {},
     // フリー記載イベント。kind により形状が異なる:
     //   memo/position: { time, kind, text }
-    //   fluid/vent:    { time, kind, from, to }  // 輸液速度・気道内圧 変化記録
+    //   fluid:         { time, kind, from, to }  // 輸液速度 mL/kg/h
+    //   vent:          { time, kind, mode:'PCV'|'VCV', from, to }  // PCV=cmH₂O, VCV=mL
     //   cri:           { time, kind, drugKey, drugLabel, unit, from, to }
     //   gas:           { time, kind, drugKey, drugLabel, unit, from, to }  // 揮発性麻酔薬濃度
     //   spont:         { time, kind }  // 自発呼吸マーカー
@@ -3481,7 +3484,8 @@ function renderEventButtons() {
       `<button type="button" class="qdose-btn" style="background:#fdecd2;border-color:#f0c074;color:#a35614" onclick="addFreeNote('memo')">＋メモ</button>`
     + `<button type="button" class="qdose-btn" style="background:#ece1f3;border-color:#b794cd;color:#6b3a8b" onclick="addFreeNote('position')">＋体位変換</button>`
     + `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="addFreeNote('fluid')">＋輸液</button>`
-    + `<button type="button" class="qdose-btn" style="background:#d4ede5;border-color:#5cba9d;color:#0a6b53" onclick="addFreeNote('vent')">＋人工呼吸</button>`
+    + `<button type="button" class="qdose-btn" style="background:#d4ede5;border-color:#5cba9d;color:#0a6b53" onclick="addFreeNote('vent',{mode:'PCV'})">＋PCV換気</button>`
+    + `<button type="button" class="qdose-btn" style="background:#d9e4d0;border-color:#7ea35a;color:#395a1e" onclick="addFreeNote('vent',{mode:'VCV'})">＋VCV換気</button>`
     + `<button type="button" class="qdose-btn" style="background:#dcefd4;border-color:#7ac257;color:#1f6b34" onclick="addFreeNote('spont')">＋自発呼吸</button>`;
   // プロトコルでチェック済みの維持薬(揮発性麻酔薬) を動的ボタン化（濃度の変化記録）
   const gasBtns = [
@@ -3529,6 +3533,7 @@ function renderTimelineList() {
       time: n.time || '',
       from: n.from || '',
       to:   n.to   || '',
+      mode: n.mode || '',
       drugKey:   n.drugKey   || '',
       drugLabel: n.drugLabel || '',
       unit:      n.unit      || '',
@@ -3562,13 +3567,17 @@ function renderTimelineList() {
     }
     if (en.type === 'free') {
       const k = en.kind || 'memo';
-      // 値変化型（輸液 / 気道内圧 / CRI / 維持薬gas）: [from] → [to入力] [unit]
+      // 値変化型（輸液 / 換気PCV・VCV / CRI / 維持薬gas）: [from] → [to入力] [unit]
       if (k === 'fluid' || k === 'vent' || k === 'cri' || k === 'gas') {
         let lbl, kindCls, rowCls, unitStr;
         if (k === 'fluid') {
           lbl = '輸液'; kindCls = 'tl-kind-fluid'; rowCls = 'tl-fluid'; unitStr = 'mL/kg/h';
         } else if (k === 'vent') {
-          lbl = '気道内圧'; kindCls = 'tl-kind-vent'; rowCls = 'tl-vent'; unitStr = 'cmH₂O';
+          const mode = en.mode === 'VCV' ? 'VCV' : 'PCV';
+          lbl = mode;
+          kindCls = mode === 'VCV' ? 'tl-kind-vcv' : 'tl-kind-pcv';
+          rowCls = 'tl-vent';
+          unitStr = mode === 'VCV' ? 'mL' : 'cmH₂O';
         } else if (k === 'gas') {
           lbl = esc(en.drugLabel || '維持薬');
           kindCls = 'tl-kind-gas'; rowCls = 'tl-gas'; unitStr = esc(en.unit || '%');
@@ -3657,9 +3666,17 @@ function addFreeNote(kind, opts) {
   if (k === 'memo' || k === 'position') {
     entry.text = '';
   } else if (k === 'fluid' || k === 'vent') {
+    // vent はモード(PCV/VCV)を保持、同モードの最終 to を引継ぎ
+    if (k === 'vent') {
+      entry.mode = (opts && opts.mode) === 'VCV' ? 'VCV' : 'PCV';
+    }
     let prev = '';
     for (let i = current.freeNotes.length - 1; i >= 0; i--) {
-      if (current.freeNotes[i].kind === k) { prev = current.freeNotes[i].to || ''; break; }
+      const r = current.freeNotes[i];
+      if (r.kind !== k) continue;
+      if (k === 'vent' && (r.mode || 'PCV') !== entry.mode) continue;
+      prev = r.to || '';
+      break;
     }
     entry.from = prev || '0';
     entry.to = '';
@@ -4195,7 +4212,11 @@ function generatePrintHTML(c) {
     let kindLbl, body = '';
     if (k === 'position') { kindLbl = '体位変換'; body = n.text || ''; }
     else if (k === 'fluid') { kindLbl = '輸液'; body = `${n.from||'0'} → ${n.to||''} mL/kg/h`; }
-    else if (k === 'vent') { kindLbl = '気道内圧'; body = `${n.from||'0'} → ${n.to||''} cmH₂O`; }
+    else if (k === 'vent') {
+      const m = n.mode === 'VCV' ? 'VCV' : 'PCV';
+      kindLbl = m;
+      body = `${n.from||'0'} → ${n.to||''} ${m === 'VCV' ? 'mL' : 'cmH₂O'}`;
+    }
     else if (k === 'spont') { kindLbl = '自発呼吸'; body = ''; }
     else if (k === 'cri') { kindLbl = `${n.drugLabel||'CRI'}(CRI)`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||''}`; }
     else if (k === 'gas') { kindLbl = `${n.drugLabel||'維持薬'}`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||'%'}`; }
