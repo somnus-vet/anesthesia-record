@@ -3586,11 +3586,11 @@ function renderTimelineList() {
           kindCls = 'tl-kind-fluid'; rowCls = 'tl-fluid'; unitStr = esc(en.unit || '');
         }
         return `<div class="tl-row ${rowCls}">
-          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" autocomplete="off">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind ${kindCls}">${lbl}</span>
           <span class="tl-from">${esc(en.from || '0')}</span>
           <span class="tl-arrow">→</span>
-          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'to',this.value)" autocomplete="off">
+          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'to',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-unit-sm">${unitStr}</span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
@@ -3599,7 +3599,7 @@ function renderTimelineList() {
       // 自発呼吸: マーカーのみ（値なし）
       if (k === 'spont') {
         return `<div class="tl-row tl-spont">
-          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" autocomplete="off">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-spont">自発呼吸</span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
@@ -3694,6 +3694,7 @@ function addFreeNote(kind, opts) {
   }
   // 'spont' は時刻マーカーのみ（追加フィールド無し）
   current.freeNotes.push(entry);
+  recomputeFreeNotesFroms();
   renderTimelineList();
   autoSave();
   pushCurrentToSheets();
@@ -3710,9 +3711,51 @@ function editFreeNote(idx, field, val) {
 function removeFreeNote(idx) {
   if (!current || !Array.isArray(current.freeNotes)) return;
   current.freeNotes.splice(idx, 1);
+  recomputeFreeNotesFroms();
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
+}
+
+// 値変化型 (fluid/vent/cri/gas) の from を時刻順で再計算。
+// 同じグループ(同kind、ventはmode、cri/gasはdrugKey別)内で時刻昇順にソートし、
+// 各エントリの from = 直前エントリの to を伝播させる。最初は '0'。
+// 並べ替え後や挿入後に呼び出して整合性を保つ。
+function recomputeFreeNotesFroms() {
+  if (!current || !Array.isArray(current.freeNotes)) return;
+  const groups = {};
+  current.freeNotes.forEach((n, idx) => {
+    const k = n.kind;
+    if (k !== 'fluid' && k !== 'vent' && k !== 'cri' && k !== 'gas') return;
+    let key;
+    if (k === 'fluid') key = 'fluid';
+    else if (k === 'vent') key = 'vent:' + (n.mode || 'PCV');
+    else if (k === 'cri') key = 'cri:' + (n.drugKey || '');
+    else key = 'gas:' + (n.drugKey || '');
+    (groups[key] = groups[key] || []).push({ idx, time: n.time });
+  });
+  Object.values(groups).forEach(grp => {
+    grp.sort((a, b) => {
+      const ta = timeToSec(a.time), tb = timeToSec(b.time);
+      if (ta === null && tb === null) return 0;
+      if (ta === null) return 1;
+      if (tb === null) return -1;
+      return ta - tb;
+    });
+    let prev = '0';
+    grp.forEach(({ idx }) => {
+      current.freeNotes[idx].from = prev;
+      const t = current.freeNotes[idx].to;
+      if (t !== undefined && t !== null && t !== '') prev = String(t);
+    });
+  });
+}
+
+// 時刻 / to 編集の確定(blur)時に呼ぶ: from再計算 → 再描画
+function onFreeNoteFinalize() {
+  recomputeFreeNotesFroms();
+  renderTimelineList();
+  autoSave();
 }
 
 // 時刻文字列(HH:MM または HH:MM:SS)を分に変換。空欄・不正は null
