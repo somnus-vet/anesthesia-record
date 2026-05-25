@@ -3522,7 +3522,17 @@ function renderTimelineList() {
     entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'' });
   });
   current.freeNotes.forEach((n, i) => {
-    entries.push({ type:'free', idx:i, kind:n.kind||'memo', text:n.text||'', time:n.time||'' });
+    entries.push({
+      type:'free', idx:i,
+      kind: n.kind || 'memo',
+      text: n.text || '',
+      time: n.time || '',
+      from: n.from || '',
+      to:   n.to   || '',
+      drugKey:   n.drugKey   || '',
+      drugLabel: n.drugLabel || '',
+      unit:      n.unit      || '',
+    });
   });
   entries.sort((a, b) => {
     const ta = timeToSec(a.time), tb = timeToSec(b.time);
