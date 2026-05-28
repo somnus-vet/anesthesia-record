@@ -803,6 +803,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           <input type="hidden" id="f_anesthStart">
           <input type="hidden" id="f_inductionTime">
           <input type="hidden" id="f_intubationTime">
+          <input type="hidden" id="f_eyeOintTime">
           <input type="hidden" id="f_localAnesthTime">
           <input type="hidden" id="f_antibioticTime">
           <input type="hidden" id="f_surgStart">
@@ -2054,6 +2055,37 @@ let recentPushKeys = {}; // {key: timestamp}
 let dedupRetryTimer = null; // 重複防止スキップ後の再送タイマー
 const PUSH_DEDUP_WINDOW_MS = 5000;
 
+// 入力中ガード: input/textarea/select にフォーカスがある間は Sheets→端末の取り込みを
+// スキップ（薬剤行や時刻欄を打っている最中にサーバー側の古い値で上書きされるのを防ぐ）。
+// フォーカスを外して 2 秒経過してから保留中の取り込みを実行する。push は通常通り走る。
+let userTyping = false;
+let userTypingClearTimer = null;
+let pendingSyncAfterBlur = false;
+function isUserTypingNow() {
+  if (userTyping) return true;
+  const ae = document.activeElement;
+  return !!(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
+}
+document.addEventListener('focusin', e => {
+  const t = e.target;
+  if (t && t.matches && t.matches('input,textarea,select')) {
+    userTyping = true;
+    clearTimeout(userTypingClearTimer);
+  }
+});
+document.addEventListener('focusout', e => {
+  const t = e.target;
+  if (!t || !t.matches || !t.matches('input,textarea,select')) return;
+  clearTimeout(userTypingClearTimer);
+  userTypingClearTimer = setTimeout(() => {
+    userTyping = false;
+    if (pendingSyncAfterBlur) {
+      pendingSyncAfterBlur = false;
+      try { syncFromSheets(); } catch (_) {}
+    }
+  }, 2000);
+});
+
 function loadSheetsConfig() {
   try {
     const stored = localStorage.getItem('vet_sheets_config');
@@ -2125,6 +2157,13 @@ function parseCSV(text) {
 // Google Sheetsから自施設の予約を取得し、ローカルにマージ
 async function syncFromSheets() {
   if (!sheetsConfig.enabled || !sheetsConfig.spreadsheetId) return;
+  // 入力欄にフォーカス中は取り込みをスキップ（push は別経路で継続）。
+  // フォーカスを外して 2 秒後に再試行される。
+  if (isUserTypingNow()) {
+    pendingSyncAfterBlur = true;
+    try { flushPushQueue(); } catch (_) {}
+    return;
+  }
   setSyncStatus('syncing');
   try {
     let csv = await fetch(csvUrl('症例予約'), {cache:'no-store'}).then(r => r.text());
@@ -2669,7 +2708,7 @@ function makeCase() {
     localMixture: { drugs: [], totalVolume: '' },
     localBlocks: {}, localCustom1:'', localCustom2:'',
     // intra-op timeline
-    anesthStart:'', inductionTime:'', intubationTime:'', localAnesthTime:'',
+    anesthStart:'', inductionTime:'', intubationTime:'', eyeOintTime:'', localAnesthTime:'',
     antibioticTime:'', surgStart:'', sutureStart:'', surgEnd:'',
     antagonistTime:'', extubation:'', returnToWard:'',
     anesthDur:'', surgDur:'', events:'',
@@ -2935,7 +2974,7 @@ function populateForm() {
     'tubeSize','bagSize',
     'maintConc','maintO2','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
-    'anesthStart','inductionTime','intubationTime','localAnesthTime','antibioticTime',
+    'anesthStart','inductionTime','intubationTime','eyeOintTime','localAnesthTime','antibioticTime',
     'surgStart','sutureStart','surgEnd',
     'antagonistTime','extubation','returnToWard','anesthDur','surgDur','events',
     'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
@@ -3058,7 +3097,7 @@ function collectForm() {
     'tubeSize','bagSize',
     'maintConc','maintO2','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
-    'anesthStart','inductionTime','intubationTime','localAnesthTime','antibioticTime',
+    'anesthStart','inductionTime','intubationTime','eyeOintTime','localAnesthTime','antibioticTime',
     'surgStart','sutureStart','surgEnd',
     'antagonistTime','extubation','returnToWard','anesthDur','surgDur','events',
     'compHypothermiaDeg','compBleedMax','compTachyMax','compBradyMin',
@@ -3907,6 +3946,7 @@ const INTRAOP_EVENTS = [
   { key:'anesthStart',     label:'前投薬' },
   { key:'inductionTime',   label:'導入' },
   { key:'intubationTime',  label:'挿管' },
+  { key:'eyeOintTime',     label:'眼軟膏' },
   { key:'localAnesthTime', label:'局所麻酔' },
   { key:'surgStart',       label:'手術開始' },
   { key:'sutureStart',     label:'縫合開始' },
