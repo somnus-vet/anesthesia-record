@@ -168,6 +168,11 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .modal-footer button{padding:9px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:600;cursor:pointer;min-height:40px}
 .modal-footer .btn-save{background:var(--navy);color:#fff;border-color:var(--navy)}
 .modal-footer .btn-reset{background:#fff8e0;border-color:#f3c441;color:#8a6d00}
+.staff-pick-item{padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:15px;min-height:50px;-webkit-user-select:none}
+.staff-pick-item:active{background:#e8f2ff}
+.staff-pick-role{font-size:12px;color:var(--muted);font-weight:600;flex-shrink:0;margin-left:12px}
+.staff-pick-empty{padding:24px 16px;text-align:center;color:var(--muted);font-size:13px}
+input.fin[readonly]{background:#fff;cursor:pointer}
 .preset-drug-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:8px 0;border-bottom:1px dashed #eee}
 .preset-drug-row:last-child{border-bottom:none}
 .preset-drug-name{font-size:13px;font-weight:600}
@@ -348,7 +353,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           </div>
           <div class="frow">
             <span class="flabel">担当者</span>
-            <input class="fin" type="text" id="f_staff" list="staffList" placeholder="担当獣医師" oninput="autoSave()">
+            <input class="fin" type="text" id="f_staff" readonly placeholder="担当獣医師" onclick="openStaffPicker('f_staff','担当獣医師')">
           </div>
           <div class="frow">
             <span class="flabel">氏名</span>
@@ -491,19 +496,19 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           </div>
           <div class="frow">
             <span class="flabel flabel-w">術者</span>
-            <input class="fin" type="text" id="f_surgeon" list="staffList" placeholder="術者" oninput="autoSave()">
+            <input class="fin" type="text" id="f_surgeon" readonly placeholder="術者" onclick="openStaffPicker('f_surgeon','術者')">
             <span class="flabel" style="min-width:28px">助手</span>
-            <input class="fin" type="text" id="f_assistant" list="staffList" placeholder="助手" oninput="autoSave()">
+            <input class="fin" type="text" id="f_assistant" readonly placeholder="助手" onclick="openStaffPicker('f_assistant','助手')">
           </div>
           <div class="frow">
             <span class="flabel flabel-w">器械</span>
-            <input class="fin" type="text" id="f_scrubNurse" list="staffList" placeholder="器械出し" oninput="autoSave()">
+            <input class="fin" type="text" id="f_scrubNurse" readonly placeholder="器械出し" onclick="openStaffPicker('f_scrubNurse','器械出し')">
           </div>
           <div class="frow">
             <span class="flabel flabel-w">麻酔監視</span>
-            <input class="fin" type="text" id="f_anesthMonitor" list="staffList" placeholder="麻酔監視" oninput="autoSave()">
+            <input class="fin" type="text" id="f_anesthMonitor" readonly placeholder="麻酔監視" onclick="openStaffPicker('f_anesthMonitor','麻酔監視')">
             <span class="flabel" style="min-width:36px">指導医</span>
-            <input class="fin" type="text" id="f_anesthSupervisor" list="staffList" placeholder="監視指導医" oninput="autoSave()">
+            <input class="fin" type="text" id="f_anesthSupervisor" readonly placeholder="監視指導医" onclick="openStaffPicker('f_anesthSupervisor','監視指導医')">
           </div>
           <div class="frow">
             <span class="flabel flabel-w">予想疼痛</span>
@@ -2536,37 +2541,95 @@ async function loadFacilityMap() {
 }
 
 // スタッフマスタ取得: シート「スタッフマスタ」(列: 施設コード/氏名/役職)から
-// 現在の施設(sheetsConfig.facility)の氏名一覧を取り出し、datalist#staffList へ反映。
-// 担当獣医師・術者・助手・器械出し・麻酔監視・監視指導医 のフィールドで候補表示される。
-// 取得失敗時は localStorage キャッシュから復元、それも無ければ datalist 空（フリーテキスト動作）。
+// 現在の施設(sheetsConfig.facility)の {name, role} 配列を取り出し、staffPickerListData に保持。
+// スタッフ選択モーダル（openStaffPicker）が表示時にこのデータを参照する。
+// 取得失敗時は localStorage キャッシュから復元、それも無ければ空配列（モーダルは「候補なし」表示）。
+let staffPickerListData = []; // [{name, role}]
+let staffPickerTargetId = null;
 async function loadStaffList() {
   if (!sheetsConfig.spreadsheetId) return;
   const cacheKey = 'vet_staffList_' + (sheetsConfig.facility || '');
   try {
     const csv = await fetch(csvUrl('スタッフマスタ'), {cache:'no-store'}).then(r => r.text());
     const rows = parseCSV(csv);
-    const names = rows
+    const data = rows
       .filter(r => (r['施設コード'] || '').trim() === sheetsConfig.facility)
-      .map(r => (r['氏名'] || '').trim())
-      .filter(n => n);
-    // 重複除去・順序維持
+      .map(r => ({ name: (r['氏名'] || '').trim(), role: (r['役職'] || '').trim() }))
+      .filter(s => s.name);
+    // 氏名で重複除去、順序維持
     const seen = new Set();
-    const uniq = names.filter(n => seen.has(n) ? false : (seen.add(n), true));
+    const uniq = data.filter(s => seen.has(s.name) ? false : (seen.add(s.name), true));
     try { localStorage.setItem(cacheKey, JSON.stringify(uniq)); } catch(_) {}
-    renderStaffDatalist(uniq);
+    staffPickerListData = uniq;
   } catch(e) {
     // 取得失敗時はキャッシュ復元
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
-      renderStaffDatalist(Array.isArray(cached) ? cached : []);
-    } catch(_) { renderStaffDatalist([]); }
+      // レガシー(文字列配列)も互換サポート
+      staffPickerListData = (Array.isArray(cached) ? cached : []).map(item =>
+        typeof item === 'string' ? { name: item, role: '' } : item
+      );
+    } catch(_) { staffPickerListData = []; }
   }
 }
 
-function renderStaffDatalist(names) {
-  const dl = document.getElementById('staffList');
-  if (!dl) return;
-  dl.innerHTML = (names || []).map(n => `<option value="${esc(n)}"></option>`).join('');
+// スタッフ選択モーダル
+function openStaffPicker(targetFieldId, title) {
+  staffPickerTargetId = targetFieldId;
+  const titleEl = document.getElementById('staffPickerTitle');
+  if (titleEl) titleEl.textContent = (title || 'スタッフ') + 'を選択';
+  const el = document.getElementById(targetFieldId);
+  const currentVal = el ? el.value : '';
+  const search = document.getElementById('staffPickerSearch');
+  if (search) search.value = currentVal;
+  filterStaffPicker();
+  const modal = document.getElementById('staffPickerModal');
+  if (modal) modal.classList.add('on');
+}
+function closeStaffPicker() {
+  const modal = document.getElementById('staffPickerModal');
+  if (modal) modal.classList.remove('on');
+  staffPickerTargetId = null;
+}
+function filterStaffPicker() {
+  const q = (document.getElementById('staffPickerSearch')?.value || '').trim();
+  const list = document.getElementById('staffPickerList');
+  if (!list) return;
+  const filtered = q
+    ? staffPickerListData.filter(s =>
+        s.name.indexOf(q) >= 0 || (s.role || '').indexOf(q) >= 0)
+    : staffPickerListData;
+  list.innerHTML = filtered.length
+    ? filtered.map(s => `<div class="staff-pick-item" onclick="selectStaffPickerItem('${esc(s.name)}')"><span>${esc(s.name)}</span><span class="staff-pick-role">${esc(s.role||'')}</span></div>`).join('')
+    : '<div class="staff-pick-empty">候補なし — 下の「このまま使う」で自由入力できます</div>';
+  // 「このまま使う」ボタン: 検索文字列がリストに完全一致しないときのみ表示
+  const useBtn = document.getElementById('staffPickerUseAsIs');
+  if (useBtn) {
+    const exact = staffPickerListData.some(s => s.name === q);
+    useBtn.style.display = (q && !exact) ? '' : 'none';
+    useBtn.textContent = `このまま使う: 「${q}」`;
+  }
+}
+function selectStaffPickerItem(name) {
+  setStaffField(name);
+  closeStaffPicker();
+}
+function useStaffPickerInput() {
+  const q = (document.getElementById('staffPickerSearch')?.value || '').trim();
+  setStaffField(q);
+  closeStaffPicker();
+}
+function clearStaffPickerField() {
+  setStaffField('');
+  closeStaffPicker();
+}
+function setStaffField(val) {
+  if (!staffPickerTargetId) return;
+  const el = document.getElementById(staffPickerTargetId);
+  if (el) {
+    el.value = val;
+    autoSave();
+  }
 }
 
 function updateFacilityBadge() {
@@ -4723,6 +4786,22 @@ if (sheetsConfig.enabled) {
   startSyncTimer();
 }
 </script>
-<datalist id="staffList"></datalist>
+<div class="modal-overlay" id="staffPickerModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span id="staffPickerTitle">スタッフを選択</span>
+      <button class="modal-close" onclick="closeStaffPicker()">×</button>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+      <input class="fin" type="text" id="staffPickerSearch" placeholder="検索 / 新規入力" oninput="filterStaffPicker()" autocomplete="off" style="width:100%">
+    </div>
+    <div class="modal-body" id="staffPickerList" style="padding:0"></div>
+    <div class="modal-footer">
+      <button id="staffPickerUseAsIs" onclick="useStaffPickerInput()" style="display:none">このまま使う</button>
+      <button onclick="clearStaffPickerField()">クリア</button>
+      <button onclick="closeStaffPicker()">キャンセル</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
