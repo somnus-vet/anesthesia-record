@@ -348,7 +348,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           </div>
           <div class="frow">
             <span class="flabel">担当者</span>
-            <input class="fin" type="text" id="f_staff" placeholder="担当獣医師" oninput="autoSave()">
+            <input class="fin" type="text" id="f_staff" list="staffList" placeholder="担当獣医師" oninput="autoSave()">
           </div>
           <div class="frow">
             <span class="flabel">氏名</span>
@@ -491,19 +491,19 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
           </div>
           <div class="frow">
             <span class="flabel flabel-w">術者</span>
-            <input class="fin" type="text" id="f_surgeon" placeholder="術者" oninput="autoSave()">
+            <input class="fin" type="text" id="f_surgeon" list="staffList" placeholder="術者" oninput="autoSave()">
             <span class="flabel" style="min-width:28px">助手</span>
-            <input class="fin" type="text" id="f_assistant" placeholder="助手" oninput="autoSave()">
+            <input class="fin" type="text" id="f_assistant" list="staffList" placeholder="助手" oninput="autoSave()">
           </div>
           <div class="frow">
             <span class="flabel flabel-w">器械</span>
-            <input class="fin" type="text" id="f_scrubNurse" placeholder="器械出し" oninput="autoSave()">
+            <input class="fin" type="text" id="f_scrubNurse" list="staffList" placeholder="器械出し" oninput="autoSave()">
           </div>
           <div class="frow">
             <span class="flabel flabel-w">麻酔監視</span>
-            <input class="fin" type="text" id="f_anesthMonitor" placeholder="麻酔監視" oninput="autoSave()">
+            <input class="fin" type="text" id="f_anesthMonitor" list="staffList" placeholder="麻酔監視" oninput="autoSave()">
             <span class="flabel" style="min-width:36px">指導医</span>
-            <input class="fin" type="text" id="f_anesthSupervisor" placeholder="監視指導医" oninput="autoSave()">
+            <input class="fin" type="text" id="f_anesthSupervisor" list="staffList" placeholder="監視指導医" oninput="autoSave()">
           </div>
           <div class="frow">
             <span class="flabel flabel-w">予想疼痛</span>
@@ -2535,6 +2535,40 @@ async function loadFacilityMap() {
   } catch(e) { /* fallback使用 */ }
 }
 
+// スタッフマスタ取得: シート「スタッフマスタ」(列: 施設コード/氏名/役職)から
+// 現在の施設(sheetsConfig.facility)の氏名一覧を取り出し、datalist#staffList へ反映。
+// 担当獣医師・術者・助手・器械出し・麻酔監視・監視指導医 のフィールドで候補表示される。
+// 取得失敗時は localStorage キャッシュから復元、それも無ければ datalist 空（フリーテキスト動作）。
+async function loadStaffList() {
+  if (!sheetsConfig.spreadsheetId) return;
+  const cacheKey = 'vet_staffList_' + (sheetsConfig.facility || '');
+  try {
+    const csv = await fetch(csvUrl('スタッフマスタ'), {cache:'no-store'}).then(r => r.text());
+    const rows = parseCSV(csv);
+    const names = rows
+      .filter(r => (r['施設コード'] || '').trim() === sheetsConfig.facility)
+      .map(r => (r['氏名'] || '').trim())
+      .filter(n => n);
+    // 重複除去・順序維持
+    const seen = new Set();
+    const uniq = names.filter(n => seen.has(n) ? false : (seen.add(n), true));
+    try { localStorage.setItem(cacheKey, JSON.stringify(uniq)); } catch(_) {}
+    renderStaffDatalist(uniq);
+  } catch(e) {
+    // 取得失敗時はキャッシュ復元
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+      renderStaffDatalist(Array.isArray(cached) ? cached : []);
+    } catch(_) { renderStaffDatalist([]); }
+  }
+}
+
+function renderStaffDatalist(names) {
+  const dl = document.getElementById('staffList');
+  if (!dl) return;
+  dl.innerHTML = (names || []).map(n => `<option value="${esc(n)}"></option>`).join('');
+}
+
 function updateFacilityBadge() {
   const name = facilityMap[sheetsConfig.facility] || sheetsConfig.facility;
   const el = document.getElementById('facilityName');
@@ -2610,7 +2644,10 @@ function onFacilityChange(val) {
   updateFacilityBadge();
   renderCasesList(); // 施設フィルタを即時反映
   loadPresets(); // プリセットも施設別に再ロード
-  if (sheetsConfig.enabled) syncFromSheets();
+  if (sheetsConfig.enabled) {
+    syncFromSheets();
+    loadStaffList(); // 施設変更でスタッフリストも切替
+  }
 }
 function onSheetsConfigChange() {
   sheetsConfig.spreadsheetId = (document.getElementById('settingSpreadsheetId').value || '').trim();
@@ -2625,6 +2662,7 @@ function toggleSyncEnabled() {
   updateDiagnostics();
   if (sheetsConfig.enabled) {
     loadFacilityMap();
+    loadStaffList();
     startSyncTimer();
   } else {
     stopSyncTimer();
@@ -4681,8 +4719,10 @@ renderCasesList();
 loadPresets(); // async（sheetsConfig をロード後に呼ぶ必要あり）
 if (sheetsConfig.enabled) {
   loadFacilityMap();
+  loadStaffList();
   startSyncTimer();
 }
 </script>
+<datalist id="staffList"></datalist>
 </body>
 </html>
