@@ -481,6 +481,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <div class="c-hdr">3. 手術情報 <span class="c-hdr-en">Surgery</span></div>
         <div class="c-body">
           <div class="frow">
+            <span class="flabel flabel-w">手術日</span>
+            <input class="fin" type="date" id="f_surgDate" onchange="onSurgDateChange()">
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin:-2px 0 8px">📅 翌日以降の手術はここで日付を指定（AnesLogにはこの日付の日に表示されます）</div>
+          <div class="frow">
             <span class="flabel flabel-w">診断名</span>
             <input class="fin" type="text" id="f_diagnosis" placeholder="診断名" oninput="autoSave()">
           </div>
@@ -2758,6 +2763,11 @@ function nowTime() {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 }
 
+// 手術日フィールド用の日付フォーマット変換
+// 内部・Sheetsは YYYY/MM/DD、<input type="date"> は YYYY-MM-DD
+function dateToInput(s) { return s ? String(s).replace(/\//g, '-') : ''; }
+function inputToDate(s) { return s ? String(s).replace(/-/g, '/') : ''; }
+
 function makeCase() {
   return {
     id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -3063,6 +3073,7 @@ function renderDrugRow(d) {
 function populateForm() {
   if (!current) return;
   document.getElementById('hDate').textContent = current.date;
+  setVal('f_surgDate', dateToInput(current.date));
   // 患者ID = カルテNo として運用。古いcaseNoがあればそれを優先表示
   setVal('f_patientId', current.patientId || current.caseNo || '');
   setVal('f_staff', current.staff || '');
@@ -4268,6 +4279,32 @@ function pushCurrentToSheets() {
   if (!sheetsConfig.enabled) return;
   if (!current.caseNo || !current.date) return;
   pushToSheets(current, {skipFollowupSync: true});
+}
+
+// 手術日（current.date）の変更。翌日以降の症例をその手術日にAnesLog表示させる用途。
+// 日付は Sheets の upsertキー(日付+施設+カルテNo)の一部なので、
+// 旧日付の行を削除 → 新日付で upsert し直して二重行を防ぐ。
+function onSurgDateChange() {
+  if (!current) return;
+  const newDate = inputToDate(getVal('f_surgDate'));
+  if (!newDate) {                       // 空にされたら元の日付に戻す
+    setVal('f_surgDate', dateToInput(current.date));
+    return;
+  }
+  const oldDate = current.date;
+  if (newDate === oldDate) return;
+  current.date = newDate;
+  const hd = document.getElementById('hDate');
+  if (hd) hd.textContent = current.date;
+  const idx = cases.findIndex(c => c.id === current.id);
+  if (idx >= 0) cases[idx] = current;
+  saveStorage();
+  // Sheets同期: 旧日付の行を消してから新日付で送り直す
+  if (sheetsConfig.enabled && sheetsConfig.webappUrl && current.caseNo) {
+    deleteFromSheets({ id: current.id, caseNo: current.caseNo, date: oldDate });
+    pushToSheets(current);
+  }
+  showToast(`🗓 手術日を ${current.date} に変更しました`);
 }
 
 function saveCase() {
