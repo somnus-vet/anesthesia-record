@@ -2683,12 +2683,12 @@ function stopSyncTimer() {
 }
 
 // 施設選択ドロップダウンを FACILITY_LABELS_FALLBACK から生成
-// （この病院ビルドが扱う施設のみ。施設別ビルド）
+// （この端末ビルドが扱う施設のみ）
 function renderFacilityOptions() {
   const sel = document.getElementById('settingFacility');
   if (!sel) return;
   sel.innerHTML = Object.entries(FACILITY_LABELS_FALLBACK)
-    .map(([code, name]) => `<option value="${code}">${code} — ${esc(name)}</option>`)
+    .map(([code, name]) => `<option value="${code}">${code} — ${esc(facilityMap[code] || name)}</option>`)
     .join('');
 }
 
