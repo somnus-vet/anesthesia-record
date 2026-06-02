@@ -1050,7 +1050,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
       <input id="settingWebAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" oninput="onSheetsConfigChange()" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;background:#f8fafc;margin-bottom:14px;font-family:monospace">
 
       <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">合言葉（アクセスキー）</label>
-      <input id="settingToken" type="password" placeholder="病院ごとの合言葉" oninput="onSheetsConfigChange()" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;background:#f8fafc;margin-bottom:14px;font-family:monospace">
+      <input id="settingToken" type="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="病院ごとの合言葉" oninput="onSheetsConfigChange()" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;background:#f8fafc;margin-bottom:14px;font-family:monospace">
 
       <div class="chk-item" onclick="toggleSyncEnabled()" id="syncEnabledChk" style="margin-bottom:8px">
         <div class="chk-box"></div><span class="chk-label">Sheets同期を有効化（30秒ごとに自動取得＋保存時にプッシュ）</span>
@@ -2721,7 +2721,7 @@ function onFacilityChange(val) {
 function onSheetsConfigChange() {
   sheetsConfig.spreadsheetId = (document.getElementById('settingSpreadsheetId').value || '').trim();
   sheetsConfig.webappUrl = (document.getElementById('settingWebAppUrl').value || '').trim();
-  sheetsConfig.token = (document.getElementById('settingToken').value || '').trim();
+  sheetsConfig.token = (document.getElementById('settingToken').value || '').replace(/\s+/g, '').toLowerCase();
   saveSheetsConfig();
 }
 function toggleSyncEnabled() {
