@@ -1049,6 +1049,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
       <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Apps Script Web App URL</label>
       <input id="settingWebAppUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" oninput="onSheetsConfigChange()" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;background:#f8fafc;margin-bottom:14px;font-family:monospace">
 
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">合言葉（アクセスキー）</label>
+      <input id="settingToken" type="password" placeholder="病院ごとの合言葉" oninput="onSheetsConfigChange()" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;background:#f8fafc;margin-bottom:14px;font-family:monospace">
+
       <div class="chk-item" onclick="toggleSyncEnabled()" id="syncEnabledChk" style="margin-bottom:8px">
         <div class="chk-box"></div><span class="chk-label">Sheets同期を有効化（30秒ごとに自動取得＋保存時にプッシュ）</span>
       </div>
@@ -1750,7 +1753,8 @@ async function pushPresetsToSheets() {
       body: JSON.stringify({
         action: 'savePresets',
         presets: userPresets,
-        facility: sheetsConfig.facility
+        facility: sheetsConfig.facility,
+        token: sheetsConfig.token
       })
     });
     const text = await res.text();
@@ -2114,8 +2118,9 @@ function savePushQueue() {
 }
 
 function csvUrl(sheet) {
-  if (!sheetsConfig.spreadsheetId) return '';
-  return `https://docs.google.com/spreadsheets/d/${sheetsConfig.spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+  // セキュリティ改修: 合言葉つきでGAS(doGet)経由で取得（シートは非公開のまま）
+  if (!sheetsConfig.webappUrl) return '';
+  return `${sheetsConfig.webappUrl}?action=read&sheet=${encodeURIComponent(sheet)}&token=${encodeURIComponent(sheetsConfig.token || '')}`;
 }
 
 // 年齢: ageY/ageM ↔ "5Y3M" 形式の相互変換
@@ -2407,7 +2412,7 @@ async function pushToSheets(caseObj, options = {}) {
     '詳細': JSON.stringify(caseObj),
     '内部ID': caseObj.id || '',
   };
-  const payload = { action: 'upsert', row };
+  const payload = { action: 'upsert', row, token: sheetsConfig.token };
   const t0 = Date.now();
   lastPushStatus = '🔄 送信中…';
   updateDiagnostics();
@@ -2477,7 +2482,7 @@ async function cleanupSheetsDuplicates() {
     const res = await fetch(sheetsConfig.webappUrl, {
       method: 'POST',
       headers: {'Content-Type': 'text/plain;charset=utf-8'},
-      body: JSON.stringify({action: 'cleanupDuplicates', facility_code: sheetsConfig.facility}),
+      body: JSON.stringify({action: 'cleanupDuplicates', facility_code: sheetsConfig.facility, token: sheetsConfig.token}),
     });
     const text = await res.text();
     let result = {};
@@ -2520,7 +2525,7 @@ async function flushPushQueue() {
       await fetch(sheetsConfig.webappUrl, {
         method: 'POST',
         headers: {'Content-Type': 'text/plain;charset=utf-8'},
-        body: JSON.stringify(item.payload),
+        body: JSON.stringify({ ...item.payload, token: sheetsConfig.token }),
       });
     } catch(e) { remaining.push(item); }
   }
@@ -2693,6 +2698,7 @@ function openSettings() {
   document.getElementById('settingFacility').value = sheetsConfig.facility;
   document.getElementById('settingSpreadsheetId').value = sheetsConfig.spreadsheetId || '';
   document.getElementById('settingWebAppUrl').value = sheetsConfig.webappUrl || '';
+  document.getElementById('settingToken').value = sheetsConfig.token || '';
   const chk = document.getElementById('syncEnabledChk');
   if (chk) chk.classList.toggle('on', !!sheetsConfig.enabled);
   updateDiagnostics();
@@ -2715,6 +2721,7 @@ function onFacilityChange(val) {
 function onSheetsConfigChange() {
   sheetsConfig.spreadsheetId = (document.getElementById('settingSpreadsheetId').value || '').trim();
   sheetsConfig.webappUrl = (document.getElementById('settingWebAppUrl').value || '').trim();
+  sheetsConfig.token = (document.getElementById('settingToken').value || '').trim();
   saveSheetsConfig();
 }
 function toggleSyncEnabled() {
@@ -2979,6 +2986,7 @@ async function deleteFromSheets(caseObj) {
     facility_code: sheetsConfig.facility,
     case_no: caseObj.caseNo,
     date: caseObj.date,
+    token: sheetsConfig.token,
   };
   try {
     await fetch(sheetsConfig.webappUrl, {
