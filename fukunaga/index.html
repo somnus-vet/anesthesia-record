@@ -1622,32 +1622,45 @@ function updateBlockSummary() {
 }
 
 // ─────────────── ブロックピッカー ───────────────
+// 複数選択方式: タップで選択/解除をトグルし、「閉じる」で確定。
 function openBlockPicker() {
+  renderBlockPickerBody();
+  document.getElementById('blockPickerModal').classList.add('on');
+}
+
+function renderBlockPickerBody() {
   const body = document.getElementById('blockPickerBody');
+  if (!body) return;
   const selectedSet = new Set(Object.keys(current?.localBlocks || {}).filter(k => current.localBlocks[k]?.use));
   body.innerHTML = LOCAL_BLOCKS_BY_CATEGORY.map(grp => {
     const btns = grp.keys.map(key => {
       const b = LOCAL_BLOCKS.find(x => x.key === key);
       if (!b) return '';
       const isSelected = selectedSet.has(key);
-      return `<button type="button" onclick="selectBlock('${key}')" ${isSelected?'disabled':''} style="background:${isSelected?'#dce3ec':'#eaf3fb'};color:${isSelected?'#888':'var(--navy)'};border:1.5px solid ${isSelected?'#ccc':'var(--blue)'};border-radius:7px;padding:8px 10px;font-size:12px;font-weight:600;cursor:${isSelected?'not-allowed':'pointer'};margin:2px;min-height:38px">${esc(b.label)}${isSelected?' ✓':''}</button>`;
+      return `<button type="button" onclick="toggleBlockSelection('${key}')" style="background:${isSelected?'#d4edda':'#eaf3fb'};color:${isSelected?'#155724':'var(--navy)'};border:1.5px solid ${isSelected?'var(--green)':'var(--blue)'};border-radius:7px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer;margin:2px;min-height:38px">${esc(b.label)}${isSelected?' ✓':''}</button>`;
     }).join('');
     return `<div style="margin-bottom:10px">
       <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">${esc(grp.cat)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:3px">${btns}</div>
     </div>`;
   }).join('');
-  document.getElementById('blockPickerModal').classList.add('on');
 }
 
 function closeBlockPicker() {
   document.getElementById('blockPickerModal').classList.remove('on');
 }
 
-function selectBlock(key) {
-  ensureBlockData(key).use = true;
-  closeBlockPicker();
-  renderSelectedBlocks();
+// タップで選択/解除をトグル。ポップアップは開いたまま、選んだら「閉じる」で確定。
+function toggleBlockSelection(key) {
+  if (!current.localBlocks) current.localBlocks = {};
+  const existing = current.localBlocks[key];
+  if (existing && existing.use) {
+    existing.use = false; // 解除（入力済みの量・部位は残す）
+  } else {
+    ensureBlockData(key).use = true;
+  }
+  renderBlockPickerBody();   // ピッカーの選択状態を更新
+  renderSelectedBlocks();    // 下のカード一覧も即時反映
   autoSave();
 }
 
