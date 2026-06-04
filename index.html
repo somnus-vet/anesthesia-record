@@ -1728,6 +1728,8 @@ const PRESET_DESC = {
 
 // プリセット: Sheets権威 → localStorage キャッシュ → デフォルト
 let userPresets = null;
+// 薬剤以外の拡張項目（Sheetsの __extras__ 行にJSONで保存し端末間共有）
+const EXTRA_PRESET_FIELDS = ['maint','maintConc','maintO2','maintAir','fluidType','fluidRate'];
 
 async function loadPresetsFromSheets() {
   if (!sheetsConfig || !sheetsConfig.spreadsheetId) return null;
@@ -1746,24 +1748,27 @@ async function loadPresetsFromSheets() {
       const key = r['プリセットキー'];
       if (!key) return;
       if (!presets[key]) presets[key] = { label: r['表示名'] || key, drugs: {} };
-      if (r['薬剤キー']) {
+      if (r['薬剤キー'] === '__extras__') {
+        // 拡張項目(維持薬・濃度・O₂・Air・輸液)はJSONで「用量」列に格納
+        try {
+          const ex = JSON.parse(r['用量'] || '{}');
+          EXTRA_PRESET_FIELDS.forEach(f => { if (ex[f] !== undefined) presets[key][f] = ex[f]; });
+        } catch(_) {}
+      } else if (r['薬剤キー']) {
         presets[key].drugs[r['薬剤キー']] = {
           dose: r['用量'] || '',
           route: r['経路'] || ''
         };
       }
     });
-    // Sheetsには維持薬・輸液の列が無いため、localStorageキャッシュから補完
+    // Sheets未保存の拡張項目は localStorage キャッシュで補完（Sheets値が優先）
     try {
       const cached = JSON.parse(localStorage.getItem('vet_presets') || '{}');
       Object.keys(presets).forEach(k => {
         if (!cached[k]) return;
-        if (cached[k].maint !== undefined) presets[k].maint = cached[k].maint;
-        if (cached[k].maintConc !== undefined) presets[k].maintConc = cached[k].maintConc;
-        if (cached[k].maintO2 !== undefined) presets[k].maintO2 = cached[k].maintO2;
-        if (cached[k].maintAir !== undefined) presets[k].maintAir = cached[k].maintAir;
-        if (cached[k].fluidType !== undefined) presets[k].fluidType = cached[k].fluidType;
-        if (cached[k].fluidRate !== undefined) presets[k].fluidRate = cached[k].fluidRate;
+        EXTRA_PRESET_FIELDS.forEach(f => {
+          if (presets[k][f] === undefined && cached[k][f] !== undefined) presets[k][f] = cached[k][f];
+        });
       });
     } catch(e) {}
     return Object.keys(presets).length > 0 ? presets : null;
