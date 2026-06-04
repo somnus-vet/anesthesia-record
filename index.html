@@ -999,7 +999,15 @@ input.fin[readonly]{background:#fff;cursor:pointer}
       <input id="presetLabel" type="text" oninput="onPresetLabelInput(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px">
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">維持薬</div>
-      <div class="qdose-bar" id="presetMaintBar" style="margin-bottom:14px"></div>
+      <div class="qdose-bar" id="presetMaintBar" style="margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
+        <span class="flabel">濃度</span>
+        <input id="presetMaintConc" type="text" inputmode="decimal" placeholder="2.0" oninput="setPresetMaintConc(this.value)" style="width:64px;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;background:#f8fafc;min-height:40px">
+        <span class="unit">%</span>
+        <span class="flabel" style="min-width:28px">O₂</span>
+        <input id="presetMaintO2" type="text" inputmode="decimal" placeholder="1.5" oninput="setPresetMaintO2(this.value)" style="width:64px;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;background:#f8fafc;min-height:40px">
+        <span class="unit">L/min</span>
+      </div>
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">輸液</div>
       <div style="display:flex;gap:6px;margin-bottom:6px">
@@ -1010,6 +1018,13 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('乳酸リンゲル(LR)')">LR</button>
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('酢酸リンゲル(AR)')">AR</button>
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('生理食塩水(NaCl)')">NaCl</button>
+      </div>
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">局所麻酔</div>
+      <div id="presetLocalSummary" style="font-size:13px;background:#f8fafc;border:1.5px solid var(--border);border-radius:7px;padding:10px;margin-bottom:6px;min-height:20px;white-space:pre-line"></div>
+      <div class="qdose-bar" style="margin-bottom:14px">
+        <button type="button" class="qdose-btn" onclick="captureLocalToPreset()">現在の症例から取り込む</button>
+        <button type="button" class="qdose-btn" onclick="clearLocalFromPreset()">クリア</button>
       </div>
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">薬剤・用量・経路</div>
@@ -1732,8 +1747,12 @@ async function loadPresetsFromSheets() {
       Object.keys(presets).forEach(k => {
         if (!cached[k]) return;
         if (cached[k].maint !== undefined) presets[k].maint = cached[k].maint;
+        if (cached[k].maintConc !== undefined) presets[k].maintConc = cached[k].maintConc;
+        if (cached[k].maintO2 !== undefined) presets[k].maintO2 = cached[k].maintO2;
         if (cached[k].fluidType !== undefined) presets[k].fluidType = cached[k].fluidType;
         if (cached[k].fluidRate !== undefined) presets[k].fluidRate = cached[k].fluidRate;
+        if (cached[k].localBlocks !== undefined) presets[k].localBlocks = cached[k].localBlocks;
+        if (cached[k].localMixture !== undefined) presets[k].localMixture = cached[k].localMixture;
       });
     } catch(e) {}
     return Object.keys(presets).length > 0 ? presets : null;
@@ -1829,9 +1848,15 @@ function applyPreset(key) {
     current.maintSevoflurane = preset.maint === 'sevoflurane';
     current.maintPropofol = preset.maint === 'propofol';
   }
+  // 維持薬の濃度・酸素流量（プリセットに設定があれば反映）
+  if (preset.maintConc !== undefined && preset.maintConc !== '') current.maintConc = preset.maintConc;
+  if (preset.maintO2 !== undefined && preset.maintO2 !== '') current.maintO2 = preset.maintO2;
   // 輸液（プリセットに設定があれば反映）
   if (preset.fluidType) current.fluidType = preset.fluidType;
   if (preset.fluidRate) current.fluidRate = preset.fluidRate;
+  // 局所麻酔（ブロック＋メイン溶液。設定があれば丸ごと反映）
+  if (preset.localBlocks) current.localBlocks = JSON.parse(JSON.stringify(preset.localBlocks));
+  if (preset.localMixture) current.localMixture = JSON.parse(JSON.stringify(preset.localMixture));
   populateForm();
   showToast(`プリセット適用: ${preset.label}`);
   autoSave();
@@ -1873,9 +1898,13 @@ function renderPresetEditor() {
   document.getElementById('presetMaintBar').innerHTML = maintOpts.map(([v, lbl]) =>
     `<button type="button" class="qdose-btn ${curMaint === v ? 'on' : ''}" onclick="setPresetMaint('${v}')">${lbl}</button>`
   ).join('');
+  document.getElementById('presetMaintConc').value = preset.maintConc || '';
+  document.getElementById('presetMaintO2').value = preset.maintO2 || '';
   // 輸液
   document.getElementById('presetFluidType').value = preset.fluidType || '';
   document.getElementById('presetFluidRate').value = preset.fluidRate || '';
+  // 局所麻酔サマリ
+  renderPresetLocalSummary(preset);
 
   const allDrugs = Object.values(DRUG_GROUPS).flat();
   const list = document.getElementById('presetDrugList');
@@ -1971,6 +2000,57 @@ function setPresetFluidRate(val) {
   if (!editingPreset) return;
   const key = document.getElementById('presetSelect').value;
   if (editingPreset[key]) editingPreset[key].fluidRate = val;
+}
+function setPresetMaintConc(val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]) editingPreset[key].maintConc = val;
+}
+function setPresetMaintO2(val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]) editingPreset[key].maintO2 = val;
+}
+// 局所麻酔（ブロック＋メイン溶液）の人間可読サマリ
+function localPresetSummaryText(preset) {
+  const parts = [];
+  const blocks = preset.localBlocks || {};
+  const used = Object.keys(blocks).filter(k => blocks[k] && blocks[k].use);
+  if (used.length) {
+    parts.push('ブロック: ' + used.map(k => {
+      const def = getBlockDef(k), d = blocks[k];
+      const detail = [d.volume ? d.volume + 'mL' : '', (d.sites && d.sites !== '1') ? d.sites + 'カ所' : '', d.side || ''].filter(Boolean).join(' ');
+      return (def ? def.label : k) + (detail ? `(${detail})` : '');
+    }).join('、'));
+  }
+  const mix = preset.localMixture;
+  if (mix && Array.isArray(mix.drugs)) {
+    const ds = mix.drugs.filter(d => d && d.name);
+    if (ds.length) parts.push('溶液: ' + ds.map(d => `${d.name}${d.conc}%${d.stockMl ? '×' + d.stockMl + 'mL' : ''}`).join(' + ') + (mix.totalVolume ? ` → 計${mix.totalVolume}mL` : ''));
+  }
+  return parts.length ? parts.join('\n') : '（未設定）';
+}
+function renderPresetLocalSummary(preset) {
+  const el = document.getElementById('presetLocalSummary');
+  if (el) el.textContent = localPresetSummaryText(preset);
+}
+function captureLocalToPreset() {
+  if (!editingPreset) return;
+  if (!current) { showToast('先に症例を開いて局所麻酔を設定してください'); return; }
+  const key = document.getElementById('presetSelect').value;
+  if (!editingPreset[key]) return;
+  editingPreset[key].localBlocks = JSON.parse(JSON.stringify(current.localBlocks || {}));
+  editingPreset[key].localMixture = JSON.parse(JSON.stringify(current.localMixture || { drugs: [], totalVolume: '' }));
+  renderPresetLocalSummary(editingPreset[key]);
+  showToast('現在の局所麻酔を取り込みました');
+}
+function clearLocalFromPreset() {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (!editingPreset[key]) return;
+  delete editingPreset[key].localBlocks;
+  delete editingPreset[key].localMixture;
+  renderPresetLocalSummary(editingPreset[key]);
 }
 function presetFluidQuick(v) {
   const el = document.getElementById('presetFluidType');
@@ -2694,8 +2774,9 @@ function startSyncTimer() {
   if (!sheetsConfig.enabled) return;
   syncFromSheets();
   syncTimer = setInterval(syncFromSheets, 30000);
-  // スタッフ名簿・プリセットも定期的に取り直す（他端末の追加を自動反映）
-  metaTimer = setInterval(() => { loadStaffList(); loadPresets(); }, 300000);
+  // スタッフ名簿・プリセットも定期的に取り直す（保険。頻繁に変わらないので1日1回）
+  // ※術者/助手ピッカーは開いた時に空なら都度取り直すので、名前は常に最新で出る
+  metaTimer = setInterval(() => { loadStaffList(); loadPresets(); }, 86400000);
 }
 function stopSyncTimer() {
   if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
