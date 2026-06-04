@@ -701,6 +701,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
             <span class="flabel" style="min-width:28px">O₂</span>
             <input class="fin fin-sm" type="text" inputmode="decimal" id="f_maintO2" placeholder="1.5" oninput="autoSave()">
             <span class="unit">L/min</span>
+            <span class="flabel" style="min-width:28px">Air</span>
+            <input class="fin fin-sm" type="text" inputmode="decimal" id="f_maintAir" placeholder="0" oninput="autoSave()">
+            <span class="unit">L/min</span>
           </div>
           <div class="frow">
             <span class="flabel">人工呼吸</span>
@@ -1012,6 +1015,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <span class="flabel" style="min-width:28px">O₂</span>
         <input id="presetMaintO2" type="text" inputmode="decimal" placeholder="1.5" oninput="setPresetMaintO2(this.value)" style="width:64px;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;background:#f8fafc;min-height:40px">
         <span class="unit">L/min</span>
+        <span class="flabel" style="min-width:28px">Air</span>
+        <input id="presetMaintAir" type="text" inputmode="decimal" placeholder="0" oninput="setPresetMaintAir(this.value)" style="width:64px;padding:9px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;background:#f8fafc;min-height:40px">
+        <span class="unit">L/min</span>
       </div>
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">輸液</div>
@@ -1023,13 +1029,6 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('乳酸リンゲル(LR)')">LR</button>
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('酢酸リンゲル(AR)')">AR</button>
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('生理食塩水(NaCl)')">NaCl</button>
-      </div>
-
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">局所麻酔</div>
-      <div id="presetLocalSummary" style="font-size:13px;background:#f8fafc;border:1.5px solid var(--border);border-radius:7px;padding:10px;margin-bottom:6px;min-height:20px;white-space:pre-line"></div>
-      <div class="qdose-bar" style="margin-bottom:14px">
-        <button type="button" class="qdose-btn" onclick="captureLocalToPreset()">現在の症例から取り込む</button>
-        <button type="button" class="qdose-btn" onclick="clearLocalFromPreset()">クリア</button>
       </div>
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">薬剤・用量・経路</div>
@@ -1754,10 +1753,9 @@ async function loadPresetsFromSheets() {
         if (cached[k].maint !== undefined) presets[k].maint = cached[k].maint;
         if (cached[k].maintConc !== undefined) presets[k].maintConc = cached[k].maintConc;
         if (cached[k].maintO2 !== undefined) presets[k].maintO2 = cached[k].maintO2;
+        if (cached[k].maintAir !== undefined) presets[k].maintAir = cached[k].maintAir;
         if (cached[k].fluidType !== undefined) presets[k].fluidType = cached[k].fluidType;
         if (cached[k].fluidRate !== undefined) presets[k].fluidRate = cached[k].fluidRate;
-        if (cached[k].localBlocks !== undefined) presets[k].localBlocks = cached[k].localBlocks;
-        if (cached[k].localMixture !== undefined) presets[k].localMixture = cached[k].localMixture;
       });
     } catch(e) {}
     return Object.keys(presets).length > 0 ? presets : null;
@@ -1856,12 +1854,10 @@ function applyPreset(key) {
   // 維持薬の濃度・酸素流量（プリセットに設定があれば反映）
   if (preset.maintConc !== undefined && preset.maintConc !== '') current.maintConc = preset.maintConc;
   if (preset.maintO2 !== undefined && preset.maintO2 !== '') current.maintO2 = preset.maintO2;
+  if (preset.maintAir !== undefined && preset.maintAir !== '') current.maintAir = preset.maintAir;
   // 輸液（プリセットに設定があれば反映）
   if (preset.fluidType) current.fluidType = preset.fluidType;
   if (preset.fluidRate) current.fluidRate = preset.fluidRate;
-  // 局所麻酔（ブロック＋メイン溶液。設定があれば丸ごと反映）
-  if (preset.localBlocks) current.localBlocks = JSON.parse(JSON.stringify(preset.localBlocks));
-  if (preset.localMixture) current.localMixture = JSON.parse(JSON.stringify(preset.localMixture));
   populateForm();
   showToast(`プリセット適用: ${preset.label}`);
   autoSave();
@@ -1905,11 +1901,10 @@ function renderPresetEditor() {
   ).join('');
   document.getElementById('presetMaintConc').value = preset.maintConc || '';
   document.getElementById('presetMaintO2').value = preset.maintO2 || '';
+  document.getElementById('presetMaintAir').value = preset.maintAir || '';
   // 輸液
   document.getElementById('presetFluidType').value = preset.fluidType || '';
   document.getElementById('presetFluidRate').value = preset.fluidRate || '';
-  // 局所麻酔サマリ
-  renderPresetLocalSummary(preset);
 
   const allDrugs = Object.values(DRUG_GROUPS).flat();
   const list = document.getElementById('presetDrugList');
@@ -2016,46 +2011,10 @@ function setPresetMaintO2(val) {
   const key = document.getElementById('presetSelect').value;
   if (editingPreset[key]) editingPreset[key].maintO2 = val;
 }
-// 局所麻酔（ブロック＋メイン溶液）の人間可読サマリ
-function localPresetSummaryText(preset) {
-  const parts = [];
-  const blocks = preset.localBlocks || {};
-  const used = Object.keys(blocks).filter(k => blocks[k] && blocks[k].use);
-  if (used.length) {
-    parts.push('ブロック: ' + used.map(k => {
-      const def = getBlockDef(k), d = blocks[k];
-      const detail = [d.volume ? d.volume + 'mL' : '', (d.sites && d.sites !== '1') ? d.sites + 'カ所' : '', d.side || ''].filter(Boolean).join(' ');
-      return (def ? def.label : k) + (detail ? `(${detail})` : '');
-    }).join('、'));
-  }
-  const mix = preset.localMixture;
-  if (mix && Array.isArray(mix.drugs)) {
-    const ds = mix.drugs.filter(d => d && d.name);
-    if (ds.length) parts.push('溶液: ' + ds.map(d => `${d.name}${d.conc}%${d.stockMl ? '×' + d.stockMl + 'mL' : ''}`).join(' + ') + (mix.totalVolume ? ` → 計${mix.totalVolume}mL` : ''));
-  }
-  return parts.length ? parts.join('\n') : '（未設定）';
-}
-function renderPresetLocalSummary(preset) {
-  const el = document.getElementById('presetLocalSummary');
-  if (el) el.textContent = localPresetSummaryText(preset);
-}
-function captureLocalToPreset() {
-  if (!editingPreset) return;
-  if (!current) { showToast('先に症例を開いて局所麻酔を設定してください'); return; }
-  const key = document.getElementById('presetSelect').value;
-  if (!editingPreset[key]) return;
-  editingPreset[key].localBlocks = JSON.parse(JSON.stringify(current.localBlocks || {}));
-  editingPreset[key].localMixture = JSON.parse(JSON.stringify(current.localMixture || { drugs: [], totalVolume: '' }));
-  renderPresetLocalSummary(editingPreset[key]);
-  showToast('現在の局所麻酔を取り込みました');
-}
-function clearLocalFromPreset() {
+function setPresetMaintAir(val) {
   if (!editingPreset) return;
   const key = document.getElementById('presetSelect').value;
-  if (!editingPreset[key]) return;
-  delete editingPreset[key].localBlocks;
-  delete editingPreset[key].localMixture;
-  renderPresetLocalSummary(editingPreset[key]);
+  if (editingPreset[key]) editingPreset[key].maintAir = val;
 }
 function presetFluidQuick(v) {
   const el = document.getElementById('presetFluidType');
@@ -2923,7 +2882,7 @@ function makeCase() {
     // protocol
     drugs: {}, // { key: { use, dose, route } }
     maintIsoflurane:false, maintSevoflurane:false, maintPropofol:false,
-    maintConc:'', maintO2:'', ventilation:'',
+    maintConc:'', maintO2:'', maintAir:'', ventilation:'',
     fluidType:'', fluidRate:'',
     localMixture: { drugs: [], totalVolume: '' },
     localBlocks: {}, localCustom1:'', localCustom2:'',
@@ -3196,7 +3155,7 @@ function populateForm() {
     'hvent_pcvPIP','hvent_pcvRR','hvent_vcvVT','hvent_vcvRR','hvent_notes',
     'anaphy_notes','mh_notes','hypoTx',
     'tubeSize','bagSize',
-    'maintConc','maintO2','ventilation','fluidType','fluidRate',
+    'maintConc','maintO2','maintAir','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
     'anesthStart','inductionTime','intubationTime','eyeOintTime','localAnesthTime','antibioticTime',
     'surgStart','sutureStart','surgEnd',
@@ -3319,7 +3278,7 @@ function collectForm() {
     'hvent_pcvPIP','hvent_pcvRR','hvent_vcvVT','hvent_vcvRR','hvent_notes',
     'anaphy_notes','mh_notes','hypoTx',
     'tubeSize','bagSize',
-    'maintConc','maintO2','ventilation','fluidType','fluidRate',
+    'maintConc','maintO2','maintAir','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
     'anesthStart','inductionTime','intubationTime','eyeOintTime','localAnesthTime','antibioticTime',
     'surgStart','sutureStart','surgEnd',
@@ -4726,6 +4685,7 @@ function generatePrintHTML(c) {
         ${c.maintPropofol ? chip('維持: プロポフォール') : ''}
         ${fld('濃度', c.maintConc ? c.maintConc+'%':'')}
         ${fld('O₂', c.maintO2 ? c.maintO2+'L/min':'')}
+        ${fld('Air', c.maintAir ? c.maintAir+'L/min':'')}
         ${fld('人工呼吸', c.ventilation)}
         ${fld('輸液', c.fluidType)}
         ${fld('輸液速度', c.fluidRate ? c.fluidRate+'mL/kg/h' : '')}
