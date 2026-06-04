@@ -2062,6 +2062,7 @@ let sheetsConfig = { ...SHEETS_DEFAULT };
 let facilityMap = { ...FACILITY_LABELS_FALLBACK };
 let pushQueue = [];
 let syncTimer = null;
+let metaTimer = null; // スタッフ名簿・プリセットの定期再取得用
 let lastSyncAt = null;
 let lastPushAt = null;
 let lastPushStatus = null;
@@ -2569,6 +2570,13 @@ async function loadStaffList() {
     // 氏名で重複除去、順序維持
     const seen = new Set();
     const uniq = data.filter(s => seen.has(s.name) ? false : (seen.add(s.name), true));
+    if (uniq.length === 0) {
+      // 取得0件: キャッシュがあれば温存（空応答/一時失敗で名簿を消さない）
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        if (Array.isArray(cached) && cached.length) { staffPickerListData = cached; return; }
+      } catch(_) {}
+    }
     try { localStorage.setItem(cacheKey, JSON.stringify(uniq)); } catch(_) {}
     staffPickerListData = uniq;
   } catch(e) {
@@ -2595,6 +2603,10 @@ function openStaffPicker(targetFieldId, title) {
   filterStaffPicker();
   const modal = document.getElementById('staffPickerModal');
   if (modal) modal.classList.add('on');
+  // 名簿が空なら（初回読込失敗 or シートに後から追加）その場で取り直す
+  if (sheetsConfig.enabled && staffPickerListData.length === 0) {
+    loadStaffList().then(() => filterStaffPicker());
+  }
 }
 function closeStaffPicker() {
   const modal = document.getElementById('staffPickerModal');
@@ -2682,9 +2694,12 @@ function startSyncTimer() {
   if (!sheetsConfig.enabled) return;
   syncFromSheets();
   syncTimer = setInterval(syncFromSheets, 30000);
+  // スタッフ名簿・プリセットも定期的に取り直す（他端末の追加を自動反映）
+  metaTimer = setInterval(() => { loadStaffList(); loadPresets(); }, 300000);
 }
 function stopSyncTimer() {
   if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+  if (metaTimer) { clearInterval(metaTimer); metaTimer = null; }
 }
 
 // 施設選択ドロップダウンを FACILITY_LABELS_FALLBACK から生成
@@ -2738,6 +2753,7 @@ function toggleSyncEnabled() {
   if (sheetsConfig.enabled) {
     loadFacilityMap();
     loadStaffList();
+    loadPresets();
     startSyncTimer();
   } else {
     stopSyncTimer();

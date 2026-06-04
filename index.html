@@ -2046,6 +2046,7 @@ const SHEETS_DEFAULT = {
   spreadsheetId: '15nHPYpwnQtzGqtoHaMYMvV8s_LEB6xIp3SBfuwjWZNQ',
   webappUrl: 'https://script.google.com/macros/s/AKfycbwQ_Oqtsl4ptT2g2JNpCyjsnl_hqpGd2CYQf7S7Uzbf4WmJkSG6aIOVTpgbGFjrkK9Z/exec',
   facility: 'BDY',
+  token: '', // 合言葉（コードには書かず、各端末の設定画面で入力する）
   enabled: false,
 };
 
@@ -2060,6 +2061,7 @@ let sheetsConfig = { ...SHEETS_DEFAULT };
 let facilityMap = { ...FACILITY_LABELS_FALLBACK };
 let pushQueue = [];
 let syncTimer = null;
+let metaTimer = null; // スタッフ名簿・プリセットの定期再取得用
 let lastSyncAt = null;
 let lastPushAt = null;
 let lastPushStatus = null;
@@ -2118,7 +2120,8 @@ function savePushQueue() {
 }
 
 function csvUrl(sheet) {
-  // セキュリティ改修: 合言葉つきでGAS(doGet)経由で取得（シートは非公開のまま）
+  // セキュリティ改修: スプレッドシートを直接読まず、合言葉つきでGAS(doGet)経由で取得する。
+  // これによりスプレッドシートは非公開のままにできる。
   if (!sheetsConfig.webappUrl) return '';
   return `${sheetsConfig.webappUrl}?action=read&sheet=${encodeURIComponent(sheet)}&token=${encodeURIComponent(sheetsConfig.token || '')}`;
 }
@@ -2567,6 +2570,13 @@ async function loadStaffList() {
     // 氏名で重複除去、順序維持
     const seen = new Set();
     const uniq = data.filter(s => seen.has(s.name) ? false : (seen.add(s.name), true));
+    if (uniq.length === 0) {
+      // 取得0件: キャッシュがあれば温存（空応答/一時失敗で名簿を消さない）
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        if (Array.isArray(cached) && cached.length) { staffPickerListData = cached; return; }
+      } catch(_) {}
+    }
     try { localStorage.setItem(cacheKey, JSON.stringify(uniq)); } catch(_) {}
     staffPickerListData = uniq;
   } catch(e) {
@@ -2593,6 +2603,10 @@ function openStaffPicker(targetFieldId, title) {
   filterStaffPicker();
   const modal = document.getElementById('staffPickerModal');
   if (modal) modal.classList.add('on');
+  // 名簿が空なら（初回読込失敗 or シートに後から追加）その場で取り直す
+  if (sheetsConfig.enabled && staffPickerListData.length === 0) {
+    loadStaffList().then(() => filterStaffPicker());
+  }
 }
 function closeStaffPicker() {
   const modal = document.getElementById('staffPickerModal');
@@ -2680,9 +2694,12 @@ function startSyncTimer() {
   if (!sheetsConfig.enabled) return;
   syncFromSheets();
   syncTimer = setInterval(syncFromSheets, 30000);
+  // スタッフ名簿・プリセットも定期的に取り直す（他端末の追加を自動反映）
+  metaTimer = setInterval(() => { loadStaffList(); loadPresets(); }, 300000);
 }
 function stopSyncTimer() {
   if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+  if (metaTimer) { clearInterval(metaTimer); metaTimer = null; }
 }
 
 // 施設選択ドロップダウンを FACILITY_LABELS_FALLBACK から生成
@@ -2736,6 +2753,7 @@ function toggleSyncEnabled() {
   if (sheetsConfig.enabled) {
     loadFacilityMap();
     loadStaffList();
+    loadPresets();
     startSyncTimer();
   } else {
     stopSyncTimer();
@@ -3933,7 +3951,7 @@ function recomputeFreeNotesFroms() {
     grp.sort((a, b) => {
       const ta = timeToSec(a.time), tb = timeToSec(b.time);
       if (ta === null && tb === null) return 0;
-      if (ta === null) return 1;   // 時刻未入力は末尾へ
+      if (ta === null) return 1;
       if (tb === null) return -1;
       return ta - tb;
     });
@@ -3942,7 +3960,6 @@ function recomputeFreeNotesFroms() {
       current.freeNotes[idx].from = prev;
       const t = current.freeNotes[idx].to;
       if (t !== undefined && t !== null && t !== '') prev = String(t);
-      // 空の to は伝播しない（前回値を維持）
     });
   });
 }
