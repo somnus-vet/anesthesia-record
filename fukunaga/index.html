@@ -4618,9 +4618,9 @@ function generatePrintHTML(c) {
     <div class="p-section">
       <h3>麻酔プロトコル / Anesthetic Protocol</h3>
       ${selectedDrugs.length ? `<table class="p-table">
-        <thead><tr><th style="width:60px">分類</th><th>薬剤</th><th style="width:80px">用量</th><th style="width:42px">経路</th><th style="width:70px">総量</th><th style="width:60px">薬液量</th></tr></thead>
+        <thead><tr><th style="width:60px">分類</th><th>薬剤</th><th style="width:80px">用量</th><th style="width:42px">経路</th><th style="width:60px">薬液量</th></tr></thead>
         <tbody>
-          ${selectedDrugs.map(d => `<tr><td>${esc(d.group)}</td><td>${esc(d.name)}</td><td>${esc(d.dose)}</td><td>${esc(d.route)}</td><td>${esc(d.total)}</td><td>${esc(d.vol)}</td></tr>`).join('')}
+          ${selectedDrugs.map(d => `<tr><td>${esc(d.group)}</td><td>${esc(d.name)}</td><td>${esc(d.dose)}</td><td>${esc(d.route)}</td><td>${esc(d.vol)}</td></tr>`).join('')}
         </tbody>
       </table>` : '<div style="font-size:8pt;color:#666">選択された薬剤なし</div>'}
       <div class="p-row" style="margin-top:3px">
