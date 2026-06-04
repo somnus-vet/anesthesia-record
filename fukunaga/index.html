@@ -2293,11 +2293,14 @@ function mergeReservations(rows, onUpdate) {
     if (existing) {
       const remoteTs = parseSheetTs(r['updated_at']);
       const localTs = parseSheetTs(existing.updated_at);
-      // 内部IDが一致しない場合（複数デバイス間の競合）はremote側のIDで統一
-      const idMismatch = remoteId && existing.id !== remoteId;
       // facilityを必ず記録（auto-delete判定に使用）
       existing.facility = sheetsConfig.facility;
-      if (idMismatch || (remoteTs && (!localTs || remoteTs > localTs))) {
+      // 内部IDの競合解消は「データ上書きとは独立に」常に行う。
+      // 旧実装は idMismatch だけで detail を無条件上書きしていたため、
+      // 反映の遅れた古いリモートで、記録直後のローカルのイベント/薬剤が消えていた。
+      // ID統一だけ先に済ませ、データ本体は「リモートが新しい時だけ」反映する。
+      if (remoteId && existing.id !== remoteId) existing.id = remoteId;
+      if (remoteTs && (!localTs || remoteTs > localTs)) {
         // detail 全体を反映（薬剤・ブロック等のネスト構造も復元）
         Object.keys(detail).forEach(k => existing[k] = detail[k]);
         // 内部IDをremote側に統一（複数デバイス間で一意にする）
@@ -4263,6 +4266,10 @@ function switchTab(i) {
 // ─────────────────────────────────────────────────
 let saveTimer = null;
 function autoSave() {
+  // ローカル変更時刻を即座に進める。これをしないと「ローカルは常に古い」扱いになり、
+  // 反映の遅れた（=記録直後のイベントがまだ載っていない）Sheetsデータで
+  // current が丸ごと上書きされ、押したばかりのイベント/薬剤が消える。
+  if (current) current.updated_at = nowIsoStr();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     if (!current) return;
@@ -4286,6 +4293,9 @@ function pushCurrentToSheets() {
   if (!current) return;
   if (!sheetsConfig.enabled) return;
   if (!current.caseNo || !current.date) return;
+  // 送信前にローカル時刻を進めておく。確認同期(CSV)が反映遅延で古いデータを返しても、
+  // remoteTs <= localTs となり mergeReservations が current を巻き戻さない。
+  current.updated_at = nowIsoStr();
   pushToSheets(current, {skipFollowupSync: true});
 }
 
