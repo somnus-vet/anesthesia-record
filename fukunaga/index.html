@@ -193,8 +193,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 
 /* QUICK DOSE BAR */
 .qdose-bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
-.qdose-btn{display:flex;align-items:center;gap:5px;background:var(--blue-bg);border:1.5px solid var(--blue);color:var(--blue);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;-webkit-user-select:none}
-.qdose-btn:active{background:var(--blue);color:#fff}
+.qdose-btn{display:flex;align-items:center;gap:5px;background:var(--blue-bg);border:1.5px solid var(--blue);color:var(--blue);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .05s ease,filter .05s ease,box-shadow .05s ease}
+/* インライン背景が指定されたボタンでも効くよう transform/filter で押下感を出す */
+.qdose-btn:active{background:var(--blue);color:#fff;transform:scale(0.93);filter:brightness(0.9);box-shadow:0 2px 5px rgba(0,0,0,0.28) inset}
 .qdose-btn.on{background:var(--blue);color:#fff}
 .qdose-plus{font-size:11px;font-weight:700;opacity:.7}
 .qdose-badge{font-size:10px;font-weight:700;background:var(--blue);color:#fff;border-radius:10px;padding:1px 7px;margin-left:3px}
@@ -226,6 +227,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-kind-flow{background:#d4f1eb;color:#0f6b5c}
 .tl-kind-ventoff{background:#e8e0d4;color:#6b4f1d}
 .tl-row.tl-ventoff{border-left-color:#b08642}
+.tl-kind-tubechange{background:#e0e8f2;color:#2b4a73}
+.tl-row.tl-tubechange{border-left-color:#5a7fae}
 .tl-from{flex:0 0 44px;min-height:38px;line-height:38px;text-align:center;font-size:13px;color:var(--muted);font-weight:700;background:#f3f5f8;border-radius:5px}
 .tl-arrow{flex:0 0 auto;font-size:14px;color:var(--muted);font-weight:700;padding:0 1px}
 .tl-to-in{flex:0 0 70px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
@@ -3747,10 +3750,14 @@ function renderEventButtons() {
       const opts = `{drugKey:'${d.key}',drugLabel:'${esc(d.label)}',unit:'${esc(d.unit)}'}`;
       return `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="addFreeNote('cri',${opts})">＋${esc(d.label)}(CRI)</button>`;
     }).join('');
+  // 挿管が記録済みなら「挿管」ボタンの代わりに「チューブ交換」ボタンを出す
+  const tubeBtn = (current.intubationTime || '').trim()
+    ? `<button type="button" class="qdose-btn" style="background:#e0e8f2;border-color:#5a7fae;color:#2b4a73" onclick="addFreeNote('tubeChange')">🔄チューブ交換</button>`
+    : '';
   bar.innerHTML = (unset.length
     ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}</button>`).join('')
     : '<div class="evt-empty" style="margin-right:8px">全イベント記録済み</div>')
-    + freeBtns + gasBtns + criBtns;
+    + tubeBtn + freeBtns + gasBtns + criBtns;
 }
 
 // イベント＋薬剤を時刻順に統合して1本のリストに描画
@@ -3784,6 +3791,8 @@ function renderTimelineList() {
       unit:      n.unit      || '',
       o2:        n.o2        || '',
       air:       n.air       || '',
+      size:      n.size      || '',
+      sizeFr:    n.sizeFr    || '',
     });
   });
   entries.sort((a, b) => {
@@ -3876,6 +3885,17 @@ function renderTimelineList() {
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
+      // チューブ交換: 交換後サイズ（mm / Fr）を記録、複数回登録可
+      if (k === 'tubeChange') {
+        return `<div class="tl-row tl-tubechange">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
+          <span class="tl-kind tl-kind-tubechange">チューブ交換</span>
+          <input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(en.size||'')}" placeholder="-" oninput="editFreeNote(${en.idx},'size',this.value)" autocomplete="off"><span class="tl-unit">mm</span>
+          <input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(en.sizeFr||'')}" placeholder="-" oninput="editFreeNote(${en.idx},'sizeFr',this.value)" autocomplete="off"><span class="tl-unit">Fr</span>
+          <span class="tl-spacer"></span>
+          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+        </div>`;
+      }
       // メモ・体位変換: 自由記載
       const kindLabel = k === 'position' ? '体位変換' : 'メモ';
       const kindCls = k === 'position' ? 'tl-kind-position' : 'tl-kind-memo';
@@ -3933,11 +3953,15 @@ function removeDrugLog(idx) {
 function addFreeNote(kind, opts) {
   if (!current) return;
   if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
-  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow'];
+  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange'];
   const k = valid.indexOf(kind) >= 0 ? kind : 'memo';
   const entry = { time: nowTime(), kind: k };
   if (k === 'memo' || k === 'position') {
     entry.text = '';
+  } else if (k === 'tubeChange') {
+    // 交換後のチューブサイズを記録（mm / Fr）
+    entry.size = '';
+    entry.sizeFr = '';
   } else if (k === 'flow') {
     // O2/Air流量はスナップショット（前回値の自動引継ぎ無し）
     entry.o2 = '';
@@ -3975,6 +3999,8 @@ function addFreeNote(kind, opts) {
   renderTimelineList();
   autoSave();
   pushCurrentToSheets();
+  const FREE_LABELS = { memo:'メモ', position:'体位変換', fluid:'輸液', vent:'換気', spont:'自発呼吸', cri:'CRI', gas:'維持薬', ventOff:'人工呼吸OFF', flow:'O2/Air流量', tubeChange:'チューブ交換' };
+  showToast(`✅ ${FREE_LABELS[k] || 'イベント'} を ${entry.time} に追加`);
 }
 
 // メモ/体位変換1件の項目を直接更新（描画しない＝入力フォーカス維持）
@@ -4559,6 +4585,7 @@ function generatePrintHTML(c) {
     if (!n) return false;
     const k = n.kind || 'memo';
     if (k === 'spont' || k === 'ventOff') return !!n.time;
+    if (k === 'tubeChange') return !!n.time;
     if (k === 'flow') return !!(n.time && (n.o2 || n.air));
     if (k === 'fluid' || k === 'vent' || k === 'cri' || k === 'gas') return !!(n.time && (n.from || n.to));
     return !!(n.time || n.text);
@@ -4575,6 +4602,7 @@ function generatePrintHTML(c) {
     else if (k === 'spont') { kindLbl = '自発呼吸'; body = ''; }
     else if (k === 'ventOff') { kindLbl = '人工呼吸OFF'; body = ''; }
     else if (k === 'flow') { kindLbl = 'O2/Air'; body = `O2 ${n.o2||'0'} L/min / Air ${n.air||'0'} L/min`; }
+    else if (k === 'tubeChange') { kindLbl = 'チューブ交換'; body = [n.size?n.size+'mm':'', n.sizeFr?n.sizeFr+'Fr':''].filter(Boolean).join(' / '); }
     else if (k === 'cri') { kindLbl = `${n.drugLabel||'CRI'}(CRI)`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||''}`; }
     else if (k === 'gas') { kindLbl = `${n.drugLabel||'維持薬'}`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||'%'}`; }
     else { kindLbl = 'メモ'; body = n.text || ''; }
@@ -4900,6 +4928,8 @@ function showToast(msg) {
 // ─────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────
+// iOS Safari は touchstart リスナーが無いと :active が効かない（押下感が出ない）ため空リスナーを付与
+document.addEventListener('touchstart', function(){}, {passive:true});
 loadStorage();
 loadSheetsConfig();
 updateFacilityBadge();
