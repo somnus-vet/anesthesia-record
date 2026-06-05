@@ -4127,15 +4127,25 @@ function renderQuickDoseBar() {
 
 // ワンタップ投与：用量選択パネルを開く
 let doseSelectKey = null;
+let doseSelectRoute = '';
 function quickDose(key) {
   if (!current) return;
   const d = findDrugDef(key);
   if (!d) return;
   doseSelectKey = key;
+  const drugData0 = (current.drugs && current.drugs[key]) || {};
+  doseSelectRoute = drugData0.route || d.def || (d.routes && d.routes[0]) || '';
   document.getElementById('doseSelectTitle').textContent = `${d.label} を記録`;
   const std = stdDoseOf(key);
   const body = document.getElementById('doseSelectBody');
   let html = '';
+  // 投与経路の選択（当初の予定と違う経路で投与した場合に変更可）
+  if (d.routes && d.routes.length) {
+    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:5px">投与経路</div>`;
+    html += `<div class="qdose-bar" id="doseRouteBar" style="margin-bottom:12px">`
+      + d.routes.map(r => `<button type="button" class="qdose-btn doseroute-btn${r===doseSelectRoute?' on':''}" data-route="${esc(r)}" onclick="setDoseRoute('${esc(r)}')">${esc(r)}</button>`).join('')
+      + `</div>`;
+  }
   if (!isNaN(std)) {
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">標準量 ${std}${d.unit} — 用量を選んでください</div>`;
     html += `<div class="dose-opts">`;
@@ -4154,6 +4164,13 @@ function quickDose(key) {
     </div>`;
   body.innerHTML = html;
   document.getElementById('doseSelectModal').classList.add('on');
+}
+
+// 投与経路の選択を切替（ハイライト更新）
+function setDoseRoute(r) {
+  doseSelectRoute = r;
+  const bar = document.getElementById('doseRouteBar');
+  if (bar) bar.querySelectorAll('.doseroute-btn').forEach(b => b.classList.toggle('on', b.dataset.route === r));
 }
 
 function doseOptBtn(d, perKg, label) {
@@ -4178,17 +4195,19 @@ function commitDose(perKg) {
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
   const drugData = (current.drugs && current.drugs[doseSelectKey]) || {};
   const t = nowTime();
-  current.drugLog.push({ drug: d.label, dose: formatDose(d, perKg), route: drugData.route || d.def, time: t });
+  const route = doseSelectRoute || drugData.route || d.def;
+  current.drugLog.push({ drug: d.label, dose: formatDose(d, perKg), route: route, time: t });
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
   closeDoseSelect();
-  showToast(`✅ ${d.label} を ${t} に記録`);
+  showToast(`✅ ${d.label}${route ? '（' + route + '）' : ''} を ${t} に記録`);
 }
 
 function closeDoseSelect() {
   document.getElementById('doseSelectModal').classList.remove('on');
   doseSelectKey = null;
+  doseSelectRoute = '';
 }
 
 // ─────────────────────────────────────────────────
