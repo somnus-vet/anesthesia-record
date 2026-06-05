@@ -744,6 +744,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="sec-title">術後鎮痛 Post-op Analgesia</div>
           <div id="drugList_postAnalg"></div>
 
+          <div class="sec-title">その他 Others</div>
+          <div id="drugList_other"></div>
+
           <div class="sec-title">局所麻酔 Local Anesthesia</div>
 
           <!-- メイン溶液パネル -->
@@ -1140,14 +1143,16 @@ const DRUG_GROUPS = {
     { key:'alfaxalone_p',   label:'アルファキサロン',  unit:'mg/kg', dog:'2〜3',       cat:'2〜5',      routes:['IV','IM'],      def:'IM', conc:10 },
     { key:'fentanyl_p',     label:'フェンタニル',     unit:'μg/kg', dog:'2〜5',       cat:'2〜5',      routes:['IV'],           def:'IV', conc:50 },
     { key:'buprenorphine_p',label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',     cat:'10〜20',    routes:['IV','IM','SC'], def:'IM', conc:200 },
+    { key:'morphine',       label:'モルヒネ',         unit:'mg/kg', dog:'0.3〜0.5',   cat:'0.1〜0.2',  routes:['IV','IM'],      def:'IM', conc:10 },
   ],
   induction: [
-    { key:'propofol',       label:'プロポフォール',   unit:'mg/kg', dog:'4〜6',  cat:'6〜8',  routes:['IV'], def:'IV', conc:10 },
-    { key:'alfaxalone_i',   label:'アルファキサロン', unit:'mg/kg', dog:'2〜3',  cat:'2〜5',  routes:['IV'], def:'IV', conc:10 },
+    { key:'propofol',       label:'プロポフォール',   unit:'mg/kg', dog:'4〜6',  cat:'6〜8',  routes:['IV'],      def:'IV', conc:10 },
+    { key:'alfaxalone_i',   label:'アルファキサロン', unit:'mg/kg', dog:'2〜3',  cat:'2〜5',  routes:['IV','IM'], def:'IV', conc:10 },
   ],
   antibiotics: [
     { key:'cefazolin',      label:'セファゾリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:100 },
     { key:'ampicillin',     label:'アンピシリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:100 },
+    { key:'cefovecin',      label:'セフォベシン',     unit:'mg/kg', dog:'8',      cat:'8',      routes:['SC'], def:'SC', conc:80 },
   ],
   cri: [
     { key:'fentanyl_c',     label:'フェンタニル',     unit:'μg/kg/hr',  dog:'1〜5',    cat:'1〜3',    routes:['IV'], def:'IV' },
@@ -1157,6 +1162,7 @@ const DRUG_GROUPS = {
     { key:'ketamine_c',     label:'ケタミン',         unit:'mg/kg/hr',  dog:'0.1〜0.6',cat:'0.1〜0.6',routes:['IV'], def:'IV' },
     { key:'noradrenaline_c',label:'ノルアドレナリン', unit:'μg/kg/min', dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'], def:'IV' },
     { key:'phenylephrine_c',label:'フェニレフリン',   unit:'μg/kg/min', dog:'1〜5',     cat:'1〜5',      routes:['IV'], def:'IV' },
+    { key:'tramadol_c',     label:'トラマドール',     unit:'mg/kg/hr',  dog:'0.1〜0.3', cat:'0.1〜0.3', routes:['IV'], def:'IV' },
   ],
   vasopressors: [
     { key:'atropine_v',     label:'アトロピン',       unit:'μg/kg', dog:'20〜40',     cat:'20〜40',     routes:['IV','IM','SC'], def:'IV', conc:500 },
@@ -1178,6 +1184,12 @@ const DRUG_GROUPS = {
     { key:'buprenorphine',  label:'ブプレノルフィン',  unit:'μg/kg', dog:'10〜20',  cat:'10〜20',    routes:['IV','IM','SC'], def:'IV', conc:200 },
     { key:'tramadol',       label:'トラマドール',      unit:'mg/kg', dog:'2〜5',    cat:'2〜4',      routes:['IV','SC'],      def:'IV', conc:50 },
     { key:'acetaminophen',  label:'アセトアミノフェン',unit:'mg/kg', dog:'10〜15',  cat:'⚠️禁忌',   routes:['IV'],           def:'IV', conc:10 },
+  ],
+  other: [
+    { key:'maropitant',      label:'マロピタント',         unit:'mg/kg', dog:'1',     cat:'1',     routes:['IV','SC'], def:'IV', conc:10 },
+    { key:'diphenhydramine', label:'ジフェンヒドラミン',    unit:'mg/kg', dog:'1〜2',  cat:'1〜2',  routes:['IV'],      def:'IV', conc:50 },
+    { key:'famotidine',      label:'ファモチジン',         unit:'mg/kg', dog:'0.5〜1', cat:'0.5〜1', routes:['IV'],      def:'IV', conc:10 },
+    { key:'methylprednisolone_acetate', label:'メチルプレドニゾロン酢酸エステル', unit:'mg/kg', dog:'1', cat:'1', routes:['SC'], def:'SC', conc:40 },
   ],
 };
 
@@ -1951,7 +1963,7 @@ function renderPresetEditor() {
   }
 
   // 追加ドロップダウン（既に追加済みは除外）
-  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛'};
+  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
   const sel = document.getElementById('addDrugSelect');
   sel.innerHTML = '<option value="">+ 薬剤を選択して追加…</option>' +
     Object.entries(DRUG_GROUPS).map(([gk, drugs]) => {
@@ -4509,7 +4521,7 @@ function generatePrintHTML(c) {
   const chip = (label, warn) => `<span class="p-chip${warn?' p-chip-warn':''}">${esc(label)}</span>`;
 
   // 選択された薬剤
-  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛'};
+  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
   const selectedDrugs = [];
   Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
     drugs.forEach(d => {
