@@ -236,6 +236,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-row.tl-ventoff{border-left-color:#b08642}
 .tl-kind-tubechange{background:#e0e8f2;color:#2b4a73}
 .tl-row.tl-tubechange{border-left-color:#5a7fae}
+.tl-kind-glove{background:#e7eef7;color:#2b4a73}
+.tl-row.tl-glove{border-left-color:#5a7fae}
 .tl-from{flex:0 0 44px;min-height:38px;line-height:38px;text-align:center;font-size:13px;color:var(--muted);font-weight:700;background:#f3f5f8;border-radius:5px}
 .tl-arrow{flex:0 0 auto;font-size:14px;color:var(--muted);font-weight:700;padding:0 1px}
 .tl-to-in{flex:0 0 70px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
@@ -3832,7 +3834,8 @@ function renderEventButtons() {
     + `<button type="button" class="qdose-btn" style="background:#d9e4d0;border-color:#7ea35a;color:#395a1e" onclick="addFreeNote('vent',{mode:'VCV'})">＋VCV換気</button>`
     + `<button type="button" class="qdose-btn" style="background:#e8e0d4;border-color:#b08642;color:#6b4f1d" onclick="addFreeNote('ventOff')">＋人工呼吸OFF</button>`
     + `<button type="button" class="qdose-btn" style="background:#dcefd4;border-color:#7ac257;color:#1f6b34" onclick="addFreeNote('spont')">＋自発呼吸</button>`
-    + `<button type="button" class="qdose-btn" style="background:#d4f1eb;border-color:#3ec5ad;color:#0f6b5c" onclick="addFreeNote('flow')">＋O2/Air流量</button>`;
+    + `<button type="button" class="qdose-btn" style="background:#d4f1eb;border-color:#3ec5ad;color:#0f6b5c" onclick="addFreeNote('flow')">＋O2/Air流量</button>`
+    + `<button type="button" class="qdose-btn" style="background:#e7eef7;border-color:#5a7fae;color:#2b4a73" onclick="addFreeNote('gloveChange')">🧤グローブ交換</button>`;
   // プロトコルでチェック済みの維持薬(揮発性麻酔薬) を動的ボタン化（濃度の変化記録）
   const gasBtns = [
     ['iso',  current.maintIsoflurane,  'イソフルラン'],
@@ -3968,6 +3971,15 @@ function renderTimelineList() {
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
+      // グローブ交換: 時刻マーカーのみ（複数回記録可。SomLogのグローブ交換タイマー起点）
+      if (k === 'gloveChange') {
+        return `<div class="tl-row tl-glove">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
+          <span class="tl-kind tl-kind-glove">グローブ交換</span>
+          <span class="tl-spacer"></span>
+          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+        </div>`;
+      }
       // O2/Air 流量: スナップショット型（その時点の流量を記録、複数回登録可）
       if (k === 'flow') {
         return `<div class="tl-row tl-flow">
@@ -4051,7 +4063,7 @@ function removeDrugLog(idx) {
 function addFreeNote(kind, opts) {
   if (!current) return;
   if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
-  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange'];
+  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange'];
   const k = valid.indexOf(kind) >= 0 ? kind : 'memo';
   const entry = { time: nowTime(), kind: k };
   if (k === 'memo' || k === 'position') {
@@ -4097,7 +4109,7 @@ function addFreeNote(kind, opts) {
   renderTimelineList();
   autoSave();
   pushCurrentToSheets();
-  const FREE_LABELS = { memo:'メモ', position:'体位変換', fluid:'輸液', vent:'換気', spont:'自発呼吸', cri:'CRI', gas:'維持薬', ventOff:'人工呼吸OFF', flow:'O2/Air流量', tubeChange:'チューブ交換' };
+  const FREE_LABELS = { memo:'メモ', position:'体位変換', fluid:'輸液', vent:'換気', spont:'自発呼吸', cri:'CRI', gas:'維持薬', ventOff:'人工呼吸OFF', flow:'O2/Air流量', tubeChange:'チューブ交換', gloveChange:'グローブ交換' };
   showToast(`✅ ${FREE_LABELS[k] || 'イベント'} を ${entry.time} に追加`);
 }
 
@@ -4702,7 +4714,7 @@ function generatePrintHTML(c) {
   const freeNoteRows = (c.freeNotes || []).filter(n => {
     if (!n) return false;
     const k = n.kind || 'memo';
-    if (k === 'spont' || k === 'ventOff') return !!n.time;
+    if (k === 'spont' || k === 'ventOff' || k === 'gloveChange') return !!n.time;
     if (k === 'tubeChange') return !!n.time;
     if (k === 'flow') return !!(n.time && (n.o2 || n.air));
     if (k === 'fluid' || k === 'vent' || k === 'cri' || k === 'gas') return !!(n.time && (n.from || n.to));
@@ -4719,6 +4731,7 @@ function generatePrintHTML(c) {
     }
     else if (k === 'spont') { kindLbl = '自発呼吸'; body = ''; }
     else if (k === 'ventOff') { kindLbl = '人工呼吸OFF'; body = ''; }
+    else if (k === 'gloveChange') { kindLbl = 'グローブ交換'; body = ''; }
     else if (k === 'flow') { kindLbl = 'O2/Air'; body = `O2 ${n.o2||'0'} L/min / Air ${n.air||'0'} L/min`; }
     else if (k === 'tubeChange') { kindLbl = 'チューブ交換'; body = [n.size?n.size+'mm':'', n.sizeFr?n.sizeFr+'Fr':''].filter(Boolean).join(' / '); }
     else if (k === 'cri') { kindLbl = `${n.drugLabel||'CRI'}(CRI)`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||''}`; }
