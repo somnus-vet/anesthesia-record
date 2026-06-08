@@ -3047,6 +3047,27 @@ function saveStorage() {
   try { localStorage.setItem('vet_fah_cases', JSON.stringify(cases)); } catch(e){}
 }
 
+// ── リロード復帰 & 離脱時の保存 ──────────────────────
+// iOS(Safari/ホーム画面起動)はメモリ不足でタブを破棄→再読み込みすることがあり、
+// その際に (a) 一覧へ戻ってしまう (b) 保存待ち(800ms)中の入力が消える、を防ぐ。
+const OPEN_CASE_KEY = 'vet_fah_open_case';
+function markOpenCase(id) {
+  try { id ? localStorage.setItem(OPEN_CASE_KEY, id) : localStorage.removeItem(OPEN_CASE_KEY); } catch(e){}
+}
+// デバウンス待ちせず即座に確定保存（離脱直前に呼ぶ）
+function commitNow() {
+  if (!current) return;
+  const formOpen = !document.getElementById('formScreen').classList.contains('hidden');
+  if (formOpen) collectForm(); // フォーム表示中のみDOMから取り込む（非表示時は触らない）
+  current.updated_at = nowIsoStr();
+  const idx = cases.findIndex(c => c.id === current.id);
+  if (idx >= 0) cases[idx] = current;
+  saveStorage();
+}
+// ページが隠れる/破棄される直前に確実に保存
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') commitNow(); });
+window.addEventListener('pagehide', commitNow);
+
 // ─────────────────────────────────────────────────
 // CASES LIST
 // ─────────────────────────────────────────────────
@@ -3163,6 +3184,7 @@ function backToList() {
   }
   document.getElementById('formScreen').classList.add('hidden');
   document.getElementById('casesScreen').classList.remove('hidden');
+  markOpenCase(null); // 一覧に戻ったので復帰マーカーを解除
   renderCasesList();
 }
 
@@ -3178,6 +3200,7 @@ function nowIsoStr() {
 function openForm() {
   document.getElementById('casesScreen').classList.add('hidden');
   document.getElementById('formScreen').classList.remove('hidden');
+  markOpenCase(current && current.id); // リロード時にこの症例へ復帰できるよう記録
   renderDrugGroups();
   renderLocalBlocks();
   renderPresetBar();
@@ -5035,6 +5058,11 @@ loadSheetsConfig();
 updateFacilityBadge();
 setSyncStatus(sheetsConfig.enabled ? 'ok' : null);
 renderCasesList();
+// リロード復帰: 直前に開いていた症例があれば自動で開く（一覧に飛ばさない）
+try {
+  const _oc = localStorage.getItem(OPEN_CASE_KEY);
+  if (_oc && cases.find(c => c.id === _oc)) openCase(_oc);
+} catch(e){}
 loadPresets(); // async（sheetsConfig をロード後に呼ぶ必要あり）
 if (sheetsConfig.enabled) {
   loadFacilityMap();
