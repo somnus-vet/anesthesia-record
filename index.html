@@ -296,6 +296,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .c-hdr{padding:8px 11px}
   .frow{gap:6px;margin-bottom:8px}
   .dur-bar{gap:4px;padding:8px 8px}
+  /* 術中タイムライン行: はみ出さないよう折り返し＋入力欄を少し縮小 */
+  .tl-row{flex-wrap:wrap;gap:5px;row-gap:4px}
+  .tl-time-in{flex-basis:72px}
+  .tl-to-in{flex-basis:54px}
+  .tl-flow-lbl,.tl-unit-sm{font-size:10px}
 }
 
 /* TOAST */
@@ -4017,7 +4022,6 @@ function renderTimelineList() {
           <span class="tl-kind tl-kind-flow">O2/Air</span>
           <span class="tl-flow-lbl">O2</span>
           <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.o2 || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'o2',this.value)" autocomplete="off">
-          <span class="tl-unit-sm">L/min</span>
           <span class="tl-flow-lbl">Air</span>
           <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.air || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'air',this.value)" autocomplete="off">
           <span class="tl-unit-sm">L/min</span>
