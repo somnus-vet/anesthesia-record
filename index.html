@@ -284,6 +284,20 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .dtable td:last-child::before{display:none}
 }
 
+/* 広い画面(iPad等)は中央寄せの読みやすい幅に制限。iPhoneは全幅のまま。 */
+@media (min-width:760px){
+  .cases-list{max-width:768px;margin-left:auto;margin-right:auto;width:100%}
+  .panel{padding-left:calc((100% - 768px)/2);padding-right:calc((100% - 768px)/2)}
+}
+/* 狭い画面(iPhone)は余白と文字を少し詰めて1画面の情報量を確保。 */
+@media (max-width:430px){
+  .card{margin:8px 8px}
+  .c-body{padding:11px}
+  .c-hdr{padding:8px 11px}
+  .frow{gap:6px;margin-bottom:8px}
+  .dur-bar{gap:4px;padding:8px 8px}
+}
+
 /* TOAST */
 .toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:9px 20px;border-radius:20px;font-size:14px;font-weight:600;pointer-events:none;z-index:1000;opacity:0;transition:opacity .3s;white-space:nowrap}
 .toast.show{opacity:1}
