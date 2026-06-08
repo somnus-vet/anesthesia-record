@@ -29,6 +29,9 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .cases-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px}
 .case-card{background:#fff;border-radius:var(--r);padding:15px 16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.09);cursor:pointer;display:flex;align-items:center;gap:13px;-webkit-user-select:none}
 .case-card:active{background:#f2f6fb}
+/* 当日の症例を識別しやすくハイライト */
+.case-card.case-today{background:#eaf4ff;box-shadow:inset 4px 0 0 var(--blue),0 1px 4px rgba(0,0,0,.09)}
+.case-today-badge{background:var(--blue);color:#fff;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;margin-left:6px}
 .case-icon{width:46px;height:46px;background:var(--navy);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
 .case-info{flex:1;min-width:0}
 .case-name{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -42,7 +45,11 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 /* FORM HEADER */
 .form-hdr{background:var(--navy);padding:max(10px,env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .btn-back{background:none;border:none;color:#fff;font-size:16px;padding:6px 8px 6px 0;cursor:pointer;display:flex;align-items:center;gap:3px;white-space:nowrap}
-.hdr-inputs{flex:1;display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden}
+.hdr-inputs{flex:1;display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden}
+.hdr-patient{color:#fff;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:1;min-width:0}
+.hdr-patient:empty{display:none}
+.hdr-proc{color:rgba(255,255,255,.72);font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:2;min-width:0}
+.hdr-proc:empty{display:none}
 .hdr-in{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:14px;padding:5px 8px;min-height:36px}
 .hdr-in::placeholder{color:rgba(255,255,255,.45)}
 .hdr-in:focus{outline:none;background:rgba(255,255,255,.22)}
@@ -330,7 +337,10 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 <div id="formScreen" class="screen hidden">
   <div class="form-hdr">
     <button class="btn-back" onclick="backToList()">‹ 一覧</button>
-    <div class="hdr-inputs"></div>
+    <div class="hdr-inputs">
+      <span class="hdr-patient" id="hPatient"></span>
+      <span class="hdr-proc" id="hProc"></span>
+    </div>
     <div class="hdr-date" id="hDate"></div>
     <div class="weight-pill" id="weightPill">—kg</div>
   </div>
@@ -3022,7 +3032,9 @@ function renderCasesList() {
     if (u !== 0) return u;
     return idTs(b.id) - idTs(a.id);
   });
+  const _today = (() => { const d = new Date(); const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}`; })();
   el.innerHTML = sorted.map(c => {
+    const isToday = c.date === _today;
     const sp = c.species === 'dog' ? '🐶' : c.species === 'cat' ? '🐱' : c.species === 'rabbit' ? '🐰' : '🐾';
     // ownerNameは旧データの場合があるので、未統合なら結合表示
     const name = (c.ownerName && c.patientName && !c.patientName.includes(c.ownerName))
@@ -3032,10 +3044,10 @@ function renderCasesList() {
     const progressBadge = c.progress && c.progress !== '予約'
       ? `<span style="background:${c.progress==='完了'?'#27ae60':'#e67e22'};color:#fff;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;margin-left:6px">${esc(c.progress)}</span>`
       : (c.progress === '予約' ? `<span style="background:#dce3ec;color:#555;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;margin-left:6px">予約</span>` : '');
-    return `<div class="case-card" onclick="openCase('${c.id}')">
+    return `<div class="case-card${isToday ? ' case-today' : ''}" onclick="openCase('${c.id}')">
       <div class="case-icon">${sp}</div>
       <div class="case-info">
-        <div class="case-name">${esc(name)}${progressBadge}</div>
+        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${progressBadge}</div>
         <div class="case-meta">${esc(c.date)} ${c.caseNo ? '| No.'+esc(c.caseNo) : ''} | ${esc(diag)}</div>
       </div>
       <button class="case-del" onclick="event.stopPropagation();deleteCase('${c.id}')" title="削除">🗑</button>
@@ -3277,6 +3289,7 @@ function populateForm() {
 
   // Weight pill
   updateWeightPill(current.weight);
+  updateHeaderMeta();
 }
 
 // ─────────────────────────────────────────────────
@@ -3534,6 +3547,16 @@ function renderHypotensionDrugs() {
 function updateWeightPill(val) {
   const pill = document.getElementById('weightPill');
   if (pill) pill.textContent = val ? val + 'kg' : '—kg';
+}
+
+// ヘッダーに患者名・術式を表示（入力フィールドから読むので入力中もライブ更新）
+function updateHeaderMeta() {
+  const on = (getVal('f_ownerName') || '').trim();
+  const pn = (getVal('f_patientName') || '').trim();
+  const pr = (getVal('f_procedure') || '').trim();
+  const name = (on && pn && !pn.includes(on)) ? `${on} ${pn}` : (pn || on || '');
+  const e1 = document.getElementById('hPatient'); if (e1) e1.textContent = name;
+  const e2 = document.getElementById('hProc'); if (e2) e2.textContent = pr;
 }
 
 // ─────────────────────────────────────────────────
@@ -4395,6 +4418,7 @@ function autoSave() {
   // 反映の遅れた（=記録直後のイベントがまだ載っていない）Sheetsデータで
   // current が丸ごと上書きされ、押したばかりのイベント/薬剤が消える。
   if (current) current.updated_at = nowIsoStr();
+  updateHeaderMeta(); // 患者名・術式の入力をヘッダーへ即時反映
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     if (!current) return;
