@@ -245,7 +245,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-flow-lbl{flex:0 0 auto;font-size:12px;color:#0f6b5c;font-weight:700;padding:0 2px}
 .tl-text-in{flex:1;min-width:0;min-height:38px}
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
-.tl-drug-dose{flex:1.6;min-width:0;min-height:38px}
+.tl-drug-dose{flex:0 0 56px;min-width:0;min-height:38px;text-align:right;padding:6px 6px}
+.tl-dose-unit{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap}
 .tl-drug-route{flex:0 0 52px;min-width:0;min-height:38px;text-align:center;padding:6px 2px}
 .tl-tube-in{flex:0 0 50px;min-width:0;min-height:38px;text-align:center;padding:6px 2px;font-size:13px}
 .tl-unit{font-size:11px;font-weight:700;color:var(--muted)}
@@ -4052,10 +4053,14 @@ function renderTimelineList() {
         <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
       </div>`;
     }
+    const _dd = drugDefForLog(en);
+    const _perKg = (String(en.dose || '').match(/^\s*([\d.]+)/) || [, ''])[1];
+    const _unit = _dd ? _dd.unit : ((String(en.dose || '').match(/^\s*[\d.]*\s*([^\s=]+)/) || [, ''])[1] || '');
     return `<div class="tl-row tl-drug">
       <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
       <input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
-      <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(en.dose)}" placeholder="用量" oninput="editDrugLog(${en.idx},'dose',this.value)" autocomplete="off">
+      <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" oninput="editDrugLogDose(${en.idx},this.value)" autocomplete="off">
+      <span class="tl-dose-unit">${esc(_unit)}</span>
       <input class="fin tl-drug-route" type="text" value="${esc(en.route)}" placeholder="経路" oninput="editDrugLog(${en.idx},'route',this.value)" autocomplete="off">
       <button class="btn-del" onclick="removeDrugLog(${en.idx})">✕</button>
     </div>`;
@@ -4067,6 +4072,31 @@ function editDrugLog(idx, field, val) {
   if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
   current.drugLog[idx][field] = val;
   if (field === 'drug') renderQuickDoseBar();
+  autoSave();
+}
+
+// 薬剤ログ1件に対応する薬剤定義を取得。同名薬は保存済み用量の単位に一致するものを優先。
+function drugDefForLog(r) {
+  if (!r) return null;
+  const storedUnit = (String(r.dose || '').match(/^\s*[\d.]*\s*([^\s=]+)/) || [, ''])[1];
+  const cands = Object.values(DRUG_GROUPS).flat().filter(x => x.label === r.drug);
+  return cands.find(x => x.unit === storedUnit) || cands[0] || null;
+}
+
+// 用量(数値/kg)の編集。単位は固定ラベル表示なので、ここでは数値だけ受け取り、
+// 薬剤定義から総量・容量込みの文字列を再計算して保存（PDF/CSVは従来形式を維持）。
+function editDrugLogDose(idx, perKgStr) {
+  if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
+  const r = current.drugLog[idx];
+  const dd = drugDefForLog(r);
+  const perKg = parseFloat(perKgStr);
+  if (dd && !isNaN(perKg)) {
+    r.dose = formatDose(dd, perKg);
+  } else {
+    // 薬剤定義が無い/数値でない時は、既存の単位を保って数値だけ差し替え
+    const u = (String(r.dose || '').match(/^\s*[\d.]*\s*([^\s=]+)/) || [, ''])[1];
+    r.dose = (perKgStr || '') + (u || '');
+  }
   autoSave();
 }
 
