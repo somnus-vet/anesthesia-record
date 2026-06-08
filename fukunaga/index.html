@@ -255,14 +255,14 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-diff.on{background:#ffe1e1;border-color:var(--red);color:var(--red)}
 
 /* ELAPSED-TIME COUNTERS */
-.dur-bar{display:flex;gap:8px;padding:10px 12px}
-.dur-box{flex:1;background:#eaf3fb;border-radius:9px;padding:7px 5px;text-align:center;display:flex;flex-direction:column;gap:1px}
+.dur-bar{display:flex;gap:5px;padding:9px 10px}
+.dur-box{flex:1;min-width:0;background:#eaf3fb;border-radius:8px;padding:6px 3px;text-align:center;display:flex;flex-direction:column;gap:1px}
 .dur-box.dur-stopped{background:#eef0f2}
-.dur-lbl{font-size:11px;font-weight:700;color:var(--muted)}
-.dur-val{font-size:20px;font-weight:800;color:var(--navy);line-height:1.15}
-.dur-val .dur-unit{font-size:11px;font-weight:700;margin-left:1px}
+.dur-lbl{font-size:10px;font-weight:700;color:var(--muted);white-space:nowrap}
+.dur-val{font-size:17px;font-weight:800;color:var(--navy);line-height:1.1;white-space:nowrap}
+.dur-val .dur-unit{font-size:10px;font-weight:700;margin-left:1px}
 .dur-box.dur-stopped .dur-val{color:var(--muted)}
-.dur-sub{font-size:9px;color:var(--muted)}
+.dur-sub{font-size:8px;color:var(--muted);white-space:nowrap}
 
 /* DOSE SELECT PANEL */
 .dose-opts{display:flex;flex-direction:column;gap:7px}
@@ -827,6 +827,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
             <span class="dur-lbl">手術時間</span>
             <span class="dur-val" id="durValSurg">—</span>
             <span class="dur-sub">手術開始から</span>
+          </div>
+          <div class="dur-box" id="durBoxGlove">
+            <span class="dur-lbl">グローブ</span>
+            <span class="dur-val" id="durValGlove">—</span>
+            <span class="dur-sub">交換から</span>
           </div>
         </div>
       </div>
@@ -3740,6 +3745,23 @@ function updateLiveTimers() {
   setTimerBox('Anesth', current.anesthStart, current.returnToWard, now);
   setTimerBox('Abx', latestAntibioticTime(), current.surgEnd, now);
   setTimerBox('Surg', current.surgStart, current.surgEnd, now);
+  // グローブ交換から: 最後のグローブ交換時刻（無ければ手術開始）→手術終了で停止
+  setTimerBox('Glove', latestGloveTime(), current.surgEnd, now);
+}
+
+// 最後のグローブ交換時刻。freeNotes の kind==='gloveChange' の最新時刻。
+// 交換がまだ無ければ手術開始時刻を起点にする（手術時間と同時スタート）。
+function latestGloveTime(c) {
+  c = c || current;
+  if (!c) return '';
+  let best = '', bestSec = -1;
+  (c.freeNotes || []).forEach(n => {
+    if (n && n.kind === 'gloveChange' && n.time) {
+      const s = timeToSec(n.time);
+      if (s !== null && s > bestSec) { bestSec = s; best = n.time; }
+    }
+  });
+  return best || (c.surgStart || '');
 }
 
 function setTimerBox(suffix, startT, endT, now) {
@@ -4107,6 +4129,7 @@ function addFreeNote(kind, opts) {
   current.freeNotes.push(entry);
   recomputeFreeNotesFroms();
   renderTimelineList();
+  updateLiveTimers(); // グローブ交換等を上部カウンターへ即反映
   autoSave();
   pushCurrentToSheets();
   const FREE_LABELS = { memo:'メモ', position:'体位変換', fluid:'輸液', vent:'換気', spont:'自発呼吸', cri:'CRI', gas:'維持薬', ventOff:'人工呼吸OFF', flow:'O2/Air流量', tubeChange:'チューブ交換', gloveChange:'グローブ交換' };
