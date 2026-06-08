@@ -827,13 +827,16 @@ input.fin[readonly]{background:#fff;cursor:pointer}
       <div class="card">
         <div class="c-hdr">⚡ 緊急薬 <span class="c-hdr-en">Emergency drugs</span></div>
         <div class="c-body">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">体重から希釈・容量を自動計算（アナフィラキシー / 心停止 / 悪性高熱）</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">体重から希釈・容量を自動計算（アナフィラキシー / 心停止 / 悪性高熱 / 局所麻酔中毒）</div>
           <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心拍動時) 1μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_normal"></span></div>
           <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心停止時) 10μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_arrest"></span></div>
           <div class="emerg-info"><span class="emerg-info-label">ジフェンヒドラミン 1-2mg/kg</span><span class="emerg-calc" data-emerg="diphenhydramine"></span></div>
           <div class="emerg-info"><span class="emerg-info-label">デキサメタゾン 0.1-0.2mg/kg</span><span class="emerg-calc" data-emerg="dexamethasone"></span></div>
           <div class="emerg-info"><span class="emerg-info-label">ダントロレン 1-3mg/kg IV</span><span class="emerg-calc" data-emerg="dantrolene"></span></div>
           <div class="emerg-note-warn">※ ダントリウム静注 20mg/瓶 → 60mL注射用水で希釈（0.333mg/mL）</div>
+          <div class="emerg-info"><span class="emerg-info-label">リピッドレスキュー 20%脂肪乳剤 ボーラス1.5mL/kg</span><span class="emerg-calc" data-emerg="lipidBolus"></span></div>
+          <div class="emerg-info"><span class="emerg-info-label">　└ 続けて持続 0.25mL/kg/min</span><span class="emerg-calc" data-emerg="lipidInfusion"></span></div>
+          <div class="emerg-note-warn">※ 局所麻酔中毒(LAST)。ボーラスは循環虚脱時5分毎に最大3回、安定後 0.25→0.5mL/kg/min</div>
         </div>
       </div>
 
