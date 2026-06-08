@@ -616,6 +616,17 @@ input.fin[readonly]{background:#fff;cursor:pointer}
             </div>
           </div>
 
+          <!-- 局所麻酔中毒 (LAST) — 局所麻酔を選ぶと自動オン -->
+          <div class="comp-block">
+            <div class="chk-item comp-main" onclick="toggleChk(this,'expectedLAST')"><div class="chk-box"></div><span class="chk-label">💉 局所麻酔中毒 (LAST)</span></div>
+            <div class="comp-sub">
+              <div class="emerg-info"><span class="emerg-info-label">リピッドレスキュー: 20%脂肪乳剤 ボーラス 1.5mL/kg IV</span><span class="emerg-calc" data-emerg="lipidBolus"></span></div>
+              <div class="emerg-info"><span class="emerg-info-label">続けて持続 0.25mL/kg/min</span><span class="emerg-calc" data-emerg="lipidInfusion"></span></div>
+              <div class="emerg-note-warn">※ ボーラスは循環虚脱時5分毎に最大3回まで反復可。安定後 0.25→0.5mL/kg/min。総量上限の目安 約10mL/kg。局所麻酔薬の投与は中止。</div>
+              <input class="fin" type="text" id="f_last_notes" placeholder="メモ" oninput="autoSave()">
+            </div>
+          </div>
+
           <!-- 低血糖 -->
           <div class="comp-block">
             <div class="chk-item comp-main" onclick="toggleChk(this,'expectedHypo')"><div class="chk-box"></div><span class="chk-label">📉 低血糖</span></div>
@@ -1377,6 +1388,7 @@ function setMixtureDrugKey(idx, value) {
     if (current.localBlocks[k]?.use) refreshBlockCalc(k);
   });
   updateBlockSummary();
+  syncLASTFromLocal(); // メイン溶液に薬剤を入れた時も局所麻酔中毒を自動オン
   autoSave();
 }
 
@@ -1515,6 +1527,7 @@ function renderSelectedBlocks() {
   el.innerHTML = selectedKeys.map(key => renderBlockCard(key, blocks[key])).join('');
   selectedKeys.forEach(k => refreshBlockCalc(k));
   updateBlockSummary();
+  syncLASTFromLocal(); // ブロック選択時に局所麻酔中毒を自動オン
 }
 
 function renderBlockCard(key, d) {
@@ -1698,6 +1711,26 @@ function populateLocalBlocks() {
   if (!current) return;
   renderMixture();
   renderSelectedBlocks();
+}
+
+// 局所麻酔が使われているか（ブロック選択 / メイン溶液 / 自由記載のいずれか）
+function hasLocalAnesthesia() {
+  if (!current) return false;
+  const b = current.localBlocks || {};
+  if (Object.keys(b).some(k => b[k] && b[k].use)) return true;
+  const m = current.localMixture;
+  if (m && Array.isArray(m.drugs) && m.drugs.some(d => d && d.name)) return true;
+  if ((current.localCustom1 || '').trim() || (current.localCustom2 || '').trim()) return true;
+  return false;
+}
+// 局所麻酔を選んだら「局所麻酔中毒」を自動オン（手動オフは尊重＝自動では外さない）
+function syncLASTFromLocal() {
+  if (!current || current.expectedLAST) return;
+  if (!hasLocalAnesthesia()) return;
+  current.expectedLAST = true;
+  const el = document.querySelector('.chk-item[onclick*="expectedLAST"]');
+  if (el) el.classList.add('on');
+  autoSave();
 }
 
 // ─────────────────────────────────────────────────
@@ -2911,6 +2944,8 @@ function makeCase() {
     expectedAnaphylaxis:true, anaphy_notes:'',
     // 悪性高熱
     expectedMH:true, mh_notes:'',
+    // 局所麻酔中毒 (LAST)（局所麻酔選択で自動オン）
+    expectedLAST:false, last_notes:'',
     // 低血糖
     expectedHypo:false, hypoTx:'',
     otherComplications:'',
@@ -3198,7 +3233,7 @@ function populateForm() {
     'otherComplications',
     'hpot_notes','hthm_notes',
     'hvent_pcvPIP','hvent_pcvRR','hvent_vcvVT','hvent_vcvRR','hvent_notes',
-    'anaphy_notes','mh_notes','hypoTx',
+    'anaphy_notes','mh_notes','hypoTx','last_notes',
     'tubeSize','bagSize',
     'maintConc','maintO2','maintAir','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
@@ -3225,7 +3260,7 @@ function populateForm() {
     'seizures','allergies','testCBC','testBiochem','testCoag','testXray',
     'testEcho','testECG','testUA','testOther',
     'asapsE',
-    'expectedHypotension','expectedHypo','expectedHypothermia','expectedAnaphylaxis','expectedMH','expectedHypovent',
+    'expectedHypotension','expectedHypo','expectedHypothermia','expectedAnaphylaxis','expectedMH','expectedHypovent','expectedLAST',
     'hpot_miniFluid','hpot_atropine','hpot_ephedrine','hpot_norad',
     'hthm_warmAir','hthm_warmMat','hthm_warmWater',
     'hvent_pcv','hvent_vcv','hvent_manual',
@@ -3322,7 +3357,7 @@ function collectForm() {
     'otherComplications',
     'hpot_notes','hthm_notes',
     'hvent_pcvPIP','hvent_pcvRR','hvent_vcvVT','hvent_vcvRR','hvent_notes',
-    'anaphy_notes','mh_notes','hypoTx',
+    'anaphy_notes','mh_notes','hypoTx','last_notes',
     'tubeSize','bagSize',
     'maintConc','maintO2','maintAir','ventilation','fluidType','fluidRate',
     'localCustom1','localCustom2',
@@ -3496,6 +3531,8 @@ const EMERG_FORMULAS = {
     return `= ${lo.toFixed(1)}〜${hi.toFixed(1)} mg (${(lo/0.333).toFixed(1)}〜${(hi/0.333).toFixed(1)} mL @希釈後0.333mg/mL)`;
   },
   glucose20: w => `= ${(1*w).toFixed(1)} mL (20%ブドウ糖)`,
+  lipidBolus: w => `= ${(1.5*w).toFixed(1)} mL ボーラス（1分かけて）`,
+  lipidInfusion: w => `= ${(0.25*w).toFixed(1)} mL/min（= ${(0.25*w*60).toFixed(0)} mL/hr 持続）`,
 };
 
 function updateEmergencyDoses(weight) {
@@ -4758,6 +4795,11 @@ function generatePrintHTML(c) {
         const w = parseFloat(c.weight);
         const dose = w ? `ダントロレン ${(1*w).toFixed(1)}-${(3*w).toFixed(1)}mg（希釈後${(1*w/0.333).toFixed(1)}-${(3*w/0.333).toFixed(1)}mL）` : 'ダントロレン 1-3mg/kg';
         items.push(`<tr><td>悪性高熱</td><td>${esc(dose)}${c.mh_notes ? ' / ' + esc(c.mh_notes) : ''}</td></tr>`);
+      }
+      if (c.expectedLAST) {
+        const w = parseFloat(c.weight);
+        const dose = w ? `リピッドレスキュー 20%脂肪乳剤 ボーラス${(1.5*w).toFixed(1)}mL（1分）→持続${(0.25*w).toFixed(1)}mL/min` : 'リピッドレスキュー 20%脂肪乳剤 1.5mL/kgボーラス→0.25mL/kg/min';
+        items.push(`<tr><td>局所麻酔中毒</td><td>${esc(dose)}${c.last_notes ? ' / ' + esc(c.last_notes) : ''}</td></tr>`);
       }
       if (c.expectedHypo) {
         const w = parseFloat(c.weight);
