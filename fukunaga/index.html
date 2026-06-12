@@ -3879,7 +3879,6 @@ function renderEventButtons() {
     + `<button type="button" class="qdose-btn" style="background:#ece1f3;border-color:#b794cd;color:#6b3a8b" onclick="addFreeNote('position')">＋体位変換</button>`
     + `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="addFreeNote('fluid')">＋輸液</button>`
     + `<button type="button" class="qdose-btn" style="background:#d4ede5;border-color:#5cba9d;color:#0a6b53" onclick="addFreeNote('vent')">＋呼吸管理</button>`
-    + `<button type="button" class="qdose-btn" style="background:#dcefd4;border-color:#7ac257;color:#1f6b34" onclick="addFreeNote('spont')">＋自発呼吸</button>`
     + `<button type="button" class="qdose-btn" style="background:#d4f1eb;border-color:#3ec5ad;color:#0f6b5c" onclick="addFreeNote('flow')">＋O2/Air流量</button>`
     + `<button type="button" class="qdose-btn" style="background:#e7eef7;border-color:#5a7fae;color:#2b4a73" onclick="addFreeNote('gloveChange')">🧤グローブ交換</button>`;
   // プロトコルでチェック済みの維持薬(揮発性麻酔薬) を動的ボタン化（濃度の変化記録）
@@ -3974,7 +3973,7 @@ function renderTimelineList() {
       // 呼吸管理（換気）: モード選択(PCV/VCV/OFF)＋設定値＋RR
       if (k === 'vent') {
         const vmode = en.mode || '';
-        const mbtn = (m) => `<button type="button" class="tl-vmode${vmode===m?' on':''}" onclick="setVentMode(${en.idx},'${m}')">${m}</button>`;
+        const mbtn = (m, lbl) => `<button type="button" class="tl-vmode${vmode===m?' on':''}" onclick="setVentMode(${en.idx},'${m}')">${lbl||m}</button>`;
         let vdetail = '';
         if (vmode === 'PCV' || vmode === 'VCV') {
           const us = vmode === 'VCV' ? 'mL' : 'cmH₂O';
@@ -3983,13 +3982,15 @@ function renderTimelineList() {
             + `<input class="fin tl-rr-in" type="text" inputmode="decimal" value="${esc(en.rr || '')}" placeholder="RR" oninput="editFreeNote(${en.idx},'rr',this.value)" autocomplete="off"><span class="tl-unit-sm">回/分</span>`;
         } else if (vmode === 'OFF') {
           vdetail = `<span class="tl-vent-off">換気OFF</span>`;
+        } else if (vmode === 'SPONT') {
+          vdetail = `<span class="tl-vent-off">自発呼吸</span>`;
         } else {
           vdetail = `<span class="tl-vent-hint">←モード選択</span>`;
         }
         return `<div class="tl-row tl-vent">
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-vent">呼吸管理</span>
-          ${mbtn('PCV')}${mbtn('VCV')}${mbtn('OFF')}
+          ${mbtn('PCV')}${mbtn('VCV')}${mbtn('OFF')}${mbtn('SPONT','自発')}
           ${vdetail}
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
@@ -4213,7 +4214,7 @@ function setVentMode(idx, mode) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
   const n = current.freeNotes[idx];
   n.mode = (n.mode === mode) ? '' : mode;
-  if (n.mode === 'OFF') { n.to = ''; n.rr = ''; }
+  if (n.mode === 'OFF' || n.mode === 'SPONT') { n.to = ''; n.rr = ''; }
   recomputeFreeNotesFroms();
   renderTimelineList();
   autoSave();
