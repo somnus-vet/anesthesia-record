@@ -254,6 +254,12 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-spacer{flex:1;min-width:0}
 .tl-diff{flex:0 0 auto;font-size:12px;font-weight:700;padding:7px 9px;border:1.5px solid var(--border);border-radius:6px;background:#f8fafc;color:var(--text);white-space:nowrap;min-height:38px;cursor:pointer}
 .tl-diff.on{background:#ffe1e1;border-color:var(--red);color:var(--red)}
+.tl-kind-vent{background:#d4ede5;color:#0a6b53}
+.tl-vmode{flex:0 0 auto;font-size:12px;font-weight:700;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;background:#f8fafc;color:var(--text);white-space:nowrap;min-height:38px;cursor:pointer}
+.tl-vmode.on{background:#d4ede5;border-color:#5cba9d;color:#0a6b53}
+.tl-rr-in{flex:0 0 52px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
+.tl-vent-off{flex:0 0 auto;font-size:12px;font-weight:700;color:#6b4f1d}
+.tl-vent-hint{flex:0 0 auto;font-size:11px;color:var(--muted)}
 
 /* ELAPSED-TIME COUNTERS */
 .dur-bar{display:flex;gap:5px;padding:9px 10px}
@@ -3866,9 +3872,7 @@ function renderEventButtons() {
       `<button type="button" class="qdose-btn" style="background:#fdecd2;border-color:#f0c074;color:#a35614" onclick="addFreeNote('memo')">＋メモ</button>`
     + `<button type="button" class="qdose-btn" style="background:#ece1f3;border-color:#b794cd;color:#6b3a8b" onclick="addFreeNote('position')">＋体位変換</button>`
     + `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="addFreeNote('fluid')">＋輸液</button>`
-    + `<button type="button" class="qdose-btn" style="background:#d4ede5;border-color:#5cba9d;color:#0a6b53" onclick="addFreeNote('vent',{mode:'PCV'})">＋PCV換気</button>`
-    + `<button type="button" class="qdose-btn" style="background:#d9e4d0;border-color:#7ea35a;color:#395a1e" onclick="addFreeNote('vent',{mode:'VCV'})">＋VCV換気</button>`
-    + `<button type="button" class="qdose-btn" style="background:#e8e0d4;border-color:#b08642;color:#6b4f1d" onclick="addFreeNote('ventOff')">＋人工呼吸OFF</button>`
+    + `<button type="button" class="qdose-btn" style="background:#d4ede5;border-color:#5cba9d;color:#0a6b53" onclick="addFreeNote('vent')">＋呼吸管理</button>`
     + `<button type="button" class="qdose-btn" style="background:#dcefd4;border-color:#7ac257;color:#1f6b34" onclick="addFreeNote('spont')">＋自発呼吸</button>`
     + `<button type="button" class="qdose-btn" style="background:#d4f1eb;border-color:#3ec5ad;color:#0f6b5c" onclick="addFreeNote('flow')">＋O2/Air流量</button>`
     + `<button type="button" class="qdose-btn" style="background:#e7eef7;border-color:#5a7fae;color:#2b4a73" onclick="addFreeNote('gloveChange')">🧤グローブ交換</button>`;
@@ -3923,6 +3927,7 @@ function renderTimelineList() {
       from: n.from || '',
       to:   n.to   || '',
       mode: n.mode || '',
+      rr:   n.rr   || '',
       drugKey:   n.drugKey   || '',
       drugLabel: n.drugLabel || '',
       unit:      n.unit      || '',
@@ -3960,17 +3965,35 @@ function renderTimelineList() {
     }
     if (en.type === 'free') {
       const k = en.kind || 'memo';
-      // 値変化型（輸液 / 換気PCV・VCV / CRI / 維持薬gas）: [from] → [to入力] [unit]
-      if (k === 'fluid' || k === 'vent' || k === 'cri' || k === 'gas') {
+      // 呼吸管理（換気）: モード選択(PCV/VCV/OFF)＋設定値＋RR
+      if (k === 'vent') {
+        const vmode = en.mode || '';
+        const mbtn = (m) => `<button type="button" class="tl-vmode${vmode===m?' on':''}" onclick="setVentMode(${en.idx},'${m}')">${m}</button>`;
+        let vdetail = '';
+        if (vmode === 'PCV' || vmode === 'VCV') {
+          const us = vmode === 'VCV' ? 'mL' : 'cmH₂O';
+          vdetail = `<span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span>`
+            + `<input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'to',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${us}</span>`
+            + `<input class="fin tl-rr-in" type="text" inputmode="decimal" value="${esc(en.rr || '')}" placeholder="RR" oninput="editFreeNote(${en.idx},'rr',this.value)" autocomplete="off"><span class="tl-unit-sm">回/分</span>`;
+        } else if (vmode === 'OFF') {
+          vdetail = `<span class="tl-vent-off">換気OFF</span>`;
+        } else {
+          vdetail = `<span class="tl-vent-hint">←モード選択</span>`;
+        }
+        return `<div class="tl-row tl-vent">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
+          <span class="tl-kind tl-kind-vent">呼吸管理</span>
+          ${mbtn('PCV')}${mbtn('VCV')}${mbtn('OFF')}
+          ${vdetail}
+          <span class="tl-spacer"></span>
+          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+        </div>`;
+      }
+      // 値変化型（輸液 / CRI / 維持薬gas）: [from] → [to入力] [unit]
+      if (k === 'fluid' || k === 'cri' || k === 'gas') {
         let lbl, kindCls, rowCls, unitStr;
         if (k === 'fluid') {
           lbl = '輸液'; kindCls = 'tl-kind-fluid'; rowCls = 'tl-fluid'; unitStr = 'mL/hr';
-        } else if (k === 'vent') {
-          const mode = en.mode === 'VCV' ? 'VCV' : 'PCV';
-          lbl = mode;
-          kindCls = mode === 'VCV' ? 'tl-kind-vcv' : 'tl-kind-pcv';
-          rowCls = 'tl-vent';
-          unitStr = mode === 'VCV' ? 'mL' : 'cmH₂O';
         } else if (k === 'gas') {
           lbl = esc(en.drugLabel || '維持薬');
           kindCls = 'tl-kind-gas'; rowCls = 'tl-gas'; unitStr = esc(en.unit || '%');
@@ -4141,9 +4164,10 @@ function addFreeNote(kind, opts) {
     entry.o2 = '';
     entry.air = '';
   } else if (k === 'fluid' || k === 'vent') {
-    // vent はモード(PCV/VCV)を保持、同モードの最終 to を引継ぎ
+    // vent はモード(PCV/VCV/OFF)を保持。未指定なら未選択('')で追加し、行で選ぶ。
     if (k === 'vent') {
-      entry.mode = (opts && opts.mode) === 'VCV' ? 'VCV' : 'PCV';
+      entry.mode = (opts && opts.mode) || '';
+      entry.rr = '';
     }
     let prev = '';
     for (let i = current.freeNotes.length - 1; i >= 0; i--) {
@@ -4176,6 +4200,18 @@ function addFreeNote(kind, opts) {
   pushCurrentToSheets();
   const FREE_LABELS = { memo:'メモ', position:'体位変換', fluid:'輸液', vent:'換気', spont:'自発呼吸', cri:'CRI', gas:'維持薬', ventOff:'人工呼吸OFF', flow:'O2/Air流量', tubeChange:'チューブ交換', gloveChange:'グローブ交換' };
   showToast(`✅ ${FREE_LABELS[k] || 'イベント'} を ${entry.time} に追加`);
+}
+
+// 呼吸管理の換気モード(PCV/VCV/OFF)を切替。行の構造が変わるので再描画する。
+function setVentMode(idx, mode) {
+  if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
+  const n = current.freeNotes[idx];
+  n.mode = (n.mode === mode) ? '' : mode;  // 同じものを再タップで未選択に戻す
+  if (n.mode === 'OFF') { n.to = ''; n.rr = ''; }
+  recomputeFreeNotesFroms();
+  renderTimelineList();
+  autoSave();
+  pushCurrentToSheets();
 }
 
 // メモ/体位変換1件の項目を直接更新（描画しない＝入力フォーカス維持）
@@ -4470,6 +4506,11 @@ function recordEvent(key) {
   autoSave();
   pushCurrentToSheets();
   showToast(`✅ ${evtLabel(key)} を ${t} に記録`);
+  // 挿管したら、呼吸管理（モード未選択）と O2/Air流量 を自動で追加（不要なら✕で消せる）
+  if (key === 'intubationTime') {
+    addFreeNote('vent');
+    addFreeNote('flow');
+  }
 }
 
 // 記録済み時刻の手書き修正（描画はしない＝入力フォーカス維持）
