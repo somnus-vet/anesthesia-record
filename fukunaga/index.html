@@ -1980,9 +1980,13 @@ function applyPreset(key) {
 // ─────────────────────────────────────────────────
 let editingPreset = null; // 編集中の作業コピー
 
-function openPresetEditor() {
-  if (!userPresets) loadPresets();
-  editingPreset = JSON.parse(JSON.stringify(userPresets));
+async function openPresetEditor() {
+  // 編集は必ず最新のSheets内容から開始する。別端末が変更した後など、手元の古い内容で
+  // 編集→保存すると savePresets が全行を入れ替えるため、他端末の変更や削除が巻き戻る。
+  // （オフライン/失敗時は手元の内容で続行）
+  if (sheetsConfig && sheetsConfig.enabled) { try { await loadPresets(); } catch (e) {} }
+  else if (!userPresets) loadPresets();
+  editingPreset = JSON.parse(JSON.stringify(userPresets || {}));
   // セレクト初期化
   const sel = document.getElementById('presetSelect');
   sel.innerHTML = Object.entries(editingPreset).map(([k, p]) =>
@@ -2274,7 +2278,10 @@ function savePushQueue() {
 function csvUrl(sheet) {
   // セキュリティ改修: 合言葉つきでGAS(doGet)経由で取得（シートは非公開のまま）
   if (!sheetsConfig.webappUrl) return '';
-  return `${sheetsConfig.webappUrl}?action=read&sheet=${encodeURIComponent(sheet)}&token=${encodeURIComponent(sheetsConfig.token || '')}`;
+  // キャッシュバスター(&_=)で毎回URLをユニーク化。Apps Script doGet応答はGoogle側で
+  // エッジキャッシュされるため、固定URLだと保存直後の読み戻しが古いCSVになり
+  // 「編集/削除が反映されない」原因になる。cache:'no-store'はブラウザ側のみで防げない。
+  return `${sheetsConfig.webappUrl}?action=read&sheet=${encodeURIComponent(sheet)}&token=${encodeURIComponent(sheetsConfig.token || '')}&_=${Date.now()}`;
 }
 
 // 年齢: ageY/ageM ↔ "5Y3M" 形式の相互変換
