@@ -2222,6 +2222,9 @@ let lastSyncAt = null;
 let lastPushAt = null;
 let lastPushStatus = null;
 let lastPushDuration = null;
+// プリセットを定期的に取り直して他端末の編集を反映するための間隔（syncFromSheets内で使用）
+let lastPresetSyncAt = 0;
+const PRESET_REFRESH_MS = 60000; // 60秒ごとにプリセットも取り直す（他端末の変更を共有）
 // 短時間の重複push防止
 let recentPushKeys = {}; // {key: timestamp}
 let dedupRetryTimer = null; // 重複防止スキップ後の再送タイマー
@@ -2388,6 +2391,21 @@ async function syncFromSheets() {
     }
     // 内部ID未付与のSheets行を検出して backfill push
     backfillInternalIdsToSheets(reserved);
+    // プリセットも定期的に取り直す（他端末で編集されたプリセットを使用中に反映）。
+    // 編集モーダルを開いている間は触らない。内容が変わった時だけバーを再描画する。
+    try {
+      const _pm = document.getElementById('presetModal');
+      const _editorOpen = _pm && _pm.classList.contains('on');
+      if (!_editorOpen && Date.now() - lastPresetSyncAt > PRESET_REFRESH_MS) {
+        lastPresetSyncAt = Date.now();
+        const _freshP = await loadPresetsFromSheets();
+        if (_freshP && JSON.stringify(_freshP) !== JSON.stringify(userPresets)) {
+          userPresets = _freshP;
+          savePresetsToStorage();
+          renderPresetBar();
+        }
+      }
+    } catch (_) {}
   } catch (e) {
     console.warn('syncFromSheets failed:', e);
     setSyncStatus('error');
