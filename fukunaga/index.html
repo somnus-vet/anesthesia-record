@@ -4071,15 +4071,31 @@ function renderTimelineList() {
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
-      // メモ・体位変換: 自由記載
-      const kindLabel = k === 'position' ? '体位変換' : 'メモ';
-      const kindCls = k === 'position' ? 'tl-kind-position' : 'tl-kind-memo';
-      const rowCls = k === 'position' ? 'tl-position' : 'tl-memo';
-      const ph = k === 'position' ? '体位（例: 右側臥位）' : 'メモ内容…';
-      return `<div class="tl-row ${rowCls}">
+      // 体位変換: 右横/左横/仰/伏 ボタンで [元の体位]→[変更後] を記録（入力不要）
+      if (k === 'position') {
+        const POS = ['右横','左横','仰','伏'];
+        const _bb = 'display:inline-block;min-width:40px;padding:6px 8px;margin-right:4px;border-radius:8px;border:1px solid #b794cd;background:#fff;color:#6b3a8b;font-weight:700;font-size:14px;cursor:pointer';
+        const _on = ';background:#8b5fbf;color:#fff;border-color:#8b5fbf';
+        const btns = POS.map(p =>
+          `<button type="button" style="${_bb}${en.to === p ? _on : ''}" onclick="setPosition(${en.idx},'${p}')">${p}</button>`
+        ).join('');
+        const disp = en.to
+          ? (en.from ? `${esc(en.from)}→${esc(en.to)}` : esc(en.to))
+          : (en.text ? esc(en.text) : '—');
+        return `<div class="tl-row tl-position">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
+          <span class="tl-kind tl-kind-position">体位</span>
+          <span style="display:inline-flex;flex-wrap:wrap;align-items:center">${btns}</span>
+          <span style="font-weight:700;color:#6b3a8b;margin-left:4px;white-space:nowrap">${disp}</span>
+          <span class="tl-spacer"></span>
+          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+        </div>`;
+      }
+      // メモ: 自由記載
+      return `<div class="tl-row tl-memo">
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" autocomplete="off">
-        <span class="tl-kind ${kindCls}">${kindLabel}</span>
-        <input class="fin tl-text-in" type="text" value="${esc(en.text)}" placeholder="${ph}" oninput="editFreeNote(${en.idx},'text',this.value)" autocomplete="off">
+        <span class="tl-kind tl-kind-memo">メモ</span>
+        <input class="fin tl-text-in" type="text" value="${esc(en.text)}" placeholder="メモ内容…" oninput="editFreeNote(${en.idx},'text',this.value)" autocomplete="off">
         <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
       </div>`;
     }
@@ -4160,7 +4176,13 @@ function addFreeNote(kind, opts) {
   const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange'];
   const k = valid.indexOf(kind) >= 0 ? kind : 'memo';
   const entry = { time: nowTime(), kind: k };
-  if (k === 'memo' || k === 'position') {
+  if (k === 'memo') {
+    entry.text = '';
+  } else if (k === 'position') {
+    // 体位変換: 右横/左横/仰/伏 ボタンで選択。from(直前の体位)→to(変更後)を保持し、
+    // 下流(自作サマリ/SomLog PDF)互換のため text に "元→先" 文字列も書き込む。
+    entry.to = '';
+    entry.from = '';
     entry.text = '';
   } else if (k === 'tubeChange') {
     // 交換後のチューブサイズを記録（mm / Fr）
@@ -4221,6 +4243,20 @@ function setVentMode(idx, mode) {
   pushCurrentToSheets();
 }
 
+// 体位変換: 右横/左横/仰/伏 を選択。直前の体位(from)→選択(to)を記録。
+// 同じボタン再タップで未選択に戻す。下流互換のため text も同期更新する。
+function setPosition(idx, pos) {
+  if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
+  const n = current.freeNotes[idx];
+  if (n.kind !== 'position') return;
+  n.to = (n.to === pos) ? '' : pos;
+  if (!n.to) n.text = '';            // 未選択に戻したら text もクリア
+  recomputeFreeNotesFroms();         // from再計算＋text("元→先")同期
+  renderTimelineList();
+  autoSave();
+  pushCurrentToSheets();
+}
+
 // メモ/体位変換1件の項目を直接更新（描画しない＝入力フォーカス維持）
 function editFreeNote(idx, field, val) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
@@ -4247,15 +4283,16 @@ function recomputeFreeNotesFroms() {
   const groups = {};
   current.freeNotes.forEach((n, idx) => {
     const k = n.kind;
-    if (k !== 'fluid' && k !== 'vent' && k !== 'cri' && k !== 'gas') return;
+    if (k !== 'fluid' && k !== 'vent' && k !== 'cri' && k !== 'gas' && k !== 'position') return;
     let key;
     if (k === 'fluid') key = 'fluid';
+    else if (k === 'position') key = 'position';
     else if (k === 'vent') key = 'vent:' + (n.mode || 'PCV');
     else if (k === 'cri') key = 'cri:' + (n.drugKey || '');
     else key = 'gas:' + (n.drugKey || '');
     (groups[key] = groups[key] || []).push({ idx, time: n.time });
   });
-  Object.values(groups).forEach(grp => {
+  Object.entries(groups).forEach(([gkey, grp]) => {
     grp.sort((a, b) => {
       const ta = timeToSec(a.time), tb = timeToSec(b.time);
       if (ta === null && tb === null) return 0;
@@ -4263,11 +4300,17 @@ function recomputeFreeNotesFroms() {
       if (tb === null) return -1;
       return ta - tb;
     });
-    let prev = '0';
+    // 体位は初期体位が未知なので prev='' から開始（輸液/換気等は数値なので '0'）。
+    let prev = (gkey === 'position') ? '' : '0';
     grp.forEach(({ idx }) => {
-      current.freeNotes[idx].from = prev;
-      const t = current.freeNotes[idx].to;
+      const n = current.freeNotes[idx];
+      n.from = prev;
+      const t = n.to;
       if (t !== undefined && t !== null && t !== '') prev = String(t);
+      // position は下流互換のため text を "元→先" に同期（to未選択時は既存textを保持）。
+      if (n.kind === 'position' && n.to) {
+        n.text = n.from ? (n.from + '→' + n.to) : n.to;
+      }
     });
   });
 }
@@ -4448,7 +4491,6 @@ const INTRAOP_EVENTS = [
   { key:'surgStart',       label:'手術開始' },
   { key:'sutureStart',     label:'縫合開始' },
   { key:'surgEnd',         label:'手術終了' },
-  { key:'antagonistTime',  label:'拮抗薬' },
   { key:'extubation',      label:'抜管' },
   { key:'returnToWard',    label:'帰舎' },
 ];
