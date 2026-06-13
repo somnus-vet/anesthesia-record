@@ -348,7 +348,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   <div class="app-hdr">
     <div>
       <div class="app-title">🐾 麻酔症例管理</div>
-      <div class="app-sub">Veterinary Anesthesia Record <span style="opacity:.55;font-size:10px">· build 2026-06-13e</span></div>
+      <div class="app-sub">Veterinary Anesthesia Record <span style="opacity:.55;font-size:10px">· build 2026-06-13f</span></div>
     </div>
     <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
       <button id="facilityBadge" onclick="openSettings()" style="background:#fff;color:var(--navy);border:none;border-radius:18px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px">
@@ -2939,10 +2939,22 @@ function toggleSyncEnabled() {
     stopSyncTimer();
   }
 }
-function manualSyncNow() {
+async function manualSyncNow() {
   if (!sheetsConfig.enabled) { showToast('Sheets同期が無効です'); return; }
   syncFromSheets();
-  showToast('同期中…');
+  // プリセットも今すぐマスタから取り直し、取得件数をトーストで見せる（拾えているか確認用）
+  try {
+    lastPresetSyncAt = Date.now();
+    const p = await loadPresetsFromSheets();
+    if (p) {
+      userPresets = p; savePresetsToStorage(); renderPresetBar();
+      const n = Object.keys(p).length;
+      const drugs = Object.values(p).reduce((s, x) => s + Object.keys(x.drugs || {}).length, 0);
+      showToast(`✓ プリセット ${n}件 / 薬剤計${drugs} をマスタから取得`);
+    } else {
+      showToast('同期中…（プリセットはマスタから取得できず＝ローカル使用）');
+    }
+  } catch (e) { showToast('同期中…'); }
 }
 // アプリ本体(HTML)の更新を確実に読み込む。Safari/ホーム画面アプリが古いHTMLを
 // キャッシュしていても、URLにユニークなクエリを付けて再読込すれば最新版を取得できる。
