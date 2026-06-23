@@ -4614,9 +4614,15 @@ function recordEvent(key) {
     const t0 = current.intubationTime;
     addFreeNote('flow', { time: shiftTime(t0, 1) });   // 酸素流量（O2/Air）
     addFreeNote('vent', { time: shiftTime(t0, 2) });   // 呼吸管理（換気・モード未選択）
-    let gas = null;
-    if (current.maintIsoflurane)       gas = { drugKey:'iso',  drugLabel:'イソフルラン', unit:'%' };
-    else if (current.maintSevoflurane) gas = { drugKey:'sevo', drugLabel:'セボフルラン', unit:'%' };
+    // 維持ガス: 既定はイソフルラン。セボ選択時はセボ、プロポフォール単独(TIVA)はガスなし。
+    let gas;
+    if (current.maintSevoflurane && !current.maintIsoflurane) {
+      gas = { drugKey:'sevo', drugLabel:'セボフルラン', unit:'%' };
+    } else if (current.maintPropofol && !current.maintIsoflurane && !current.maintSevoflurane) {
+      gas = null;  // プロポフォール単独はガスなし
+    } else {
+      gas = { drugKey:'iso', drugLabel:'イソフルラン', unit:'%' };  // 既定＝イソフルラン
+    }
     if (gas) addFreeNote('gas', { ...gas, time: shiftTime(t0, 3) });
     pushCurrentToSheets();  // 自動追加分もSheetsへ反映
   }
