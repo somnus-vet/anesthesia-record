@@ -842,6 +842,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
             <div id="blockSummary2" style="background:#fff8e0;border:1px solid #f3c441;border-radius:7px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6;display:none"></div>
           </div>
 
+          <!-- ①②横断の合算中毒量アラーム（2剤以上のとき表示） -->
+          <div id="laCombinedTox" style="display:none;border-radius:7px;padding:8px;margin:0 0 10px;font-size:12px;line-height:1.6;background:#eafaf1;border:1px solid #27ae60"></div>
+
           <!-- 自由記述（リスト外ブロック・①②共通） -->
           <div style="font-size:11px;color:var(--muted);margin:10px 0 4px">他のブロック（自由記述）</div>
           <div class="frow">
@@ -1586,6 +1589,7 @@ function renderMixtureSummary(si = 1) {
     html += `<br><div style="margin-top:6px;padding:6px 8px;background:#fdecea;border:1px solid #e74c3c;border-radius:5px;color:#922b21;font-weight:700">⚠️ メイン溶液全量を使うと中毒量を超えます。stockMlか濃度を見直してください。</div>`;
   }
   el.innerHTML = html;
+  updateCombinedLATox();
 }
 
 // ─────────────── 使用ブロック ───────────────
@@ -1716,6 +1720,7 @@ function removeBlock(si, key) {
 
 // 累計サマリー：実際の使用量に基づく
 function updateBlockSummary(si = 1) {
+  updateCombinedLATox(); // ①②横断の合算中毒量も更新
   const S = _laSet(si);
   const el = document.getElementById(S.elBlockSum);
   if (!el || !current) return;
@@ -1751,6 +1756,63 @@ function updateBlockSummary(si = 1) {
   });
   el.innerHTML = html;
   el.style.display = 'block';
+}
+
+// ─────────────── 局所麻酔薬 合算中毒量（①②を横断）───────────────
+// 局所麻酔薬の毒性は加算的。各薬剤の「極量に対する使用割合」を全セット合計し、
+// 合計が 100% を超えたらアラーム（例: ①極量1/2 + ②極量2/3 ≒ 117% → 超過）。
+// 同じ薬剤が①②両方にある場合は mg を合算して1つの割合にする。
+function computeCombinedLATox() {
+  const weight = parseFloat(current && current.weight) || 0;
+  const perDrug = {}; // name -> { mg, max }
+  let nContrib = 0;
+  [1, 2].forEach(si => {
+    const S = _laSet(si);
+    const info = computeMixtureInfo(si);
+    const blocks = current[S.blocks] || {};
+    let usedMl = 0;
+    Object.keys(blocks).forEach(k => {
+      if (blocks[k] && blocks[k].use) usedMl += (parseFloat(blocks[k].volume) || 0) * (parseFloat(blocks[k].sites) || 0);
+    });
+    if (usedMl <= 0) return;
+    info.drugs.forEach(dr => {
+      if (!dr.name) return;
+      const mg = usedMl * dr.mgPerMl;
+      if (mg <= 0) return;
+      nContrib++;
+      if (!perDrug[dr.name]) perDrug[dr.name] = { mg: 0, max: laMaxDose(dr.name) };
+      perDrug[dr.name].mg += mg;
+    });
+  });
+  let fraction = 0;
+  const items = [];
+  Object.keys(perDrug).forEach(name => {
+    const { mg, max } = perDrug[name];
+    const mgkg = weight > 0 ? mg / weight : 0;
+    const frac = (max && weight > 0) ? mgkg / max : 0;
+    fraction += frac;
+    items.push({ name, mgkg, max, frac });
+  });
+  return { fraction, items, weight, nContrib };
+}
+
+function updateCombinedLATox() {
+  const el = document.getElementById('laCombinedTox');
+  if (!el || !current) return;
+  const { fraction, items, weight, nContrib } = computeCombinedLATox();
+  // 2つ以上の投与（別薬剤、または①②に同じ薬剤）がある時だけ合算を表示する
+  if (nContrib < 2 || weight <= 0) { el.style.display = 'none'; return; }
+  const over = fraction > 1;
+  const detail = items.filter(it => it.frac > 0)
+    .map(it => `${esc(it.name)} ${(it.frac * 100).toFixed(0)}%${it.max ? `(${it.mgkg.toFixed(2)}/${it.max})` : ''}`)
+    .join(' ＋ ');
+  el.style.display = 'block';
+  el.style.background = over ? '#fdecea' : '#eafaf1';
+  el.style.border = '1px solid ' + (over ? '#e74c3c' : '#27ae60');
+  el.style.color = over ? '#922b21' : '#1e7d46';
+  el.innerHTML = `<strong>${over ? '⚠️ 局所麻酔薬 合算中毒量 超過' : '✓ 局所麻酔薬 合算中毒量'}</strong>`
+    + ` — 極量比の合計 <strong>${(fraction * 100).toFixed(0)}%</strong>（${detail}）`
+    + (over ? '<br>複数の局所麻酔薬は毒性が加算されます。合計が極量の100%を超えています。減量を検討してください。' : '');
 }
 
 // ─────────────── ブロックピッカー ───────────────
