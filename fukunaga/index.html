@@ -84,6 +84,10 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
 /* FIELDS */
 .frow{display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap}
+.breed-suggest{position:absolute;top:100%;left:59px;right:0;z-index:60;background:#fff;border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--r-sm) var(--r-sm);max-height:240px;overflow-y:auto;box-shadow:0 6px 16px rgba(0,0,0,.14);-webkit-overflow-scrolling:touch}
+.breed-suggest .bs-i{padding:11px 12px;font-size:15px;color:var(--text);cursor:pointer;border-bottom:1px solid #eef2f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.breed-suggest .bs-i:last-child{border-bottom:none}
+.breed-suggest .bs-i:active{background:#eef4ff}
 .frow:last-child{margin-bottom:0}
 .flabel{font-size:13px;color:var(--muted);flex-shrink:0;min-width:52px}
 .flabel-w{min-width:80px}
@@ -409,9 +413,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
               <div class="seg-i" onclick="setSeg('species','other',this)">他</div>
             </div>
           </div>
-          <div class="frow">
+          <div class="frow" style="position:relative">
             <span class="flabel">品種</span>
-            <input class="fin" type="text" id="f_breed" placeholder="品種" oninput="autoSave()">
+            <input class="fin" type="text" id="f_breed" placeholder="品種" autocomplete="off" oninput="onBreedInput()" onfocus="onBreedInput()" onblur="setTimeout(hideBreedSuggest,200)">
+            <button type="button" onclick="setBreedMix()" style="background:#f0f4f8;border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;min-height:40px;color:var(--muted);flex-shrink:0">ミックス</button>
+            <div id="breedSuggest" class="breed-suggest" style="display:none"></div>
           </div>
           <div class="frow">
             <span class="flabel">生年月日</span>
@@ -3639,6 +3645,66 @@ function setSegVal(key, val) {
       el.classList.add('on');
     }
   });
+}
+
+// ─────────────────────────────────────────────────
+// 品種オートコンプリート（犬・猫）＋ ミックスボタン
+// ─────────────────────────────────────────────────
+const BREEDS_DOG = ['トイ・プードル','ミニチュア・プードル','スタンダード・プードル','ミディアム・プードル','チワワ','ミニチュア・ダックスフンド','カニンヘン・ダックスフンド','スタンダード・ダックスフンド','柴犬','ポメラニアン','ヨークシャー・テリア','マルチーズ','シー・ズー','ミニチュア・シュナウザー','スタンダード・シュナウザー','ジャイアント・シュナウザー','フレンチ・ブルドッグ','ブルドッグ','ボストン・テリア','パグ','ペキニーズ','狆','ウェルシュ・コーギー・ペンブローク','ウェルシュ・コーギー・カーディガン','ゴールデン・レトリバー','ラブラドール・レトリバー','フラットコーテッド・レトリバー','ボーダー・コリー','シェットランド・シープドッグ','ラフ・コリー','キャバリア・キング・チャールズ・スパニエル','ジャック・ラッセル・テリア','ミニチュア・ブル・テリア','ブル・テリア','ウエスト・ハイランド・ホワイト・テリア','ノーフォーク・テリア','ケアーン・テリア','日本テリア','パピヨン','ビション・フリーゼ','ミニチュア・ピンシャー','イタリアン・グレーハウンド','日本スピッツ','サモエド','シベリアン・ハスキー','アラスカン・マラミュート','バーニーズ・マウンテン・ドッグ','グレート・ピレニーズ','セント・バーナード','ドーベルマン','ロットワイラー','ジャーマン・シェパード・ドッグ','ボクサー','グレート・デーン','ダルメシアン','ワイマラナー','ビーグル','バセット・ハウンド','アメリカン・コッカー・スパニエル','イングリッシュ・コッカー・スパニエル','アフガン・ハウンド','ボルゾイ','ウィペット','サルーキ','秋田犬','甲斐犬','紀州犬','四国犬','北海道犬','チャイニーズ・クレステッド・ドッグ','ミックス'];
+const BREEDS_CAT = ['雑種','日本猫','スコティッシュ・フォールド','アメリカン・ショートヘア','マンチカン','ブリティッシュ・ショートヘア','ノルウェージャン・フォレスト・キャット','メイン・クーン','ラグドール','ペルシャ','ロシアン・ブルー','ベンガル','アビシニアン','ソマリ','シャム','ヒマラヤン','ミヌエット','セルカーク・レックス','デボン・レックス','コーニッシュ・レックス','スフィンクス','エキゾチック・ショートヘア','ターキッシュ・アンゴラ','シンガプーラ','オシキャット','エジプシャン・マウ','トンキニーズ','バーミーズ','ボンベイ','シャルトリュー','ラパーマ','サイベリアン','マンクス','アメリカン・カール','ミックス'];
+const BREED_ALIAS = {
+  'トイ・プードル':'といぷー','ミニチュア・ダックスフンド':'ダックスフント','カニンヘン・ダックスフンド':'ダックスフント','スタンダード・ダックスフンド':'ダックスフント',
+  'ゴールデン・レトリバー':'レトリーバー','ラブラドール・レトリバー':'レトリーバー ラブ','フラットコーテッド・レトリバー':'レトリーバー',
+  'ウェルシュ・コーギー・ペンブローク':'コーギー','ウェルシュ・コーギー・カーディガン':'コーギー',
+  'アメリカン・ショートヘア':'アメショ アメショー','ブリティッシュ・ショートヘア':'ブリショ ブリショー','スコティッシュ・フォールド':'スコ','ノルウェージャン・フォレスト・キャット':'ノルウェージャン','メイン・クーン':'メインクーン',
+  '柴犬':'しば','秋田犬':'あきた','甲斐犬':'かい','紀州犬':'きしゅう','四国犬':'しこく','北海道犬':'ほっかいどう','狆':'ちん','雑種':'ざっしゅ みっくす','日本猫':'にほんねこ','日本スピッツ':'にほんすぴっつ','日本テリア':'にほんてりあ'
+};
+function _breedNorm(s){
+  return (s||'').replace(/[・\s　]/g,'').replace(/[ぁ-ゖ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)+0x60);}).toLowerCase();
+}
+function _breedList(){
+  const sp = (current && current.species) || 'dog';
+  if (sp === 'cat') return BREEDS_CAT;
+  if (sp === 'dog') return BREEDS_DOG;
+  return [];
+}
+function onBreedInput(){
+  autoSave();
+  const inp = document.getElementById('f_breed');
+  const box = document.getElementById('breedSuggest');
+  if (!inp || !box) return;
+  const q = _breedNorm(inp.value);
+  if (!q){ box.style.display='none'; box.innerHTML=''; return; }
+  const list = _breedList();
+  const scored = [];
+  list.forEach(function(name){
+    const hay = _breedNorm(name + ' ' + (BREED_ALIAS[name]||''));
+    if (hay.indexOf(q) >= 0) scored.push({name:name, pre: _breedNorm(name).indexOf(q)===0 ? 0 : 1});
+  });
+  scored.sort(function(a,b){ return a.pre - b.pre; });
+  const top = scored.slice(0,10);
+  if (!top.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.innerHTML = top.map(function(o){
+    return '<div class="bs-i" onmousedown="selectBreed(event,\''+o.name+'\')">'+o.name+'</div>';
+  }).join('');
+  box.style.display='block';
+}
+function selectBreed(ev, name){
+  if (ev && ev.preventDefault) ev.preventDefault();
+  const inp = document.getElementById('f_breed');
+  if (inp){ inp.value = name; }
+  hideBreedSuggest();
+  autoSave();
+}
+function hideBreedSuggest(){
+  const box = document.getElementById('breedSuggest');
+  if (box){ box.style.display='none'; box.innerHTML=''; }
+}
+function setBreedMix(){
+  const inp = document.getElementById('f_breed');
+  if (inp){ inp.value = 'ミックス'; }
+  hideBreedSuggest();
+  autoSave();
 }
 
 // ─────────────────────────────────────────────────
