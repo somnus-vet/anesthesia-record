@@ -4999,6 +4999,9 @@ function switchTab(i) {
   if (i === 1) renderHypotensionDrugs();
   // 「術中/薬剤」タブを開いたら、統合タイムラインを再描画
   if (i === 3) renderTimeline();
+  // 開いたタブは常に先頭から表示（前回のスクロール位置を持ち越さない）
+  const _panel = document.querySelectorAll('.panel')[i];
+  if (_panel) _panel.scrollTop = 0;
 }
 
 // ─────────────────────────────────────────────────
