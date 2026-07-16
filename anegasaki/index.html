@@ -1175,6 +1175,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <div>最終送信 (Push): <span id="diagLastPush">—</span></div>
         <div>送信状態: <span id="diagPushStatus" style="font-weight:600;color:var(--text)">—</span></div>
         <div>未送信キュー: <span id="diagQueueSize">0</span> 件</div>
+        <div style="margin-top:4px;font-weight:700;color:var(--blue)">版: sync-v2 2026-07-13 <span id="diagDeviceId" style="font-weight:400;color:var(--muted)"></span></div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px">
@@ -1252,6 +1253,8 @@ const DRUG_GROUPS = {
     { key:'noradrenaline_c',label:'ノルアドレナリン', unit:'μg/kg/min', dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'], def:'IV' },
     { key:'phenylephrine_c',label:'フェニレフリン',   unit:'μg/kg/min', dog:'1〜5',     cat:'1〜5',      routes:['IV'], def:'IV' },
     { key:'tramadol_c',     label:'トラマドール',     unit:'mg/kg/hr',  dog:'—',        cat:'0.1〜0.3', routes:['IV'], def:'IV' },
+    { key:'dopamine_c',     label:'ドパミン',         unit:'μg/kg/min', dog:'3〜10',    cat:'3〜10',    routes:['IV'], def:'IV' },
+    { key:'dobutamine_c',   label:'ドブタミン',       unit:'μg/kg/min', dog:'2〜10',    cat:'2〜10',    routes:['IV'], def:'IV' },
   ],
   vasopressors: [
     { key:'atropine_v',     label:'アトロピン',       unit:'μg/kg', dog:'20〜40',     cat:'20〜40',     routes:['IV','IM','SC'], def:'IV', conc:500 },
@@ -2613,10 +2616,15 @@ function mergeReservations(rows, onUpdate) {
       // 反映の遅れた古いリモートで、記録直後のローカルのイベント/薬剤が消えていた。
       // ID統一だけ先に済ませ、データ本体は「リモートが新しい時だけ」反映する。
       if (remoteId && existing.id !== remoteId) existing.id = remoteId;
-      if (remoteTs && (!localTs || remoteTs > localTs)) {
-        // detail 全体を反映（薬剤・ブロック等のネスト構造も復元）
+      // sync-v2: スカラー=rev勝ち側 / status=順序max / イベント=常にunion(ローカル未同期分を消さない)
+      const localRev = parseInt(existing.rev, 10) || 0;
+      const remoteRev = parseInt(detail.rev, 10) || 0;
+      // rev同値のときのみ従来の updated_at で決着（旧データ後方互換）
+      const scalarWins = remoteRev > localRev || (remoteRev === localRev && remoteTs && (!localTs || remoteTs > localTs));
+      // スカラー上書きでローカルのイベント/進捗を消さないため退避
+      const _ld = existing.drugLog, _lf = existing.freeNotes, _lp = existing.procEvents, _lpm = existing.procEventsMeta, _lprog = existing.progress;
+      if (scalarWins) {
         Object.keys(detail).forEach(k => existing[k] = detail[k]);
-        // 内部IDをremote側に統一（複数デバイス間で一意にする）
         if (remoteId) existing.id = remoteId;
         existing.date = r['日付'];
         existing.caseNo = r['カルテNo'];
@@ -2637,10 +2645,19 @@ function mergeReservations(rows, onUpdate) {
         existing.asapsE = r['ASA緊急'] === 'TRUE';
         if (r['術式']) existing.procedure = r['術式'];
         if (r['担当']) existing.staff = r['担当'];
-        if (r['進捗']) existing.progress = r['進捗'];
         existing.updated_at = r['updated_at'];
-        if (onUpdate) onUpdate(`${existing.date}|${existing.caseNo}`);
       }
+      // イベントは rev 勝敗に関係なく常に union（件数を減らさない）
+      existing.drugLog   = unionEventsC(_ld, detail.drugLog, hashDrugC);
+      existing.freeNotes = unionEventsC(_lf, detail.freeNotes, hashFreeC);
+      const _pe = unionProcEventsC(_lp, detail.procEvents, _lpm, detail.procEventsMeta);
+      existing.procEvents = _pe.procEvents;
+      if (Object.keys(_pe.procEventsMeta).length) existing.procEventsMeta = _pe.procEventsMeta;
+      // status は順序max（後退しない）
+      existing.progress = pickStatusC(_lprog, detail.progress || r['進捗']);
+      // rev は大きい方に揃える
+      existing.rev = Math.max(localRev, remoteRev);
+      if (scalarWins && onUpdate) onUpdate(`${existing.date}|${existing.caseNo}`);
     } else {
       // 新規
       const fresh = makeCase();
@@ -2705,6 +2722,7 @@ async function pushToSheets(caseObj, options = {}) {
     return true;
   }
   recentPushKeys[dedupKey] = now;
+  stampRev(caseObj); // sync-v2: push直前に rev++・device_id・client_ts・updated_at
 
   const localBlockLabels = (typeof LOCAL_BLOCKS !== 'undefined' ? LOCAL_BLOCKS : [])
     .filter(b => (caseObj.localBlocks || {})[b.key]?.use)
@@ -2749,6 +2767,30 @@ async function pushToSheets(caseObj, options = {}) {
       throw new Error('応答が JSON ではない');
     }
     if (result.ok === false) throw new Error(result.error || '不明エラー');
+    // sync-v2: サーバが新しい版を保持(rev負け=conflict) → 取り込んでマージ→1回だけ再push。
+    // ユーザー入力は捨てず、イベントはunion・statusはmaxで統合する。
+    const _rr = result.result || {};
+    if ((_rr.status === 'conflict' || _rr.action === 'conflict') && !options._conflictRetry) {
+      let sd = {};
+      try { sd = JSON.parse(_rr.server_case || '{}'); } catch (e) {}
+      const _ld = caseObj.drugLog, _lf = caseObj.freeNotes, _lp = caseObj.procEvents, _lpm = caseObj.procEventsMeta, _lprog = caseObj.progress;
+      Object.keys(sd).forEach(k => caseObj[k] = sd[k]); // スカラーはサーバ優先(server_rev >= local)
+      caseObj.drugLog   = unionEventsC(_ld, sd.drugLog, hashDrugC);
+      caseObj.freeNotes = unionEventsC(_lf, sd.freeNotes, hashFreeC);
+      const _pe = unionProcEventsC(_lp, sd.procEvents, _lpm, sd.procEventsMeta);
+      caseObj.procEvents = _pe.procEvents;
+      if (Object.keys(_pe.procEventsMeta).length) caseObj.procEventsMeta = _pe.procEventsMeta;
+      caseObj.progress = pickStatusC(_lprog, sd.progress);
+      caseObj.rev = (parseInt(_rr.server_rev, 10) || 0) + 1;
+      const _ci = cases.findIndex(c => c.id === caseObj.id);
+      if (_ci >= 0) cases[_ci] = caseObj;
+      saveStorage();
+      lastPushStatus = '🔀 他端末の更新を取り込み再送';
+      updateDiagnostics();
+      try { showToast('🔀 他端末の更新を取り込みました（マージ済み）'); } catch (e) {}
+      delete recentPushKeys[dedupKey]; // 即時再pushのため重複防止を解除
+      return pushToSheets(caseObj, Object.assign({}, options, { _conflictRetry: true }));
+    }
     // Apps Scriptから正規IDが返ってきたらローカルcaseのidを更新（複数デバイス間でID統一）
     const canonicalId = result.result && result.result.id;
     if (canonicalId && caseObj.id !== canonicalId) {
@@ -2988,6 +3030,8 @@ function updateDiagnostics() {
   const pushEl = document.getElementById('diagLastPush');
   const pushStatusEl = document.getElementById('diagPushStatus');
   if (stateEl) stateEl.textContent = sheetsConfig.enabled ? '有効' : '無効';
+  const devEl = document.getElementById('diagDeviceId');
+  if (devEl && !devEl.textContent) devEl.textContent = '/ 端末: ' + String(getDeviceId()).slice(0, 8);
   if (lastEl) lastEl.textContent = lastSyncAt ? lastSyncAt.toLocaleTimeString('ja-JP') : '—';
   if (pushEl) pushEl.textContent = lastPushAt ? lastPushAt.toLocaleTimeString('ja-JP') : '—';
   if (pushStatusEl) {
@@ -3131,6 +3175,7 @@ function makeCase() {
     date: today(),
     caseNo: '', staff: '',
     facility: '', progress: '予約', updated_at: '',
+    rev: 0, device_id: '', client_ts: '', // sync-v2
     // patient
     patientId:'', ownerName:'', patientName:'',
     species:'dog', breed:'', birthdate:'', ageY:'', ageM:'', sex:'M',
@@ -3405,6 +3450,65 @@ function nowIsoStr() {
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// ============================================================
+// sync-v2 : 端末ID / rev / uid とマージ規則（GAS側 mergeCaseDetail と同一規則）
+//   スカラー=rev勝ち側 / status=順序max / イベント=常にunion(件数減らさない)
+// ============================================================
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem('vet_fah_device_id');
+    if (!id) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+         : ('dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
+      localStorage.setItem('vet_fah_device_id', id);
+    }
+    return id;
+  } catch (e) { return 'dev_unknown'; }
+}
+function genUid() {
+  return (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+       : ('uid_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
+}
+// 保存/push直前に1回呼ぶ：rev++・device_id・client_ts。
+// ※ uid は「新規生成時のみ」付与する方針（既存の uid 無し要素はGAS側の内容ハッシュで突合。
+//    ここで乱数uidを一括付与すると端末ごとに別uidになり二重化するため付与しない）。
+function stampRev(c) {
+  if (!c) return;
+  c.rev = (parseInt(c.rev, 10) || 0) + 1;
+  c.device_id = getDeviceId();
+  c.client_ts = nowIsoStr();
+  c.updated_at = nowIsoStr();
+}
+const STATUS_RANK_V2 = { '予約': 0, '記録中': 1, '完了': 2 };
+function statusRankC(s) { const r = STATUS_RANK_V2[String(s == null ? '' : s).trim()]; return r === undefined ? -1 : r; }
+function pickStatusC(a, b) {
+  a = String(a == null ? '' : a).trim(); b = String(b == null ? '' : b).trim();
+  if (!b) return a; if (!a) return b;
+  if (statusRankC(b) < 0) return a; if (statusRankC(a) < 0) return b;
+  return statusRankC(b) >= statusRankC(a) ? b : a;
+}
+function hashDrugC(e) { return ['d', e && e.time, e && e.drug, e && e.dose, e && e.route].join('|'); }
+function hashFreeC(e) { return ['f', e && e.time, e && e.kind, e && e.text, e && e.from, e && e.to, e && e.mode, e && e.rr, e && e.o2, e && e.air, e && e.drugKey, e && e.drugLabel, e && e.size, e && e.sizeFr].join('|'); }
+function mergeEventPairC(x, y) { const o = Object.assign({}, x, y); if ((x && x.deleted) || (y && y.deleted)) o.deleted = true; return o; }
+function unionEventsC(a, b, keyFn) {
+  a = Array.isArray(a) ? a : []; b = Array.isArray(b) ? b : [];
+  const order = [], map = {};
+  const add = e => { if (!e || typeof e !== 'object') return; const k = e.uid || keyFn(e); if (map[k] === undefined) { order.push(k); map[k] = e; } else map[k] = mergeEventPairC(map[k], e); };
+  a.forEach(add); b.forEach(add);
+  return order.map(k => map[k]);
+}
+function unionProcEventsC(exObj, inObj, exMeta, inMeta) {
+  exObj = (exObj && typeof exObj === 'object') ? exObj : {};
+  inObj = (inObj && typeof inObj === 'object') ? inObj : {};
+  const meta = Object.assign({}, exMeta || {});
+  for (const k in (inMeta || {})) meta[k] = mergeEventPairC(meta[k] || {}, inMeta[k]);
+  const out = {}, keys = {};
+  for (const k in exObj) keys[k] = 1;
+  for (const k in inObj) keys[k] = 1;
+  Object.keys(keys).forEach(key => { if (meta[key] && meta[key].deleted) return; out[key] = (inObj[key] != null) ? inObj[key] : exObj[key]; });
+  return { procEvents: out, procEventsMeta: meta };
 }
 
 // ─────────────────────────────────────────────────
@@ -4418,7 +4522,7 @@ function addFreeNote(kind, opts) {
   const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange'];
   const k = valid.indexOf(kind) >= 0 ? kind : 'memo';
   // opts.time があればその時刻で追加（挿管後の自動入力で数秒ずらすため）。無ければ現在時刻。
-  const entry = { time: (opts && opts.time) ? opts.time : nowTime(), kind: k };
+  const entry = { time: (opts && opts.time) ? opts.time : nowTime(), kind: k, uid: genUid() };
   if (k === 'memo') {
     entry.text = '';
   } else if (k === 'position') {
@@ -4711,7 +4815,7 @@ function commitDose(perKg) {
   const drugData = (current.drugs && current.drugs[doseSelectKey]) || {};
   const t = nowTime();
   const route = doseSelectRoute || drugData.route || d.def;
-  current.drugLog.push({ drug: d.label, dose: formatDose(d, perKg), route: route, time: t });
+  current.drugLog.push({ drug: d.label, dose: formatDose(d, perKg), route: route, time: t, uid: genUid() });
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
@@ -4872,7 +4976,7 @@ function toggleIntubDifficult() {
 function addDrugLogRow() {
   if (!current) return;
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
-  current.drugLog.push({ drug:'', dose:'', route:'', time: nowTime() });
+  current.drugLog.push({ drug:'', dose:'', route:'', time: nowTime(), uid: genUid() });
   renderTimelineList();
   autoSave();
   pushCurrentToSheets();
