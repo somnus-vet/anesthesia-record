@@ -3363,9 +3363,7 @@ function renderCasesList() {
       ? `${c.ownerName} ${c.patientName}`
       : (c.patientName || c.ownerName || '—');
     const diag = c.procedure || c.diagnosis || '術式未記載';
-    const progressBadge = c.progress && c.progress !== '予約'
-      ? `<span style="background:${c.progress==='完了'?'#27ae60':'#e67e22'};color:#fff;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;margin-left:6px">${esc(c.progress)}</span>`
-      : (c.progress === '予約' ? `<span style="background:#dce3ec;color:#555;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;margin-left:6px">予約</span>` : '');
+    const progressBadge = ''; // App内では進捗ラベル非表示（進捗フィールド/SomLog書き戻し/sync-v2ガードは維持）
     return `<div class="case-card${isToday ? ' case-today' : ''}" onclick="openCase('${c.id}')">
       <div class="case-icon">${sp}</div>
       <div class="case-info">
