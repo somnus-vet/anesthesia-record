@@ -5213,9 +5213,15 @@ function generatePrintHTML(c) {
     if (k === 'position') { kindLbl = '体位変換'; body = n.text || ''; }
     else if (k === 'fluid') { kindLbl = '輸液'; body = `${n.from||'0'} → ${n.to||''} mL/hr`; }
     else if (k === 'vent') {
-      const m = n.mode === 'VCV' ? 'VCV' : 'PCV';
-      kindLbl = m;
-      body = `${n.from||'0'} → ${n.to||''} ${m === 'VCV' ? 'mL' : 'cmH₂O'}`;
+      // モードがOFF/自発/未選択のときは設定値が無い。PCV扱いすると単位(cmH₂O)だけが残る
+      const vm = (n.mode || '').toUpperCase();
+      if (vm === 'OFF') { kindLbl = '人工呼吸OFF'; body = ''; }
+      else if (vm === 'SPONT') { kindLbl = '自発呼吸'; body = ''; }
+      else if (vm !== 'PCV' && vm !== 'VCV') { kindLbl = '呼吸管理'; body = ''; }
+      else {
+        kindLbl = vm;
+        body = `${n.from||'0'} → ${n.to||''} ${vm === 'VCV' ? 'mL' : 'cmH₂O'}`;
+      }
     }
     else if (k === 'spont') { kindLbl = '自発呼吸'; body = ''; }
     else if (k === 'ventOff') { kindLbl = '人工呼吸OFF'; body = ''; }
