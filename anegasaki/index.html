@@ -82,6 +82,29 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .c-hdr-en{font-size:11px;opacity:.65;font-weight:400}
 .c-body{padding:13px}
 
+/* ===== ACCORDION（大項目→小項目） ===== */
+.card.acc>.c-hdr{cursor:pointer;-webkit-user-select:none;user-select:none}
+.acc-arrow{font-size:10px;margin-right:7px;display:inline-block;transition:transform .18s;opacity:.85}
+.card.acc.open>.c-hdr .acc-arrow{transform:rotate(90deg)}
+.card.acc>.c-body{display:none}
+.card.acc.open>.c-body{display:block}
+.c-sum{display:block;padding:8px 13px;font-size:12px;color:var(--muted);background:#f8fafc;border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.5}
+.card.acc.open>.c-sum{display:none}
+.acc-badge{font-size:10px;font-weight:700;border-radius:9px;padding:2px 7px;margin-left:8px;background:rgba(255,255,255,.22);color:#fff}
+.acc-badge:empty{display:none}
+.acc-badge.done{background:var(--green)}
+.acc-badge.part{background:var(--orange)}
+/* 麻酔プロトコル内の小項目 */
+.sub-acc{border:1.5px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;background:#fff}
+.sub-hdr{display:flex;align-items:center;background:#f0f4f8;padding:10px 12px;font-size:13px;font-weight:800;color:var(--navy);cursor:pointer;-webkit-user-select:none;user-select:none;min-height:44px}
+.sub-acc.open>.sub-hdr{border-bottom:1px solid var(--border)}
+.sub-acc.open>.sub-hdr .acc-arrow{transform:rotate(90deg)}
+.sub-en{font-size:11px;font-weight:400;color:var(--muted);margin-left:6px}
+.sub-sum{margin-left:auto;padding-left:10px;font-size:11.5px;font-weight:600;color:var(--blue);max-width:52%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.sub-sum:empty{display:none}
+.sub-body{display:none;padding:10px}
+.sub-acc.open>.sub-body{display:block}
+
 /* FIELDS */
 .frow{display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap}
 .breed-suggest{position:absolute;top:100%;left:59px;right:0;z-index:60;background:#fff;border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--r-sm) var(--r-sm);max-height:240px;overflow-y:auto;box-shadow:0 6px 16px rgba(0,0,0,.14);-webkit-overflow-scrolling:touch}
@@ -388,8 +411,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <!-- ========== TAB 0: 患者/術前 ========== -->
     <div class="panel on" id="panel0">
 
-      <div class="card">
-        <div class="c-hdr">1. 患者情報 <span class="c-hdr-en">Patient</span></div>
+      <div class="card acc" id="acc_c1">
+        <div class="c-hdr" onclick="toggleAcc('c1')"><span><span class="acc-arrow">▶</span>1. 患者情報<span class="acc-badge" id="badge_c1"></span></span><span class="c-hdr-en">Patient</span></div>
+        <div class="c-sum" id="sum_c1" onclick="toggleAcc('c1')"></div>
         <div class="c-body">
           <div class="frow">
             <span class="flabel">ID★</span>
@@ -478,8 +502,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         </div>
       </div>
 
-      <div class="card">
-        <div class="c-hdr">2. 術前評価 <span class="c-hdr-en">Pre-op</span></div>
+      <div class="card acc" id="acc_c2">
+        <div class="c-hdr" onclick="toggleAcc('c2')"><span><span class="acc-arrow">▶</span>2. 術前評価<span class="acc-badge" id="badge_c2"></span></span><span class="c-hdr-en">Pre-op</span></div>
+        <div class="c-sum" id="sum_c2" onclick="toggleAcc('c2')"></div>
         <div class="c-body">
           <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px">麻酔当日バイタル</div>
           <div class="frow">
@@ -524,8 +549,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <!-- ========== TAB 1: 手術/器材 ========== -->
     <div class="panel" id="panel1">
 
-      <div class="card">
-        <div class="c-hdr">3. 手術情報 <span class="c-hdr-en">Surgery</span></div>
+      <div class="card acc" id="acc_c3">
+        <div class="c-hdr" onclick="toggleAcc('c3')"><span><span class="acc-arrow">▶</span>3. 手術情報<span class="acc-badge" id="badge_c3"></span></span><span class="c-hdr-en">Surgery</span></div>
+        <div class="c-sum" id="sum_c3" onclick="toggleAcc('c3')"></div>
         <div class="c-body">
           <div class="frow">
             <span class="flabel flabel-w">手術日</span>
@@ -677,8 +703,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         </div>
       </div>
 
-      <div class="card">
-        <div class="c-hdr">4. 準備器材 <span class="c-hdr-en">Equipment</span></div>
+      <div class="card acc" id="acc_c4">
+        <div class="c-hdr" onclick="toggleAcc('c4')"><span><span class="acc-arrow">▶</span>4. 準備器材<span class="acc-badge" id="badge_c4"></span></span><span class="c-hdr-en">Equipment</span></div>
+        <div class="c-sum" id="sum_c4" onclick="toggleAcc('c4')"></div>
         <div class="c-body">
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px">モニタリング</div>
           <div class="chk-grid">
@@ -740,13 +767,23 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="preset-bar" id="presetBar"></div>
           <button class="preset-edit-btn" type="button" onclick="openPresetEditor()">✏️ プリセットを編集</button>
 
-          <div class="sec-title">前投薬 Pre-medication</div>
+          <div class="sub-acc" data-sub="premeds">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>前投薬 <span class="sub-en">Pre-medication</span><span class="sub-sum" id="ssum_premeds"></span></div>
+          <div class="sub-body">
           <div id="drugList_premeds"></div>
 
-          <div class="sec-title">導入薬 Induction</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="induction">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>導入薬 <span class="sub-en">Induction</span><span class="sub-sum" id="ssum_induction"></span></div>
+          <div class="sub-body">
           <div id="drugList_induction"></div>
 
-          <div class="sec-title">維持 Maintenance</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="maint">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>維持 <span class="sub-en">Maintenance</span><span class="sub-sum" id="ssum_maint"></span></div>
+          <div class="sub-body">
           <div class="frow">
             <div class="chk-item" onclick="toggleChk(this,'maintIsoflurane')"><div class="chk-box"></div><span class="chk-label">イソフルラン</span></div>
             <div class="chk-item" onclick="toggleChk(this,'maintSevoflurane')"><div class="chk-box"></div><span class="chk-label">セボフルラン</span></div>
@@ -768,7 +805,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
             <input class="fin" type="text" id="f_ventilation" placeholder="TV/RR 設定" oninput="autoSave()">
           </div>
 
-          <div class="sec-title">輸液 Fluids</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="fluids">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>輸液 <span class="sub-en">Fluids</span><span class="sub-sum" id="ssum_fluids"></span></div>
+          <div class="sub-body">
           <div class="frow">
             <span class="flabel">種類</span>
             <input class="fin" type="text" id="f_fluidType" placeholder="生食/乳酸リンゲル…" oninput="autoSave()">
@@ -784,25 +825,53 @@ input.fin[readonly]{background:#fff;cursor:pointer}
             <span class="unit">mL/kg/h</span>
           </div>
 
-          <div class="sec-title">抗菌薬 Antibiotics</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="antibiotics">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>抗菌薬 <span class="sub-en">Antibiotics</span><span class="sub-sum" id="ssum_antibiotics"></span></div>
+          <div class="sub-body">
           <div id="drugList_antibiotics"></div>
 
-          <div class="sec-title">CRI</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="cri">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>CRI<span class="sub-sum" id="ssum_cri"></span></div>
+          <div class="sub-body">
           <div id="drugList_cri"></div>
 
-          <div class="sec-title">昇圧剤 / 循環作動薬</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="vasopressors">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>昇圧剤 / 循環作動薬<span class="sub-sum" id="ssum_vasopressors"></span></div>
+          <div class="sub-body">
           <div id="drugList_vasopressors"></div>
 
-          <div class="sec-title">拮抗薬 Antagonists</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="antagonists">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>拮抗薬 <span class="sub-en">Antagonists</span><span class="sub-sum" id="ssum_antagonists"></span></div>
+          <div class="sub-body">
           <div id="drugList_antagonists"></div>
 
-          <div class="sec-title">術後鎮痛 Post-op Analgesia</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="postAnalg">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>術後鎮痛 <span class="sub-en">Post-op Analgesia</span><span class="sub-sum" id="ssum_postAnalg"></span></div>
+          <div class="sub-body">
           <div id="drugList_postAnalg"></div>
 
-          <div class="sec-title">その他 Others</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="other">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>その他 <span class="sub-en">Others</span><span class="sub-sum" id="ssum_other"></span></div>
+          <div class="sub-body">
           <div id="drugList_other"></div>
 
-          <div class="sec-title">局所麻酔 Local Anesthesia</div>
+          </div></div>
+
+          <div class="sub-acc" data-sub="local">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>局所麻酔 <span class="sub-en">Local Anesthesia</span><span class="sub-sum" id="ssum_local"></span></div>
+          <div class="sub-body">
 
           <!-- ===== 局所麻酔① ===== -->
           <div style="border:1.5px solid var(--blue);border-radius:8px;padding:8px;margin-bottom:12px">
@@ -859,6 +928,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="frow">
             <input class="fin" type="text" id="f_localCustom2" placeholder="ブロック名・薬剤・部位・量等" oninput="autoSave()">
           </div>
+          </div></div>
         </div>
       </div>
     </div>
@@ -893,8 +963,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         </div>
       </div>
 
-      <div class="card">
-        <div class="c-hdr">⚡ 緊急薬 <span class="c-hdr-en">Emergency drugs</span></div>
+      <div class="card acc" id="acc_cEm">
+        <div class="c-hdr" onclick="toggleAcc('cEm')"><span><span class="acc-arrow">▶</span>⚡ 緊急薬<span class="acc-badge" id="badge_cEm"></span></span><span class="c-hdr-en">Emergency drugs</span></div>
+        <div class="c-sum" id="sum_cEm" onclick="toggleAcc('cEm')"></div>
         <div class="c-body">
           <div style="font-size:11px;color:var(--muted);margin-bottom:6px">体重から希釈・容量を自動計算（アナフィラキシー / 心停止 / 悪性高熱 / 局所麻酔中毒）</div>
           <div class="emerg-info"><span class="emerg-info-label">アドレナリン (心拍動時) 1μg/kg</span><span class="emerg-calc" data-emerg="epinephrine_normal"></span></div>
@@ -940,8 +1011,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <!-- ========== TAB 4: 合併症/回復/申し送り ========== -->
     <div class="panel" id="panel4">
 
-      <div class="card">
-        <div class="c-hdr">6. 合併症 <span class="c-hdr-en">Complications</span></div>
+      <div class="card acc" id="acc_c6">
+        <div class="c-hdr" onclick="toggleAcc('c6')"><span><span class="acc-arrow">▶</span>6. 合併症<span class="acc-badge" id="badge_c6"></span></span><span class="c-hdr-en">Complications</span></div>
+        <div class="c-sum" id="sum_c6" onclick="toggleAcc('c6')"></div>
         <div class="c-body">
           <div class="comp-title">◆ 麻酔導入時に生じた合併症</div>
           <div class="chk-grid">
@@ -1026,8 +1098,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         </div>
       </div>
 
-      <div class="card">
-        <div class="c-hdr">7. 覚醒・回復 <span class="c-hdr-en">Recovery</span></div>
+      <div class="card acc" id="acc_c7">
+        <div class="c-hdr" onclick="toggleAcc('c7')"><span><span class="acc-arrow">▶</span>7. 覚醒・回復<span class="acc-badge" id="badge_c7"></span></span><span class="c-hdr-en">Recovery</span></div>
+        <div class="c-sum" id="sum_c7" onclick="toggleAcc('c7')"></div>
         <div class="c-body">
           <div style="font-size:13px;color:var(--muted);margin-bottom:7px">覚醒の様子</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px" id="qualityBtns">
@@ -1066,8 +1139,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         </div>
       </div>
 
-      <div class="card">
-        <div class="c-hdr">8. 改善点・申し送り <span class="c-hdr-en">Notes</span></div>
+      <div class="card acc" id="acc_c8">
+        <div class="c-hdr" onclick="toggleAcc('c8')"><span><span class="acc-arrow">▶</span>8. 改善点・申し送り<span class="acc-badge" id="badge_c8"></span></span><span class="c-hdr-en">Notes</span></div>
+        <div class="c-sum" id="sum_c8" onclick="toggleAcc('c8')"></div>
         <div class="c-body">
           <textarea class="ftxt" id="f_notes" style="min-height:180px" placeholder="次回のための気付き・申し送り事項…" oninput="autoSave()"></textarea>
         </div>
@@ -3520,6 +3594,7 @@ function openForm() {
   renderLocalBlocks();
   renderPresetBar();
   populateForm();
+  try { updateAccUI(); initAccStates(); } catch(_) {}
   switchTab(0);
 }
 
@@ -3672,6 +3747,7 @@ function populateForm() {
   // Weight pill
   updateWeightPill(current.weight);
   updateHeaderMeta();
+  try { updateAccUI(); } catch(_) {}
 }
 
 // ─────────────────────────────────────────────────
@@ -5002,6 +5078,186 @@ function setProcedure(v) {
 // ─────────────────────────────────────────────────
 // TABS
 // ─────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
+// アコーディオンUI（大項目→小項目）
+//   ・カード見出しタップで開閉（同一ページ内は1つだけ開く）
+//   ・閉じたカードは要約1行＋入力状況バッジを表示
+//   ・症例を開いた時は「未入力のカード」だけ開く
+// ─────────────────────────────────────────────────
+const ACC_REQ = {
+  c1: ['f_patientId','f_patientName','f_breed','f_weight'],
+  c2: ['f_preTemp','f_preHr'],
+  c3: ['f_procedure','f_surgeon'],
+  c4: ['f_tubeSize'],
+  c7: ['f_recTemp','f_recHr'],
+};
+const ACC_PANEL_GROUPS = [['c1','c2'],['c3','c4'],['c6','c7','c8']];
+function _av(id){ const el=document.getElementById(id); return el?String(el.value||'').trim():''; }
+function _achk(key){ const el=document.querySelector(`.chk-item[onclick*="'${key}'"]`); return !!(el&&el.classList.contains('on')); }
+function _aseg(key){ let t=''; document.querySelectorAll('.seg-i.on').forEach(el=>{ const fn=el.getAttribute('onclick')||''; if(fn.indexOf(`'${key}'`)>=0) t=el.textContent.trim(); }); return t; }
+function accMissing(id){ return (ACC_REQ[id]||[]).filter(f=>!_av(f)); }
+function toggleAcc(id){
+  const card=document.getElementById('acc_'+id);
+  if(!card) return;
+  try{ updateAccUI(); }catch(_){}
+  const willOpen=!card.classList.contains('open');
+  if(willOpen){
+    const panel=card.closest('.panel');
+    if(panel) panel.querySelectorAll('.card.acc.open').forEach(c=>{ if(c!==card) c.classList.remove('open'); });
+    card.classList.add('open');
+    setTimeout(()=>{ try{ card.scrollIntoView({behavior:'smooth',block:'start'}); }catch(_){}}, 80);
+  } else {
+    card.classList.remove('open');
+  }
+}
+function toggleSub(hdr){
+  const box=hdr&&hdr.parentElement;
+  if(!box) return;
+  try{ updateAccUI(); }catch(_){}
+  const willOpen=!box.classList.contains('open');
+  if(willOpen){
+    const wrap=box.parentElement;
+    if(wrap) wrap.querySelectorAll(':scope>.sub-acc.open').forEach(b=>{ if(b!==box) b.classList.remove('open'); });
+    box.classList.add('open');
+    setTimeout(()=>{ try{ box.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(_){}}, 80);
+  } else {
+    box.classList.remove('open');
+  }
+}
+function initAccStates(){
+  document.querySelectorAll('.card.acc').forEach(c=>c.classList.remove('open'));
+  document.querySelectorAll('.sub-acc').forEach(b=>b.classList.remove('open'));
+  ACC_PANEL_GROUPS.forEach(ids=>{
+    for (const id of ids){
+      if ((ACC_REQ[id]||[]).length && accMissing(id).length){
+        const card=document.getElementById('acc_'+id);
+        if (card) card.classList.add('open');
+        break;
+      }
+    }
+  });
+}
+function _setBadge(id,cls,txt){ const b=document.getElementById('badge_'+id); if(b){ b.className='acc-badge'+(cls?' '+cls:''); b.textContent=txt; } }
+function _setSum(id,txt){ const el=document.getElementById('sum_'+id); if(el) el.textContent = txt || '（未入力）'; }
+function _reqBadge(id){
+  const req=ACC_REQ[id]||[]; if(!req.length) return;
+  const miss=accMissing(id);
+  if(!miss.length) _setBadge(id,'done','✓ 入力済');
+  else if(miss.length===req.length) _setBadge(id,'','未入力');
+  else _setBadge(id,'part','あと'+miss.length);
+}
+function updateAccUI(){
+  // 1. 患者情報
+  {
+    const parts=[];
+    const name=_av('f_patientName'); if(name) parts.push(name);
+    const sp=_aseg('species'), br=_av('f_breed');
+    if(sp||br) parts.push([sp,br].filter(Boolean).join(' '));
+    const y=_av('f_ageY'), m=_av('f_ageM');
+    if(y||m) parts.push((y?y+'歳':'')+(m?m+'ヶ月':''));
+    const sx=_aseg('sex'); if(sx) parts.push(sx);
+    const w=_av('f_weight'); if(w) parts.push(w+'kg');
+    const asa=_aseg('asaps'); if(asa) parts.push('ASA'+asa+(_achk('asapsE')?'E':''));
+    _setSum('c1',parts.join('｜')); _reqBadge('c1');
+  }
+  // 2. 術前評価
+  {
+    const parts=[], vit=[];
+    const t=_av('f_preTemp'); if(t) vit.push('T'+t);
+    const hr=_av('f_preHr'); if(hr) vit.push('HR'+hr);
+    const rr=_av('f_preRr'); if(rr) vit.push('RR'+rr);
+    const bp=_av('f_preBp'); if(bp) vit.push('BP'+bp);
+    if(vit.length) parts.push(vit.join('/'));
+    const cc=_av('f_chiefComplaint'); if(cc) parts.push(cc.length>14?cc.slice(0,14)+'…':cc);
+    const tests=['testCBC','testBiochem','testCoag','testXray','testEcho','testECG','testUA','testOther'].filter(_achk).length;
+    if(tests) parts.push('検査'+tests+'件');
+    _setSum('c2',parts.join('｜')); _reqBadge('c2');
+  }
+  // 3. 手術情報
+  {
+    const parts=[];
+    const dg=_av('f_diagnosis'); if(dg) parts.push(dg);
+    const pr=_av('f_procedure'); if(pr) parts.push(pr);
+    const sg=_av('f_surgeon'); if(sg) parts.push('術者:'+sg);
+    const mon=_av('f_anesthMonitor'); if(mon) parts.push('麻酔:'+mon);
+    const pain=_aseg('expectedPain'); if(pain) parts.push('疼痛'+pain);
+    _setSum('c3',parts.join('｜')); _reqBadge('c3');
+  }
+  // 4. 準備器材
+  {
+    const parts=[];
+    const tb=_av('f_tubeSize'); if(tb) parts.push('ET'+tb);
+    const bg=_av('f_bagSize'); if(bg) parts.push('バッグ'+bg);
+    const cir=_aseg('circuit'); if(cir) parts.push(cir);
+    const iv=[['ivLF','LF'],['ivRF','RF'],['ivLR','LR'],['ivRR','RR']].filter(x=>_achk(x[0])).map(x=>x[1]);
+    if(iv.length) parts.push('IV:'+iv.join('・'));
+    _setSum('c4',parts.join('｜')); _reqBadge('c4');
+  }
+  // 6. 合併症
+  {
+    const COMP=[['compInductBreathing','呼吸(導入)'],['compInductUpperAirway','上部気道閉塞'],['compInductApnea','誘発呼吸停止'],['compInductLaryngospasm','喉頭痙攣'],['compInductCyanosis','チアノーゼ'],['compInductVomiting','嘔吐/逆流(導入)'],['compInductExcitement','不整脈(導入)'],['compVomiting','嘔吐/逆流'],['compSeizure','発作'],['compCardiacArrest','心停止'],['compDeath','安楽死'],['compApnea','無呼吸'],['compHypothermia','低体温'],['compHyperthermia','高体温'],['compBleed','大量出血'],['compTachy','頻脈'],['compBrady','徐脈'],['compHtn','高血圧'],['compHypotension','低血圧'],['compArrhythmia','不整脈'],['compTachyBreath','頻呼吸'],['compBradyBreath','徐呼吸'],['compHypoxemia','低酸素症'],['compHypocapnia','低CO₂'],['compHypercapnia','高CO₂']];
+    const on=COMP.filter(x=>_achk(x[0])).map(x=>x[1]);
+    if(on.length){ _setBadge('c6','part',on.length+'件'); _setSum('c6',on.join('・')); }
+    else { _setBadge('c6','done','なし'); _setSum('c6','チェックされた合併症はありません'); }
+  }
+  // 7. 覚醒・回復
+  {
+    const parts=[];
+    const q=(current&&current.recQuality)?current.recQuality:'';
+    if(q) parts.push('覚醒:'+q);
+    const vit=[];
+    const t=_av('f_recTemp'); if(t) vit.push('T'+t);
+    const hr=_av('f_recHr'); if(hr) vit.push('HR'+hr);
+    const rr=_av('f_recRr'); if(rr) vit.push('RR'+rr);
+    if(vit.length) parts.push(vit.join('/'));
+    const ps=_av('f_painScore'); if(ps) parts.push('疼痛'+(_av('f_painMethod')||'')+ps);
+    _setSum('c7',parts.join('｜')); _reqBadge('c7');
+  }
+  // 8. 改善点・申し送り
+  {
+    const n=_av('f_notes');
+    if(n){ _setBadge('c8','done','✓ 記入あり'); _setSum('c8', n.length>44?n.slice(0,44)+'…':n); }
+    else { _setBadge('c8','','未記入'); _setSum('c8',''); }
+  }
+  // 緊急薬（固定文）
+  _setSum('cEm','アドレナリン・ダントロレン・リピッド等の用量早見（体重から自動計算）');
+  updateSubSums();
+}
+function updateSubSums(){
+  try{
+    Object.entries(DRUG_GROUPS).forEach(([gk,drugs])=>{
+      const el=document.getElementById('ssum_'+gk);
+      if(!el) return;
+      const on=drugs.filter(d=>{ const r=document.getElementById('drow_'+d.key); return r&&r.classList.contains('on'); }).map(d=>d.label);
+      el.textContent = on.length ? (on.length<=2 ? on.join('・') : on.slice(0,2).join('・')+' 他'+(on.length-2)) : '';
+    });
+  }catch(_){}
+  const sm=document.getElementById('ssum_maint');
+  if(sm){
+    const m=[['maintIsoflurane','イソ'],['maintSevoflurane','セボ'],['maintPropofol','プロポ']].filter(x=>_achk(x[0])).map(x=>x[1]);
+    const parts=[];
+    if(m.length) parts.push(m.join('・'));
+    const c=_av('f_maintConc'); if(c) parts.push(c+'%');
+    const o2=_av('f_maintO2'); if(o2) parts.push('O₂'+o2);
+    const air=_av('f_maintAir'); if(air&&air!=='0') parts.push('Air'+air);
+    sm.textContent=parts.join(' ');
+  }
+  const sf=document.getElementById('ssum_fluids');
+  if(sf){
+    const parts=[];
+    const ft=_av('f_fluidType'); if(ft) parts.push(ft.replace(/（.*?）|\(.*?\)/g,''));
+    const fr=_av('f_fluidRate'); if(fr) parts.push(fr+'mL/kg/h');
+    sf.textContent=parts.join(' ');
+  }
+  const sl=document.getElementById('ssum_local');
+  if(sl){
+    let n=0;
+    ['selectedBlocksList','selectedBlocksList2'].forEach(id=>{ const b=document.getElementById(id); if(b) n+=b.children.length; });
+    n+=(_av('f_localCustom1')?1:0)+(_av('f_localCustom2')?1:0);
+    sl.textContent = n?('ブロック'+n+'件'):'';
+  }
+}
+
 function switchTab(i) {
   document.querySelectorAll('.tab').forEach((t,idx) => t.classList.toggle('on', idx === i));
   document.querySelectorAll('.panel').forEach((p,idx) => p.classList.toggle('on', idx === i));
@@ -5019,6 +5275,7 @@ function switchTab(i) {
 // ─────────────────────────────────────────────────
 let saveTimer = null;
 function autoSave() {
+  try { updateAccUI(); } catch(_) {}
   // ローカル変更時刻を即座に進める。これをしないと「ローカルは常に古い」扱いになり、
   // 反映の遅れた（=記録直後のイベントがまだ載っていない）Sheetsデータで
   // current が丸ごと上書きされ、押したばかりのイベント/薬剤が消える。
