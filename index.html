@@ -104,6 +104,17 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .sub-sum:empty{display:none}
 .sub-body{display:none;padding:10px}
 .sub-acc.open>.sub-body{display:block}
+/* ===== 薬剤リスト: 未選択はチップ、選択中だけ詳細行 ===== */
+[id^="drugList_"]{display:flex;flex-wrap:wrap;gap:7px;padding:2px 0}
+[id^="drugList_"] .drug-row{border-bottom:none}
+[id^="drugList_"] .drug-row.on{width:100%;order:1;padding:9px 0;border-bottom:1px solid #f0f4f8}
+[id^="drugList_"] .drug-row:not(.on){display:inline-flex;align-items:center;width:auto;padding:7px 13px;border:1.5px solid var(--border);border-radius:17px;background:#f8fafc;cursor:pointer;min-height:38px;order:2}
+[id^="drugList_"] .drug-row:not(.on) .drug-toggle{display:none}
+[id^="drugList_"] .drug-row:not(.on) .drug-ref,
+[id^="drugList_"] .drug-row:not(.on) .drug-inputs,
+[id^="drugList_"] .drug-row:not(.on) .rgrp{display:none}
+[id^="drugList_"] .drug-row:not(.on) .drug-content{opacity:1;pointer-events:none}
+[id^="drugList_"] .drug-row:not(.on) .drug-name{font-size:13px;font-weight:500;color:var(--text);margin:0}
 
 /* FIELDS */
 .frow{display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap}
@@ -5246,7 +5257,7 @@ function updateSubSums(){
   const sl=document.getElementById('ssum_local');
   if(sl){
     let n=0;
-    ['selectedBlocksList','selectedBlocksList2'].forEach(id=>{ const b=document.getElementById(id); if(b) n+=b.children.length; });
+    if (typeof current==='object' && current) ['localBlocks','localBlocks2'].forEach(bf=>{ const b=current[bf]||{}; n+=Object.keys(b).filter(k=>b[k]&&b[k].use).length; });
     n+=(_av('f_localCustom1')?1:0)+(_av('f_localCustom2')?1:0);
     sl.textContent = n?('ブロック'+n+'件'):'';
   }
