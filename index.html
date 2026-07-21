@@ -111,6 +111,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 [id^="drugList_"] .drug-row:not(.on){display:inline-flex;align-items:center;width:auto;padding:7px 13px;border:1.5px solid var(--border);border-radius:17px;background:#f8fafc;cursor:pointer;min-height:38px;order:2}
 [id^="drugList_"] .drug-row:not(.on) .drug-toggle{display:none}
 [id^="drugList_"] .drug-row:not(.on) .drug-ref,
+[id^="drugList_"] .drug-row:not(.on) .drug-dilution,
 [id^="drugList_"] .drug-row:not(.on) .drug-inputs,
 [id^="drugList_"] .drug-row:not(.on) .rgrp{display:none}
 [id^="drugList_"] .drug-row:not(.on) .drug-content{opacity:1;pointer-events:none}
@@ -164,6 +165,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .drug-content{flex:1;min-width:0}
 .drug-name{font-size:15px;font-weight:600;margin-bottom:2px}
 .drug-ref{font-size:11px;color:var(--muted);margin-bottom:7px}
+.drug-dilution{font-size:11px;color:var(--orange);font-weight:600;margin:-4px 0 7px}
 .drug-inputs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .drug-row:not(.on) .drug-content{opacity:.4;pointer-events:none}
 .fdose{width:78px;font-size:16px;padding:7px 9px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;-webkit-appearance:none;text-align:right;min-height:40px}
@@ -1338,7 +1340,7 @@ const DRUG_GROUPS = {
   ],
   vasopressors: [
     { key:'atropine_v',     label:'アトロピン',       unit:'μg/kg', dog:'20〜40',     cat:'20〜40',     routes:['IV','IM','SC'], def:'IV', conc:500 },
-    { key:'ephedrine',      label:'エフェドリン',     unit:'μg/kg', dog:'50〜100',   cat:'50〜100',   routes:['IV'],     def:'IV', conc:4000 },
+    { key:'ephedrine',      label:'エフェドリン',     unit:'μg/kg', dog:'50〜100',   cat:'50〜100',   routes:['IV'],     def:'IV', conc:400, dilution:'100倍希釈', dilutionNote:'原液(40mg/mL) 0.1mL を生食で 10mL にメスアップ → 0.4mg/mL (400μg/mL)' },
     { key:'phenylephrine',  label:'フェニレフリン',   unit:'μg/kg', dog:'1〜3',      cat:'1〜3',      routes:['IV'],     def:'IV', conc:1000 },
     { key:'noradrenaline',  label:'ノルアドレナリン', unit:'μg/kg/min',dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'],   def:'IV' },
     { key:'adrenaline',     label:'アドレナリン',     unit:'μg/kg', dog:'10〜20',    cat:'10〜20',    routes:['IV','IM'],def:'IV', conc:1000 },
@@ -3616,12 +3618,13 @@ function renderDrugRow(d) {
   const routeBtns = d.routes.map(r =>
     `<button class="rbtn" data-route="${r}" onclick="toggleRoute('${d.key}','${r}',this)">${r}</button>`
   ).join('');
-  const concInfo = d.conc ? ` <span style="color:var(--muted);font-size:11px">| 規格 ${d.conc < 1 ? d.conc : (d.unit.startsWith('μg') ? (d.conc>=1000 ? d.conc/1000+'mg/mL' : d.conc+'μg/mL') : d.conc+'mg/mL')}</span>` : '';
+  const concInfo = d.conc ? ` <span style="color:var(--muted);font-size:11px">| 規格 ${d.conc < 1 ? d.conc : (d.unit.startsWith('μg') ? (d.conc>=1000 ? d.conc/1000+'mg/mL' : d.conc+'μg/mL') : d.conc+'mg/mL')}${d.dilution ? '（'+d.dilution+'）' : ''}</span>` : '';
   return `<div class="drug-row" id="drow_${d.key}" onclick="toggleDrug('${d.key}',event)">
     <div class="drug-toggle" id="dtog_${d.key}"></div>
     <div class="drug-content">
       <div class="drug-name">${d.label}</div>
       <div class="drug-ref">🐶${d.dog} / 🐱${d.cat} &nbsp;<strong>${d.unit}</strong>${concInfo}</div>
+      ${d.dilutionNote ? `<div class="drug-dilution">💧 ${d.dilutionNote}</div>` : ''}
       <div class="drug-inputs" onclick="event.stopPropagation()">
         <input class="fdose" type="text" inputmode="decimal"
           id="ddose_${d.key}" placeholder="0.0"
@@ -4065,7 +4068,8 @@ function renderHypotensionDrugs() {
     const perKg = parseFloat(current.drugs[d.key].dose);
     // 麻酔PLで用量が入力されていればその用量で計算、未入力なら参考範囲
     const calc = !isNaN(perKg) ? `選択 ${esc(formatDose(d, perKg))}` : vasoDoseCalc(d, w);
-    return `<div class="emerg-info"><span class="emerg-info-label">${esc(d.label)} <span style="font-weight:400;color:var(--muted)">🐶${esc(d.dog)} / 🐱${esc(d.cat)} ${esc(d.unit)}</span></span><span class="emerg-calc">${calc}</span></div>`;
+    const dilHtml = d.dilutionNote ? `<div class="emerg-note-warn">※ ${esc(d.dilutionNote)}</div>` : '';
+    return `<div class="emerg-info"><span class="emerg-info-label">${esc(d.label)}${d.dilution ? `<span style="color:var(--orange);font-size:11px">（${esc(d.dilution)}）</span>` : ''} <span style="font-weight:400;color:var(--muted)">🐶${esc(d.dog)} / 🐱${esc(d.cat)} ${esc(d.unit)}</span></span><span class="emerg-calc">${calc}</span>${dilHtml}</div>`;
   }).join('');
 }
 
@@ -5399,7 +5403,8 @@ function generatePrintHTML(c) {
       }
       selectedDrugs.push({
         group: groupNames[gk] || gk,
-        name: d.label,
+        name: d.label + (d.dilution ? `（${d.dilution}）` : ''),
+        dilutionNote: d.dilutionNote || '',
         dose: dose ? `${dose} ${d.unit}` : '',
         route: dd.route || d.def || '',
         total, vol,
@@ -5627,6 +5632,11 @@ function generatePrintHTML(c) {
           ${selectedDrugs.map(d => `<tr><td>${esc(d.group)}</td><td>${esc(d.name)}</td><td>${esc(d.dose)}</td><td>${esc(d.route)}</td><td>${esc(d.vol)}</td></tr>`).join('')}
         </tbody>
       </table>` : '<div style="font-size:8pt;color:#666">選択された薬剤なし</div>'}
+      ${(() => {
+        const notes = selectedDrugs.filter(d => d.dilutionNote)
+          .map(d => `${d.name}：${d.dilutionNote}`);
+        return notes.length ? `<div style="font-size:8pt;color:#666;margin-top:3px">※ 希釈調製 — ${notes.map(esc).join(' / ')}</div>` : '';
+      })()}
       <div class="p-row" style="margin-top:3px">
         ${c.maintIsoflurane ? chip('維持: イソフルラン') : ''}
         ${c.maintSevoflurane ? chip('維持: セボフルラン') : ''}
