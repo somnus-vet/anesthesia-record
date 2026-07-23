@@ -1164,6 +1164,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 
   <div class="act-bar">
     <button class="act-btn act-primary" onclick="saveCase()">💾 保存</button>
+    <button class="act-btn act-secondary" id="restoreBtn" onclick="restoreCaseDetail()" style="display:none">🕘 記載復元</button>
     <button class="act-btn act-secondary" onclick="printCase()">🖨️ 印刷</button>
     <button class="act-btn act-secondary" onclick="exportCSV()">📊 CSV</button>
   </div>
@@ -2724,7 +2725,17 @@ function mergeReservations(rows, onUpdate) {
       // スカラー上書きでローカルのイベント/進捗を消さないため退避
       const _ld = existing.drugLog, _lf = existing.freeNotes, _lp = existing.procEvents, _lpm = existing.procEventsMeta, _lprog = existing.progress;
       if (scalarWins) {
-        Object.keys(detail).forEach(k => existing[k] = detail[k]);
+        // 項目ごとマージ: 空リモートで非空テキストのローカルを潰さない（触っていない欄で記載を消さない）。
+        // 記載が別内容へ差し替わる場合は、上書き前に端末内バックアップ（後で「記載復元」で戻せる）。
+        maybeBackupBeforeOverwrite(existing, detail);
+        Object.keys(detail).forEach(k => {
+          const rv = detail[k];
+          const lv = existing[k];
+          const remoteEmpty = (rv === '' || rv === null || rv === undefined);
+          const localHasText = (typeof lv === 'string' && lv.trim() !== '');
+          if (remoteEmpty && localHasText) return; // ローカルの記載を残す
+          existing[k] = rv;
+        });
         if (remoteId) existing.id = remoteId;
         existing.date = r['日付'];
         existing.caseNo = r['カルテNo'];
@@ -3572,6 +3583,92 @@ function genUid() {
 // 保存/push直前に1回呼ぶ：rev++・device_id・client_ts。
 // ※ uid は「新規生成時のみ」付与する方針（既存の uid 無し要素はGAS側の内容ハッシュで突合。
 //    ここで乱数uidを一括付与すると端末ごとに別uidになり二重化するため付与しない）。
+// ─────────────────────────────────────────────────
+// 詳細テキストの保護＆バックアップ/復元（データ消失対策）
+// ─────────────────────────────────────────────────
+// 同期マージで上書きされうる自由記述テキスト項目。ここに列挙した項目は
+// 「空リモートで非空ローカルを潰さない」対象＆バックアップ/復元の対象。
+const TEXT_FIELDS = [
+  'patientName','ownerName','breed','allergyDetail','preMeds',
+  'chiefComplaint','abnormalFindings','diagnosis','procedure',
+  'surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
+  'otherComplications','hpot_notes','hthm_notes','hvent_notes',
+  'anaphy_notes','mh_notes','hypoTx','last_notes',
+  'ventilation','fluidType','localCustom1','localCustom2',
+  'compArrhythmiaType','compDetails','painMethod','postopPain',
+  'recNotes','notes',
+];
+const CASE_BACKUP_KEY = 'vet_case_backups';
+
+// 上書きで記載が「別内容に差し替わる」項目があればバックアップを取る
+function maybeBackupBeforeOverwrite(existing, detail) {
+  if (!existing || !detail) return;
+  let willReplace = false;
+  for (const k of TEXT_FIELDS) {
+    const lv = existing[k], rv = detail[k];
+    const localHasText  = (typeof lv === 'string' && lv.trim() !== '');
+    const remoteHasText = (typeof rv === 'string' && rv.trim() !== '');
+    if (localHasText && remoteHasText && String(rv) !== String(lv)) { willReplace = true; break; }
+  }
+  if (willReplace) backupCaseDetail(existing, 'sync');
+}
+
+// 現在のテキスト項目を端末内に退避（症例ごと最大5世代・最大40症例）
+function backupCaseDetail(c, reason) {
+  if (!c || !c.id) return;
+  try {
+    const store = JSON.parse(localStorage.getItem(CASE_BACKUP_KEY) || '{}');
+    const snap = { ts: nowIsoStr(), reason: reason || '', fields: {} };
+    TEXT_FIELDS.forEach(k => { if (typeof c[k] === 'string' && c[k].trim() !== '') snap.fields[k] = c[k]; });
+    if (!Object.keys(snap.fields).length) return; // 残すテキストが無ければ不要
+    const arr = Array.isArray(store[c.id]) ? store[c.id] : [];
+    const last = arr[arr.length - 1];
+    if (last && JSON.stringify(last.fields) === JSON.stringify(snap.fields)) return; // 直前と同一なら重複保存しない
+    arr.push(snap);
+    while (arr.length > 5) arr.shift();
+    store[c.id] = arr;
+    const ids = Object.keys(store);
+    if (ids.length > 40) ids.slice(0, ids.length - 40).forEach(id => delete store[id]);
+    localStorage.setItem(CASE_BACKUP_KEY, JSON.stringify(store));
+  } catch (e) { console.warn('backupCaseDetail failed', e); }
+}
+
+// 「記載復元」ボタン: 直近バックアップから、現在と異なるテキスト項目を戻す
+function restoreCaseDetail() {
+  if (!current || !current.id) return;
+  let store = {};
+  try { store = JSON.parse(localStorage.getItem(CASE_BACKUP_KEY) || '{}'); } catch (e) {}
+  const arr = store[current.id] || [];
+  if (!arr.length) { showToast('復元できるバックアップがありません'); return; }
+  const snap = arr[arr.length - 1];
+  const keys = Object.keys(snap.fields || {});
+  collectForm(); // 現在のDOM内容を current に取り込んでから比較
+  const changed = keys.filter(k => String(current[k] || '') !== String(snap.fields[k]));
+  if (!changed.length) { showToast('現在の記載はバックアップと同じです'); return; }
+  const when = (snap.ts || '').replace('T', ' ').slice(0, 16);
+  if (!confirm(`${when} 時点の記載を復元します（${changed.length}項目）。\n現在の内容は上書きされます。よろしいですか？`)) return;
+  changed.forEach(k => { current[k] = snap.fields[k]; });
+  current.updated_at = nowIsoStr();
+  const idx = cases.findIndex(c => c.id === current.id);
+  if (idx >= 0) cases[idx] = current;
+  saveStorage();
+  populateForm();
+  showToast(`🕘 ${changed.length}項目の記載を復元しました`);
+  if (sheetsConfig.enabled) { try { pushCurrentToSheets(); } catch (e) {} }
+}
+
+// 現在の症例にバックアップがある時だけ「記載復元」ボタンを表示
+function updateRestoreBtn() {
+  const btn = document.getElementById('restoreBtn');
+  if (!btn) return;
+  let has = false;
+  try {
+    const store = JSON.parse(localStorage.getItem(CASE_BACKUP_KEY) || '{}');
+    has = !!(current && current.id && Array.isArray(store[current.id]) && store[current.id].length > 0);
+  } catch (e) {}
+  btn.style.display = has ? '' : 'none';
+}
+
 function stampRev(c) {
   if (!c) return;
   c.rev = (parseInt(c.rev, 10) || 0) + 1;
@@ -3775,6 +3872,7 @@ function populateForm() {
   updateWeightPill(current.weight);
   updateHeaderMeta();
   try { updateAccUI(); } catch(_) {}
+  try { updateRestoreBtn(); } catch(_) {}
 }
 
 // ─────────────────────────────────────────────────
