@@ -2571,8 +2571,19 @@ async function syncFromSheets() {
   }
   setSyncStatus('syncing');
   try {
-    let csv = await fetch(csvUrl('症例予約'), {cache:'no-store'}).then(r => r.text());
+    const _csvRes = await fetch(csvUrl('症例予約'), {cache:'no-store'});
+    if (!_csvRes.ok) throw new Error(`CSV HTTP ${_csvRes.status}`);
+    let csv = await _csvRes.text();
     csv = csv.replace(/^﻿/, ''); // BOM除去
+    // ★ 破損/切り詰め/エラーページのCSVで「削除」判定を走らせない安全弁。
+    // iPhone SE/13 mini 等の非力な端末＋Safariでは、fetchが200のまま途中で
+    // 切れた本文やログイン/エラーHTMLを返すことがある。そのまま parseCSV すると
+    // reserved が空になり、ローカル症例が誤って全削除される（=データ消失の主因）。
+    const _headerLine = (csv.split(/\r?\n/)[0] || '');
+    const _csvTrusted = _headerLine.includes('施設コード') &&
+                        _headerLine.includes('内部ID') &&
+                        _headerLine.includes('詳細');
+    if (!_csvTrusted) throw new Error('CSV応答が不正（ヘッダ欠落）: 削除判定を中止');
     const rows = parseCSV(csv);
     const reserved = rows.filter(r => r['施設コード'] === sheetsConfig.facility);
     const formIsOpen = !document.getElementById('formScreen').classList.contains('hidden');
@@ -2586,7 +2597,9 @@ async function syncFromSheets() {
     const remoteIds = new Set(reserved.map(r => r['内部ID']).filter(Boolean));
     const beforeIds = cases.map(c => c.id);
     let editingDeleted = false;
-    cases = cases.filter(c => {
+    // reserved が空(=取得不良/一時的空の疑い)のときは削除判定を丸ごとスキップ。
+    // 通常の1件削除では他の行が必ず残るため reserved>0 のはず。0件は暴発を疑う。
+    if (reserved.length > 0) cases = cases.filter(c => {
       // rec_* 形式IDかつ現施設のcaseで、Sheetsに存在しないものは削除
       if (!c.id || !String(c.id).startsWith('rec_')) return true; // 仮ID/非rec: 残す
       if (c.facility && c.facility !== sheetsConfig.facility) return true; // 他施設: 残す
