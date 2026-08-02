@@ -4320,7 +4320,7 @@ function latestGloveTime(c) {
   if (!c) return '';
   let best = '', bestSec = -1;
   (c.freeNotes || []).forEach(n => {
-    if (n && n.kind === 'gloveChange' && n.time) {
+    if (n && !n.deleted && n.kind === 'gloveChange' && n.time) {
       const s = timeToSec(n.time);
       if (s !== null && s > bestSec) { bestSec = s; best = n.time; }
     }
@@ -4459,9 +4459,11 @@ function renderTimelineList() {
     if (t && String(t).trim()) entries.push({ type:'event', key, label:evtLabel(key), time:t });
   });
   current.drugLog.forEach((d, i) => {
+    if (!d || d.deleted) return; // 削除墓標は表示しない
     entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'' });
   });
   current.freeNotes.forEach((n, i) => {
+    if (!n || n.deleted) return; // 削除墓標は表示しない
     entries.push({
       type:'free', idx:i,
       kind: n.kind || 'memo',
@@ -4695,10 +4697,10 @@ function drugRowNow(idx) {
   pushCurrentToSheets();
 }
 
-// 薬剤ログ1件を削除
+// 薬剤ログ1件を削除（freeNotes同様、同期unionで復活しないよう墓標方式）
 function removeDrugLog(idx) {
-  if (!current || !Array.isArray(current.drugLog)) return;
-  current.drugLog.splice(idx, 1);
+  if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
+  current.drugLog[idx].deleted = true;
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
@@ -4742,6 +4744,7 @@ function addFreeNote(kind, opts) {
     let prev = '', prevRR = '';
     for (let i = current.freeNotes.length - 1; i >= 0; i--) {
       const r = current.freeNotes[i];
+      if (!r || r.deleted) continue;
       if (r.kind !== k) continue;
       if (k === 'vent' && (r.mode || 'PCV') !== entry.mode) continue;
       prev = r.to || '';
@@ -4763,6 +4766,7 @@ function addFreeNote(kind, opts) {
     let prev = '';
     for (let i = current.freeNotes.length - 1; i >= 0; i--) {
       const r = current.freeNotes[i];
+      if (!r || r.deleted) continue;
       if (r.kind === k && r.drugKey === entry.drugKey) { prev = r.to || ''; break; }
     }
     entry.from = prev || '0';
@@ -4790,7 +4794,7 @@ function setVentMode(idx, mode) {
     const tSelf = timeToSec(n.time);
     let best = null, bestT = -1;
     current.freeNotes.forEach((r, i) => {
-      if (i === idx || r.kind !== 'vent' || (r.mode || '') !== n.mode) return;
+      if (i === idx || !r || r.deleted || r.kind !== 'vent' || (r.mode || '') !== n.mode) return;
       const t = timeToSec(r.time);
       if (t === null || (tSelf !== null && t > tSelf)) return;
       if (t >= bestT) { bestT = t; best = r; }
@@ -4846,10 +4850,13 @@ function tapClearRestore(el, idx, field) {
   el.dataset.prev = '';
 }
 
-// メモ/体位変換1件を削除
+// メモ/体位変換1件を削除。
+// ※ 物理削除(splice)だと同期union(sync-v2)でサーバー側コピーが復活するため、
+//    墓標(deleted:true)を立てて配列には残す。GAS mergeEventPair が
+//    「どちらかが deleted なら復活させない」規則で全端末へ伝播する。
 function removeFreeNote(idx) {
-  if (!current || !Array.isArray(current.freeNotes)) return;
-  current.freeNotes.splice(idx, 1);
+  if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
+  current.freeNotes[idx].deleted = true;
   recomputeFreeNotesFroms();
   renderTimeline();
   autoSave();
@@ -4865,6 +4872,7 @@ function recomputeFreeNotesFroms() {
   // ※ position(体位)は from/to を毎回ボタンで手動選択するため、ここでの自動伝播対象外。
   const groups = {};
   current.freeNotes.forEach((n, idx) => {
+    if (!n || n.deleted) return; // 削除墓標は引継ぎ計算から除外
     const k = n.kind;
     if (k !== 'fluid' && k !== 'vent' && k !== 'cri' && k !== 'gas') return;
     let key;
@@ -5643,12 +5651,12 @@ function generatePrintHTML(c) {
   if (c.aLR) arts.push('LR'); if (c.aRR) arts.push('RR');
 
   // 薬剤投与ログ
-  const drugLogRows = (c.drugLog || []).filter(r => r.drug || r.dose || r.time)
+  const drugLogRows = (c.drugLog || []).filter(r => r && !r.deleted && (r.drug || r.dose || r.time))
     .map(r => `<tr><td>${esc(r.time||'')}</td><td>${esc(r.drug||'')}</td><td>${esc(r.dose||'')}</td><td>${esc(r.route||'')}</td><td>${esc(r.note||'')}</td></tr>`).join('');
 
   // フリー記載イベント（メモ/体位変換/輸液/気道内圧/CRI/維持薬/自発呼吸/人工呼吸OFF/O2/Air）
   const freeNoteRows = (c.freeNotes || []).filter(n => {
-    if (!n) return false;
+    if (!n || n.deleted) return false;
     const k = n.kind || 'memo';
     if (k === 'spont' || k === 'ventOff' || k === 'gloveChange') return !!n.time;
     if (k === 'tubeChange') return !!n.time;
