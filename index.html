@@ -4515,8 +4515,8 @@ function renderTimelineList() {
         let vdetail = '';
         if (vmode === 'PCV' || vmode === 'VCV') {
           const us = vmode === 'VCV' ? 'mL' : 'cmH₂O';
-          vdetail = `<span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span>`
-            + `<input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${us}</span>`
+          // 「前回値→」表示は引継ぎ機能で不要になったため廃止（データのfromはSomLog連携用に内部で維持）
+          vdetail = `<input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${us}</span>`
             + `<input class="fin tl-rr-in" type="text" inputmode="decimal" value="${esc(en.rr || '')}" placeholder="RR" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'rr',this.value)" onblur="tapClearRestore(this,${en.idx},'rr')" autocomplete="off"><span class="tl-unit-sm">回/分</span>`;
         } else if (vmode === 'OFF') {
           vdetail = `<span class="tl-vent-off">換気OFF</span>`;
@@ -4752,6 +4752,10 @@ function addFreeNote(kind, opts) {
     // vent は前回と同じ値を最初から入れておく（変わった項目だけ書き替えれば良い）
     entry.to = (k === 'vent') ? prev : '';
     if (k === 'vent' && !entry.rr) entry.rr = prevRR;
+    if (k === 'vent' && (entry.mode === 'PCV' || entry.mode === 'VCV')) {
+      if (!entry.to) entry.to = (entry.mode === 'PCV' ? (current.hvent_pcvPIP || '') : (current.hvent_vcvVT || '')) || '';
+      if (!entry.rr) entry.rr = (entry.mode === 'PCV' ? (current.hvent_pcvRR || '') : (current.hvent_vcvRR || '')) || '';
+    }
   } else if (k === 'cri' || k === 'gas') {
     entry.drugKey = (opts && opts.drugKey) || '';
     entry.drugLabel = (opts && opts.drugLabel) || '';
@@ -4795,6 +4799,9 @@ function setVentMode(idx, mode) {
       if (!n.to) n.to = best.to || '';
       if (!n.rr) n.rr = best.rr || '';
     }
+    // 初回(過去に同モードの記録なし)は合併症プラン「低換気」の人工呼吸器設定を初期値に
+    if (!n.to) n.to = (n.mode === 'PCV' ? (current.hvent_pcvPIP || '') : (current.hvent_vcvVT || '')) || '';
+    if (!n.rr) n.rr = (n.mode === 'PCV' ? (current.hvent_pcvRR || '') : (current.hvent_vcvRR || '')) || '';
   }
   recomputeFreeNotesFroms();
   renderTimelineList();
