@@ -4559,7 +4559,7 @@ function renderTimelineList() {
           <span class="tl-kind ${kindCls}">${lbl}</span>
           <span class="tl-from">${esc(en.from || '0')}</span>
           <span class="tl-arrow">→</span>
-          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'to',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
+          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-unit-sm">${unitStr}</span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
@@ -4598,9 +4598,9 @@ function renderTimelineList() {
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-flow">O2/Air</span>
           <span class="tl-flow-lbl">O2</span>
-          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.o2 || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'o2',this.value)" autocomplete="off">
+          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.o2 || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'o2',this.value)" onblur="tapClearRestore(this,${en.idx},'o2')" autocomplete="off">
           <span class="tl-flow-lbl">Air</span>
-          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.air || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'air',this.value)" autocomplete="off">
+          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.air || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'air',this.value)" onblur="tapClearRestore(this,${en.idx},'air')" autocomplete="off">
           <span class="tl-unit-sm">L/min</span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
@@ -4738,9 +4738,16 @@ function addFreeNote(kind, opts) {
     entry.size = '';
     entry.sizeFr = '';
   } else if (k === 'flow') {
-    // O2/Air流量はスナップショット（前回値の自動引継ぎ無し）
-    entry.o2 = '';
-    entry.air = '';
+    // O2/Air流量スナップショット: 直前の記録を引き継ぎ、無ければ麻酔プランの維持設定(O₂/Air)を初期値に
+    let po2 = '', pair = '';
+    for (let i = current.freeNotes.length - 1; i >= 0; i--) {
+      const r = current.freeNotes[i];
+      if (!r || r.deleted || r.kind !== 'flow') continue;
+      po2 = r.o2 || ''; pair = r.air || '';
+      break;
+    }
+    entry.o2 = po2 || current.maintO2 || '';
+    entry.air = pair || current.maintAir || '';
   } else if (k === 'fluid' || k === 'vent') {
     // vent はモード(PCV/VCV/OFF)を保持。未指定なら未選択('')で追加し、行で選ぶ。
     if (k === 'vent') {
@@ -4761,6 +4768,8 @@ function addFreeNote(kind, opts) {
     // vent は前回と同じ値を最初から入れておく（変わった項目だけ書き替えれば良い）
     entry.to = (k === 'vent') ? prev : '';
     if (k === 'vent' && !entry.rr) entry.rr = prevRR;
+    // 初回(過去に記録なし)の輸液は麻酔プランの輸液速度を初期値に
+    if (k === 'fluid' && !prev) entry.to = current.fluidRate || '';
     if (k === 'vent' && (entry.mode === 'PCV' || entry.mode === 'VCV')) {
       if (!entry.to) entry.to = (entry.mode === 'PCV' ? (current.hvent_pcvPIP || '') : (current.hvent_vcvVT || '')) || '';
       if (!entry.rr) entry.rr = (entry.mode === 'PCV' ? (current.hvent_pcvRR || '') : (current.hvent_vcvRR || '')) || '';
@@ -4777,6 +4786,8 @@ function addFreeNote(kind, opts) {
     }
     entry.from = prev || '0';
     entry.to = '';
+    // 初回(過去に記録なし)の維持薬は麻酔プランの維持濃度を初期値に
+    if (k === 'gas' && !prev) entry.to = current.maintConc || '';
   }
   // 'spont' / 'ventOff' は時刻マーカーのみ（追加フィールド無し）
   current.freeNotes.push(entry);
