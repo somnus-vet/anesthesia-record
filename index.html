@@ -4516,8 +4516,8 @@ function renderTimelineList() {
         if (vmode === 'PCV' || vmode === 'VCV') {
           const us = vmode === 'VCV' ? 'mL' : 'cmH₂O';
           vdetail = `<span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span>`
-            + `<input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" oninput="editFreeNote(${en.idx},'to',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${us}</span>`
-            + `<input class="fin tl-rr-in" type="text" inputmode="decimal" value="${esc(en.rr || '')}" placeholder="RR" oninput="editFreeNote(${en.idx},'rr',this.value)" autocomplete="off"><span class="tl-unit-sm">回/分</span>`;
+            + `<input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${us}</span>`
+            + `<input class="fin tl-rr-in" type="text" inputmode="decimal" value="${esc(en.rr || '')}" placeholder="RR" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'rr',this.value)" onblur="tapClearRestore(this,${en.idx},'rr')" autocomplete="off"><span class="tl-unit-sm">回/分</span>`;
         } else if (vmode === 'OFF') {
           vdetail = `<span class="tl-vent-off">換気OFF</span>`;
         } else if (vmode === 'SPONT') {
@@ -4821,6 +4821,22 @@ function editFreeNote(idx, field, val) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
   current.freeNotes[idx][field] = val;
   autoSave();
+}
+
+// 呼吸管理の引継ぎ値入力欄: タップで一旦空にして消す手間を省く。
+// 何も入力せず離れたら元の値に戻す（誤タップで値が消えないように）。
+// ※ プログラムでの value 書換えは oninput を発火させないので、
+//    ユーザーが何か打つまでデータ(model)側の値は消えない。
+function tapClear(el) {
+  el.dataset.prev = el.value;
+  if (el.value !== '') el.value = '';
+}
+function tapClearRestore(el, idx, field) {
+  if (el.value === '' && el.dataset.prev) {
+    el.value = el.dataset.prev;
+    editFreeNote(idx, field, el.value);
+  }
+  el.dataset.prev = '';
 }
 
 // メモ/体位変換1件を削除
