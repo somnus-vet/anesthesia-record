@@ -4739,16 +4739,19 @@ function addFreeNote(kind, opts) {
       entry.mode = (opts && opts.mode) || '';
       entry.rr = '';
     }
-    let prev = '';
+    let prev = '', prevRR = '';
     for (let i = current.freeNotes.length - 1; i >= 0; i--) {
       const r = current.freeNotes[i];
       if (r.kind !== k) continue;
       if (k === 'vent' && (r.mode || 'PCV') !== entry.mode) continue;
       prev = r.to || '';
+      if (k === 'vent') prevRR = r.rr || '';
       break;
     }
     entry.from = prev || '0';
-    entry.to = '';
+    // vent は前回と同じ値を最初から入れておく（変わった項目だけ書き替えれば良い）
+    entry.to = (k === 'vent') ? prev : '';
+    if (k === 'vent' && !entry.rr) entry.rr = prevRR;
   } else if (k === 'cri' || k === 'gas') {
     entry.drugKey = (opts && opts.drugKey) || '';
     entry.drugLabel = (opts && opts.drugLabel) || '';
@@ -4778,6 +4781,21 @@ function setVentMode(idx, mode) {
   const n = current.freeNotes[idx];
   n.mode = (n.mode === mode) ? '' : mode;  // 同じものを再タップで未選択に戻す
   if (n.mode === 'OFF' || n.mode === 'SPONT') { n.to = ''; n.rr = ''; }
+  // PCV/VCV選択時: 空欄の設定値/RRは直前(同モード)の値を引き継ぐ＝「変更なし」を明示的に記録
+  if (n.mode === 'PCV' || n.mode === 'VCV') {
+    const tSelf = timeToSec(n.time);
+    let best = null, bestT = -1;
+    current.freeNotes.forEach((r, i) => {
+      if (i === idx || r.kind !== 'vent' || (r.mode || '') !== n.mode) return;
+      const t = timeToSec(r.time);
+      if (t === null || (tSelf !== null && t > tSelf)) return;
+      if (t >= bestT) { bestT = t; best = r; }
+    });
+    if (best) {
+      if (!n.to) n.to = best.to || '';
+      if (!n.rr) n.rr = best.rr || '';
+    }
+  }
   recomputeFreeNotesFroms();
   renderTimelineList();
   autoSave();
@@ -4850,12 +4868,31 @@ function recomputeFreeNotesFroms() {
   });
 }
 
-// 時刻 / to 編集の確定(blur)時に呼ぶ: from再計算 → 再描画
+// 時刻 / to 編集の確定(blur)時に呼ぶ: from再計算 → 再描画。
+// ただしフォーカスが同じ一覧内の別の入力欄へ移っただけの時に再描画すると、
+// 移った先の入力欄が作り直されて数字キーボードが閉じてしまう。
+// そのため一覧から完全にフォーカスが抜けるまで再描画を保留する。
+let tlRenderPending = false;
+function flushTimelineRender() {
+  const list = document.getElementById('timelineList');
+  const ae = document.activeElement;
+  if (list && ae && ae.tagName === 'INPUT' && list.contains(ae)) { tlRenderPending = true; return; }
+  tlRenderPending = false;
+  renderTimelineList();
+}
 function onFreeNoteFinalize() {
   recomputeFreeNotesFroms();
-  renderTimelineList();
   autoSave();
+  setTimeout(flushTimelineRender, 80);
 }
+// 一覧からフォーカスが抜けた時、保留していた再描画を実行
+(function () {
+  const list = document.getElementById('timelineList');
+  if (!list) return;
+  list.addEventListener('focusout', () => {
+    setTimeout(() => { if (tlRenderPending) flushTimelineRender(); }, 80);
+  });
+})();
 
 // 時刻文字列(HH:MM または HH:MM:SS)を分に変換。空欄・不正は null
 function timeToMin(t) {
