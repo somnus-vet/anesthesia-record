@@ -5227,7 +5227,7 @@ function recordEvent(key) {
   autoSave();
   pushCurrentToSheets();
   showToast(`✅ ${evtLabel(key)} を ${t} に記録`);
-  // 挿管したら、呼吸管理（モード未選択）と O2/Air流量 を自動で追加（不要なら✕で消せる）
+  // 挿管したら、呼吸管理（モード未選択）・O2/Air流量・輸液 を自動で追加（不要なら✕で消せる）
   if (key === 'intubationTime') {
     const t0 = current.intubationTime;
     addFreeNote('flow', { time: shiftTime(t0, 1) });   // 酸素流量（O2/Air）
@@ -5242,6 +5242,7 @@ function recordEvent(key) {
       gas = { drugKey:'iso', drugLabel:'イソフルラン', unit:'%' };  // 既定＝イソフルラン
     }
     if (gas) addFreeNote('gas', { ...gas, time: shiftTime(t0, 3) });
+    addFreeNote('fluid', { time: shiftTime(t0, 4) });  // 輸液（初回はプランの輸液速度が初期値）
     pushCurrentToSheets();  // 自動追加分もSheetsへ反映
   }
 }
