@@ -1174,6 +1174,21 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 <div id="printView"></div>
 
 <!-- ========== PRESET EDITOR MODAL ========== -->
+<div class="modal-overlay" id="gauzeModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-hdr" style="background:#c0392b">⚠️ 抜管前チェック
+      <button class="modal-close" onclick="document.getElementById('gauzeModal').classList.remove('on')">✕</button></div>
+    <div class="modal-body" style="font-size:17px;font-weight:800;line-height:1.6;color:#c0392b">
+      🦷 口腔内のガーゼ・出血チェック
+      <div style="font-size:13px;font-weight:600;color:#555;margin-top:10px;line-height:1.7">
+        ・咽頭パッキング/ガーゼの回収（数の確認）<br>
+        ・口腔内の出血・血餅の確認、必要なら吸引</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" style="width:100%" onclick="document.getElementById('gauzeModal').classList.remove('on')">確認した</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="presetModal">
   <div class="modal-box">
     <div class="modal-hdr">
@@ -5227,6 +5242,14 @@ function recordEvent(key) {
   autoSave();
   pushCurrentToSheets();
   showToast(`✅ ${evtLabel(key)} を ${t} に記録`);
+  // 歯科症例: 手術終了の記録で「口腔内ガーゼ・出血チェック」ポップアップ（SomLog側にも同じ表示）
+  if (key === 'surgEnd') {
+    const _pp = (getVal('f_procedure') || (current && current.procedure) || '');
+    if (_pp.indexOf('歯科') !== -1) {
+      const _gm = document.getElementById('gauzeModal');
+      if (_gm) _gm.classList.add('on');
+    }
+  }
   // 挿管したら、呼吸管理（モード未選択）・O2/Air流量・輸液 を自動で追加（不要なら✕で消せる）
   if (key === 'intubationTime') {
     const t0 = current.intubationTime;
