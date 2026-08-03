@@ -568,7 +568,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <div class="c-body">
           <div class="frow">
             <span class="flabel flabel-w">診断名</span>
-            <input class="fin" type="text" id="f_diagnosis" placeholder="診断名" oninput="autoSave()">
+            <input class="fin" type="text" id="f_diagnosis" placeholder="診断名" oninput="autoSave();renderEventButtons()">
           </div>
           <div class="frow">
             <span class="flabel flabel-w">術式</span>
@@ -5142,7 +5142,17 @@ const PROCEDURE_EVENTS = {
     { key:'pe_ct_contrast', label:'造影剤投与' },
     { key:'pe_ct_end',      label:'撮影終了' },
   ],
+  // 整形(膝): 診断名/術式にキーワードが含まれるとき、標準グループに追加で合流する
+  // （パテラ整復・膝蓋骨脱臼整復・前十字靭帯断裂・ラテラルスーチャー等は部分一致でカバー）
+  KNEE: [
+    { key:'pe_knee_capsul',   label:'関節包切開' },
+    { key:'pe_knee_visc_yes', label:'粘稠度 有り' },
+    { key:'pe_knee_visc_no',  label:'粘稠度 無し' },
+  ],
 };
+
+// 膝グループを出す条件キーワード（術式欄・診断名欄のどちらかに部分一致・大文字化済みで比較）
+const ORTHO_KNEE_KEYWORDS = ['膝蓋骨', '前十字', 'パテラ', 'TPLO', 'ラテラル'];
 
 // 術式特異イベントのキーか（pe_ 接頭辞）
 function isProcEventKey(key) {
@@ -5150,12 +5160,20 @@ function isProcEventKey(key) {
 }
 
 // 現在の術式欄の値に対応する術式特異イベント配列を返す（該当なしは空配列）
+// 整形(膝)グループは診断名/術式のどちらかにキーワードがあれば標準グループに追加合流する
 function getActiveProcEvents() {
   const proc = (getVal('f_procedure') || (current && current.procedure) || '').toUpperCase();
+  let evts = [];
   for (const k of Object.keys(PROCEDURE_EVENTS)) {
-    if (proc.indexOf(k) !== -1) return PROCEDURE_EVENTS[k];
+    if (k === 'KNEE') continue;  // KNEEは術式名でなくキーワードで判定
+    if (proc.indexOf(k) !== -1) { evts = PROCEDURE_EVENTS[k]; break; }
   }
-  return [];
+  const diag = (getVal('f_diagnosis') || (current && current.diagnosis) || '').toUpperCase();
+  const hay = proc + ' ' + diag;
+  if (ORTHO_KNEE_KEYWORDS.some(w => hay.indexOf(w) !== -1)) {
+    evts = evts.concat(PROCEDURE_EVENTS.KNEE);
+  }
+  return evts;
 }
 
 function evtLabel(key) {
