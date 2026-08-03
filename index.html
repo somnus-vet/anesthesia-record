@@ -4409,9 +4409,28 @@ function renderEventButtons() {
   if (!bar || !current) return;
   if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
   const all = INTRAOP_EVENTS.concat(getActiveProcEvents());
-  const unset = all.filter(e => isProcEventKey(e.key)
+  // 粘稠度(有り/無し)は2ボタン直列でなく「粘稠度」1ボタン→タップで選択式にする
+  const VISC_KEYS = ['pe_knee_visc_yes', 'pe_knee_visc_no'];
+  const viscActive = all.some(e => VISC_KEYS.indexOf(e.key) !== -1);
+  const shown = all.filter(e => VISC_KEYS.indexOf(e.key) === -1);
+  const unset = shown.filter(e => isProcEventKey(e.key)
     ? !((current.procEvents[e.key] || '').trim())
     : !((current[e.key] || '').trim()));
+  // 粘稠度ボタン: どちらか記録済みなら消える。タップで 有り/無し の選択に展開
+  const viscRecorded = VISC_KEYS.some(k => ((current.procEvents[k] || '').trim()));
+  let viscBtn = '';
+  if (viscActive && !viscRecorded) {
+    viscBtn = window._viscOpen
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:4px;background:#f3eef8;border:1px solid #b794cd;border-radius:10px;padding:2px 6px">`
+        + `<span style="font-size:12px;color:#6b3a8b;font-weight:700">粘稠度:</span>`
+        + `<button type="button" class="qdose-btn" style="background:#8b5fbf;border-color:#8b5fbf;color:#fff" onclick="window._viscOpen=false;recordEvent('pe_knee_visc_yes')">有り</button>`
+        + `<button type="button" class="qdose-btn" style="background:#fff;border-color:#8b5fbf;color:#6b3a8b" onclick="window._viscOpen=false;recordEvent('pe_knee_visc_no')">無し</button>`
+        + `<button type="button" class="btn-del" onclick="window._viscOpen=false;renderEventButtons()">✕</button>`
+        + `</span>`
+      : `<button type="button" class="qdose-btn" onclick="window._viscOpen=true;renderEventButtons()">粘稠度</button>`;
+  } else {
+    window._viscOpen = false;
+  }
   const freeBtns =
       `<button type="button" class="qdose-btn" style="background:#fdecd2;border-color:#f0c074;color:#a35614" onclick="addFreeNote('memo')">＋メモ</button>`
     + `<button type="button" class="qdose-btn" style="background:#ece1f3;border-color:#b794cd;color:#6b3a8b" onclick="addFreeNote('position')">＋体位変換</button>`
@@ -4441,7 +4460,7 @@ function renderEventButtons() {
   bar.innerHTML = (unset.length
     ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}</button>`).join('')
     : '<div class="evt-empty" style="margin-right:8px">全イベント記録済み</div>')
-    + tubeBtn + freeBtns + gasBtns + criBtns;
+    + viscBtn + tubeBtn + freeBtns + gasBtns + criBtns;
 }
 
 // イベント＋薬剤を時刻順に統合して1本のリストに描画
