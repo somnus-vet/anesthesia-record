@@ -3862,6 +3862,9 @@ function populateForm() {
     });
   });
 
+  // 猫×アセトアミノフェン禁忌の行状態を反映
+  try { applyAcetaminophenBan(); } catch(_) {}
+
   // Local anesthesia blocks
   populateLocalBlocks();
 
@@ -3944,6 +3947,8 @@ function setSeg(key, val, el) {
   const parent = el.closest('.seg');
   parent.querySelectorAll('.seg-i').forEach(i => i.classList.remove('on'));
   el.classList.add('on');
+  // 動物種の変更は禁忌薬（猫×アセトアミノフェン）の行に即反映
+  if (key === 'species') { try { applyAcetaminophenBan(); } catch(_) {} }
   autoSave();
 }
 
@@ -4035,8 +4040,28 @@ function toggleChk(el, key) {
 // ─────────────────────────────────────────────────
 // DRUG INTERACTIONS
 // ─────────────────────────────────────────────────
+// 猫にはアセトアミノフェンは禁忌（重篤な中毒を起こす）。選択・入力を不可にする。
+function isDrugBanned(key) {
+  return key === 'acetaminophen' && current && current.species === 'cat';
+}
+// 禁忌薬の行を動物種に合わせて無効化/解除。禁忌なのに選択済みなら選択を外す。
+function applyAcetaminophenBan() {
+  const banned = isDrugBanned('acetaminophen');
+  const row = document.getElementById('drow_acetaminophen');
+  if (row) {
+    row.style.opacity = banned ? '0.4' : '';
+    row.style.pointerEvents = banned ? 'none' : '';
+  }
+  if (banned && current && current.drugs && current.drugs.acetaminophen && current.drugs.acetaminophen.use) {
+    current.drugs.acetaminophen.use = false;
+    if (row) row.classList.remove('on');
+    showToast('⚠️ 猫にはアセトアミノフェンは使用できません（禁忌）— 選択を解除しました');
+  }
+}
+
 function toggleDrug(key, event) {
   if (!current) return;
+  if (isDrugBanned(key)) { showToast('⚠️ 猫にはアセトアミノフェンは使用できません（禁忌）'); return; }
   // Don't toggle if user clicked inside an input/button
   if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON') return;
   if (event.target.closest('.drug-inputs') || event.target.closest('.rgrp')) return;
@@ -4051,6 +4076,7 @@ function toggleDrug(key, event) {
 
 function onDoseInput(key, val) {
   if (!current) return;
+  if (isDrugBanned(key)) return;
   if (!current.drugs[key]) current.drugs[key] = { use:true, dose:'', route:'' };
   current.drugs[key].dose = val;
   current.drugs[key].use = true;
@@ -4423,7 +4449,21 @@ function renderEventButtons() {
   const bar = document.getElementById('eventBtnBar');
   if (!bar || !current) return;
   if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
-  const all = INTRAOP_EVENTS.concat(getActiveProcEvents());
+  // 局所麻酔: プランでブロック選択済みなら、汎用「局所麻酔」ボタンの代わりに
+  // ブロックごとのボタン(pe_la_<key>)を同じ位置に展開（未選択なら従来の1ボタン）
+  const laBlocks = getSelectedLocalBlocks();
+  let baseEvents = INTRAOP_EVENTS;
+  if (laBlocks.length) {
+    baseEvents = [];
+    INTRAOP_EVENTS.forEach(e => {
+      if (e.key === 'localAnesthTime') {
+        laBlocks.forEach(b => baseEvents.push({ key: 'pe_la_' + b.key, label: evtLabel('pe_la_' + b.key) }));
+      } else {
+        baseEvents.push(e);
+      }
+    });
+  }
+  const all = baseEvents.concat(getActiveProcEvents());
   // 粘稠度(有り/無し)は2ボタン直列でなく「粘稠度」1ボタン→タップで選択式にする
   const VISC_KEYS = ['pe_knee_visc_yes', 'pe_knee_visc_no'];
   const viscActive = all.some(e => VISC_KEYS.indexOf(e.key) !== -1);
@@ -5210,7 +5250,35 @@ function getActiveProcEvents() {
   return evts;
 }
 
+// プランで選択済みの局所麻酔ブロック（①②横断・重複はセット1優先）を
+// [{key, label, side}] で返す。術中イベントボタンの動的生成に使う。
+function getSelectedLocalBlocks() {
+  const out = [], seen = {};
+  if (!current) return out;
+  ['localBlocks', 'localBlocks2'].forEach(bf => {
+    const blocks = current[bf] || {};
+    LOCAL_BLOCKS.forEach(b => {
+      const d = blocks[b.key];
+      if (!d || !d.use || seen[b.key]) return;
+      seen[b.key] = 1;
+      out.push({ key: b.key, label: b.label, side: d.side || '' });
+    });
+  });
+  return out;
+}
+
 function evtLabel(key) {
+  // 局所麻酔ブロックイベント (pe_la_<blockKey>): ブロック名＋プランで選んだ側
+  if (String(key).indexOf('pe_la_') === 0) {
+    const bk = String(key).slice(6);
+    const def = (typeof getBlockDef === 'function') ? getBlockDef(bk) : null;
+    let side = '';
+    if (current) {
+      const d = ((current.localBlocks || {})[bk]) || ((current.localBlocks2 || {})[bk]);
+      if (d && d.use && d.side) side = '(' + d.side + ')';
+    }
+    return '局麻 ' + (def ? def.label : bk) + side;
+  }
   const e = INTRAOP_EVENTS.find(x => x.key === key);
   if (e) return e.label;
   for (const arr of Object.values(PROCEDURE_EVENTS)) {
@@ -5227,6 +5295,13 @@ function recordEvent(key) {
   if (isProcEventKey(key)) {
     if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
     current.procEvents[key] = t;
+    // 局所麻酔ブロックの初回記録は従来の「局所麻酔」時刻にも書く
+    // （麻酔時間サマリ・Sheets/AnesLog連携の後方互換）
+    if (String(key).indexOf('pe_la_') === 0 && !(current.localAnesthTime || '').trim()) {
+      current.localAnesthTime = t;
+      setVal('f_localAnesthTime', t);
+      updateDurations();
+    }
   } else {
     current[key] = t;
     setVal('f_' + key, t);
