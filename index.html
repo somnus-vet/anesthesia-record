@@ -282,6 +282,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-arrow{flex:0 0 auto;font-size:14px;color:var(--muted);font-weight:700;padding:0 1px}
 .tl-to-in{flex:0 0 70px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
 .tl-unit-sm{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700}
+.tl-io{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;white-space:nowrap}
 .tl-flow-lbl{flex:0 0 auto;font-size:12px;color:#0f6b5c;font-weight:700;padding:0 2px}
 .tl-text-in{flex:1;min-width:0;min-height:38px}
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
@@ -347,6 +348,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .tl-row{flex-wrap:wrap;gap:5px;row-gap:4px}
   .tl-time-in{flex-basis:72px}
   .tl-to-in{flex-basis:54px}
+  .tl-from{flex-basis:36px}
+  .tl-kind{font-size:11px;padding:3px 5px}
   .tl-flow-lbl,.tl-unit-sm{font-size:10px}
 }
 
@@ -4638,8 +4641,8 @@ function renderTimelineList() {
         if (vmode === 'PCV' || vmode === 'VCV') {
           const us = vmode === 'VCV' ? 'mL' : 'cmH₂O';
           // 「前回値→」表示は引継ぎ機能で不要になったため廃止（データのfromはSomLog連携用に内部で維持）
-          vdetail = `<input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${us}</span>`
-            + `<input class="fin tl-rr-in" type="text" inputmode="decimal" value="${esc(en.rr || '')}" placeholder="RR" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'rr',this.value)" onblur="tapClearRestore(this,${en.idx},'rr')" autocomplete="off"><span class="tl-unit-sm">回/分</span>`;
+          vdetail = `<span class="tl-io"><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${us}</span></span>`
+            + `<span class="tl-io"><input class="fin tl-rr-in" type="text" inputmode="decimal" value="${esc(en.rr || '')}" placeholder="RR" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'rr',this.value)" onblur="tapClearRestore(this,${en.idx},'rr')" autocomplete="off"><span class="tl-unit-sm">回/分</span></span>`;
         } else if (vmode === 'OFF') {
           vdetail = `<span class="tl-vent-off">換気OFF</span>`;
         } else if (vmode === 'SPONT') {
@@ -4673,8 +4676,7 @@ function renderTimelineList() {
           <span class="tl-kind ${kindCls}">${lbl}</span>
           <span class="tl-from">${esc(en.from || '0')}</span>
           <span class="tl-arrow">→</span>
-          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off">
-          <span class="tl-unit-sm">${unitStr}</span>
+          <span class="tl-io"><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${unitStr}</span></span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
@@ -4711,11 +4713,8 @@ function renderTimelineList() {
         return `<div class="tl-row tl-flow">
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-flow">O2/Air</span>
-          <span class="tl-flow-lbl">O2</span>
-          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.o2 || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'o2',this.value)" onblur="tapClearRestore(this,${en.idx},'o2')" autocomplete="off">
-          <span class="tl-flow-lbl">Air</span>
-          <input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.air || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'air',this.value)" onblur="tapClearRestore(this,${en.idx},'air')" autocomplete="off">
-          <span class="tl-unit-sm">L/min</span>
+          <span class="tl-io"><span class="tl-flow-lbl">O2</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.o2 || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'o2',this.value)" onblur="tapClearRestore(this,${en.idx},'o2')" autocomplete="off"></span>
+          <span class="tl-io"><span class="tl-flow-lbl">Air</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.air || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'air',this.value)" onblur="tapClearRestore(this,${en.idx},'air')" autocomplete="off"><span class="tl-unit-sm">L/min</span></span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
