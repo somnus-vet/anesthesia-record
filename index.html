@@ -4457,7 +4457,11 @@ function renderEventButtons() {
     baseEvents = [];
     INTRAOP_EVENTS.forEach(e => {
       if (e.key === 'localAnesthTime') {
-        laBlocks.forEach(b => baseEvents.push({ key: 'pe_la_' + b.key, label: evtLabel('pe_la_' + b.key) }));
+        laBlocks.forEach(b => baseEvents.push({
+          key: 'pe_la_' + b.key,
+          label: '局麻 ' + b.label,
+          laHasSide: BLOCKS_WITH_SIDE.has(b.key),
+        }));
       } else {
         baseEvents.push(e);
       }
@@ -4468,9 +4472,15 @@ function renderEventButtons() {
   const VISC_KEYS = ['pe_knee_visc_yes', 'pe_knee_visc_no'];
   const viscActive = all.some(e => VISC_KEYS.indexOf(e.key) !== -1);
   const shown = all.filter(e => VISC_KEYS.indexOf(e.key) === -1);
-  const unset = shown.filter(e => isProcEventKey(e.key)
-    ? !((current.procEvents[e.key] || '').trim())
-    : !((current[e.key] || '').trim()));
+  const _pe = k => ((current.procEvents[k] || '').trim());
+  const unset = shown.filter(e => {
+    if (e.laHasSide) {
+      // 側付き局麻: 両側 / 左右両方 / (旧データ)側なし が記録済みならボタンを消す。
+      // 片側だけ記録済みならボタンは残り、残りの側を後から記録できる。
+      return !(_pe(e.key) || _pe(e.key + '_bi') || (_pe(e.key + '_r') && _pe(e.key + '_l')));
+    }
+    return isProcEventKey(e.key) ? !_pe(e.key) : !((current[e.key] || '').trim());
+  });
   // 粘稠度ボタン: どちらか記録済みなら消える。タップで 有り/無し の選択に展開
   const viscRecorded = VISC_KEYS.some(k => ((current.procEvents[k] || '').trim()));
   let viscBtn = '';
@@ -4512,8 +4522,25 @@ function renderEventButtons() {
   const tubeBtn = (current.intubationTime || '').trim()
     ? `<button type="button" class="qdose-btn" style="background:#e0e8f2;border-color:#5a7fae;color:#2b4a73" onclick="addFreeNote('tubeChange')">🔄チューブ交換</button>`
     : '';
+  // 側のあるブロックはタップで 右/左/両側 の選択に展開（膝の粘稠度と同方式）。
+  // 片側記録済みなら残りの側だけを選択肢に出す。
+  const laBtn = e => {
+    if (!e.laHasSide) return `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}</button>`;
+    if (window._laOpen !== e.key) {
+      return `<button type="button" class="qdose-btn" onclick="window._laOpen='${e.key}';renderEventButtons()">${e.label}</button>`;
+    }
+    const opts = [];
+    if (!_pe(e.key + '_r')) opts.push(`<button type="button" class="qdose-btn" style="background:#2b6cb0;border-color:#2b6cb0;color:#fff" onclick="window._laOpen=null;recordEvent('${e.key}_r')">右</button>`);
+    if (!_pe(e.key + '_l')) opts.push(`<button type="button" class="qdose-btn" style="background:#2b6cb0;border-color:#2b6cb0;color:#fff" onclick="window._laOpen=null;recordEvent('${e.key}_l')">左</button>`);
+    if (!_pe(e.key + '_r') && !_pe(e.key + '_l')) opts.push(`<button type="button" class="qdose-btn" style="background:#fff;border-color:#2b6cb0;color:#2b6cb0" onclick="window._laOpen=null;recordEvent('${e.key}_bi')">両側</button>`);
+    return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:4px;background:#eaf3fb;border:1px solid #7fb8e0;border-radius:10px;padding:2px 6px">`
+      + `<span style="font-size:12px;color:#1a5478;font-weight:700">${e.label}:</span>`
+      + opts.join('')
+      + `<button type="button" class="btn-del" onclick="window._laOpen=null;renderEventButtons()">✕</button>`
+      + `</span>`;
+  };
   bar.innerHTML = (unset.length
-    ? unset.map(e => `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}</button>`).join('')
+    ? unset.map(laBtn).join('')
     : '<div class="evt-empty" style="margin-right:8px">全イベント記録済み</div>')
     + viscBtn + tubeBtn + freeBtns + gasBtns + criBtns;
 }
@@ -5268,12 +5295,16 @@ function getSelectedLocalBlocks() {
 }
 
 function evtLabel(key) {
-  // 局所麻酔ブロックイベント (pe_la_<blockKey>): ブロック名＋プランで選んだ側
+  // 局所麻酔ブロックイベント (pe_la_<blockKey>[_r|_l|_bi]): ブロック名＋記録時に選んだ側
   if (String(key).indexOf('pe_la_') === 0) {
-    const bk = String(key).slice(6);
-    const def = (typeof getBlockDef === 'function') ? getBlockDef(bk) : null;
+    let bk = String(key).slice(6);
     let side = '';
-    if (current) {
+    if (bk.endsWith('_bi'))     { side = '(両側)'; bk = bk.slice(0, -3); }
+    else if (bk.endsWith('_r')) { side = '(R)';   bk = bk.slice(0, -2); }
+    else if (bk.endsWith('_l')) { side = '(L)';   bk = bk.slice(0, -2); }
+    const def = (typeof getBlockDef === 'function') ? getBlockDef(bk) : null;
+    // サフィックス無しの旧記録はプランで選んだ側を表示（後方互換）
+    if (!side && current) {
       const d = ((current.localBlocks || {})[bk]) || ((current.localBlocks2 || {})[bk]);
       if (d && d.use && d.side) side = '(' + d.side + ')';
     }
