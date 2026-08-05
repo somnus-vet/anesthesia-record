@@ -4459,7 +4459,7 @@ function renderEventButtons() {
       if (e.key === 'localAnesthTime') {
         laBlocks.forEach(b => baseEvents.push({
           key: 'pe_la_' + b.key,
-          label: '局麻 ' + b.label,
+          label: laShortLabel(b.label),
           laHasSide: BLOCKS_WITH_SIDE.has(b.key),
         }));
       } else {
@@ -5294,6 +5294,15 @@ function getSelectedLocalBlocks() {
   return out;
 }
 
+// ブロック名の短縮表記: 「〜ブロック」→「〜B」、「〜神経」→「〜神経B」、
+// 浸潤・硬膜外などブロックと呼ばない手技はそのまま（表示を短くして見やすく）
+function laShortLabel(label) {
+  const s = String(label || '');
+  if (/ブロック$/.test(s)) return s.replace(/ブロック$/, 'B');
+  if (/神経$/.test(s)) return s + 'B';
+  return s;
+}
+
 function evtLabel(key) {
   // 局所麻酔ブロックイベント (pe_la_<blockKey>[_r|_l|_bi]): ブロック名＋記録時に選んだ側
   if (String(key).indexOf('pe_la_') === 0) {
@@ -5308,7 +5317,7 @@ function evtLabel(key) {
       const d = ((current.localBlocks || {})[bk]) || ((current.localBlocks2 || {})[bk]);
       if (d && d.use && d.side) side = '(' + d.side + ')';
     }
-    return '局麻 ' + (def ? def.label : bk) + side;
+    return laShortLabel(def ? def.label : bk) + side;
   }
   const e = INTRAOP_EVENTS.find(x => x.key === key);
   if (e) return e.label;
