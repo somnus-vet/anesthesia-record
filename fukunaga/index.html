@@ -4680,9 +4680,7 @@ function renderTimelineList() {
         return `<div class="tl-row ${rowCls}">
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind ${kindCls}">${lbl}</span>
-          <span class="tl-from">${esc(en.from || '0')}</span>
-          <span class="tl-arrow">→</span>
-          <span class="tl-io"><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${unitStr}</span></span>
+          <span class="tl-io"><span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${unitStr}</span></span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
@@ -4719,8 +4717,7 @@ function renderTimelineList() {
         return `<div class="tl-row tl-flow">
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-flow">O2/Air</span>
-          <span class="tl-io"><span class="tl-flow-lbl">O2</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.o2 || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'o2',this.value)" onblur="tapClearRestore(this,${en.idx},'o2')" autocomplete="off"></span>
-          <span class="tl-io"><span class="tl-flow-lbl">Air</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.air || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'air',this.value)" onblur="tapClearRestore(this,${en.idx},'air')" autocomplete="off"><span class="tl-unit-sm">L/min</span></span>
+          <span class="tl-io"><span class="tl-flow-lbl">O2</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.o2 || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'o2',this.value)" onblur="tapClearRestore(this,${en.idx},'o2')" autocomplete="off"><span class="tl-flow-lbl">Air</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.air || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'air',this.value)" onblur="tapClearRestore(this,${en.idx},'air')" autocomplete="off"><span class="tl-unit-sm">L/min</span></span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
