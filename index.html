@@ -3464,6 +3464,56 @@ function commitNow() {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') commitNow(); });
 window.addEventListener('pagehide', commitNow);
 
+// ── 同一端末で複数タブを開いたときの消失対策 ──────────────────
+// saveStorage は vet_cases を丸ごと上書きするため、同じ端末でアプリを
+// 2タブ以上開くと、古いタブの保存が新しいタブで記録した直後のイベント/薬剤を
+// ディスク上から消してしまう。他タブの書き込みを検知したら捨てずにマージする
+// （イベント=union・スカラー=rev勝ち＋空値ガード。sync-v2と同じ規則）。
+// ここでは書き戻さない（タブ同士の書き合い防止）。このタブの次の保存で統合結果が残る。
+function mergeCaseIntoC(mem, d) {
+  const memRev = parseInt(mem.rev, 10) || 0, dRev = parseInt(d.rev, 10) || 0;
+  const _ld = mem.drugLog, _lf = mem.freeNotes, _lp = mem.procEvents, _lpm = mem.procEventsMeta, _lprog = mem.progress;
+  const dNewer = dRev > memRev || (dRev === memRev && String(d.updated_at || '') > String(mem.updated_at || ''));
+  if (dNewer) {
+    Object.keys(d).forEach(k => {
+      const rv = d[k], lv = mem[k];
+      const remoteEmpty = (rv === '' || rv === null || rv === undefined);
+      const localHasText = (typeof lv === 'string' && lv.trim() !== '');
+      if (remoteEmpty && localHasText) return; // こちらの記載を残す
+      mem[k] = rv;
+    });
+  }
+  mem.drugLog   = unionEventsC(_ld, d.drugLog, hashDrugC);
+  mem.freeNotes = unionEventsC(_lf, d.freeNotes, hashFreeC);
+  const _pe = unionProcEventsC(_lp, d.procEvents, _lpm, d.procEventsMeta);
+  mem.procEvents = _pe.procEvents;
+  if (Object.keys(_pe.procEventsMeta).length) mem.procEventsMeta = _pe.procEventsMeta;
+  mem.progress = pickStatusC(_lprog, d.progress);
+  mem.rev = Math.max(memRev, dRev);
+}
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'vet_cases' || !e.newValue) return;
+  let disk = [];
+  try { disk = JSON.parse(e.newValue); } catch (_) { return; }
+  if (!Array.isArray(disk)) return;
+  let currentChanged = false;
+  const byId = {};
+  cases.forEach(c => { if (c && c.id) byId[c.id] = c; });
+  disk.forEach(d => {
+    if (!d || !d.id) return;
+    const mem = byId[d.id];
+    if (!mem) { cases.push(d); return; } // 他タブで作られた症例
+    const before = JSON.stringify(mem);
+    mergeCaseIntoC(mem, d);
+    if (current && mem === current && JSON.stringify(mem) !== before) currentChanged = true;
+  });
+  try { renderCasesList(); } catch (_) {}
+  if (currentChanged && !isUserTypingNow()
+      && !document.getElementById('formScreen').classList.contains('hidden')) {
+    try { populateForm(); } catch (_) {}
+  }
+});
+
 // ─────────────────────────────────────────────────
 // CASES LIST
 // ─────────────────────────────────────────────────
@@ -5718,6 +5768,9 @@ function autoSave() {
 //   30秒ポーリングで他端末からの差分は拾えるので問題なし。
 function pushCurrentToSheets() {
   if (!current) return;
+  // ボタン操作(イベント/薬剤の記録・削除)は800msのデバウンスを待たず即ディスク保存。
+  // iOSのタブ破棄や他タブの保存が直後に走っても、記録した1件が消えないようにする。
+  try { commitNow(); } catch (_) {}
   if (!sheetsConfig.enabled) return;
   if (!current.caseNo || !current.date) return;
   // 送信前にローカル時刻を進めておく。確認同期(CSV)が反映遅延で古いデータを返しても、
