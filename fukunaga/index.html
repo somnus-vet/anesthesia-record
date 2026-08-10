@@ -4404,6 +4404,22 @@ function latestAntibioticTime(c) {
   return best;
 }
 
+// 記録用紙の「局所麻酔」欄に出す時刻。汎用ボタンで記録した localAnesthTime を
+// 優先し、無ければブロック別イベント(pe_la_*)のうち最も早い時刻を使う。
+// （ブロック別記録では localAnesthTime を書かない＝タイムラインの重複行を防ぐ）
+function localAnesthTimeOf(c) {
+  c = c || current;
+  if (!c) return '';
+  if ((c.localAnesthTime || '').trim()) return c.localAnesthTime;
+  let best = '', bestSec = null;
+  Object.entries(c.procEvents || {}).forEach(([k, t]) => {
+    if (String(k).indexOf('pe_la_') !== 0) return;
+    const s = timeToSec(t);
+    if (s !== null && (bestSec === null || s < bestSec)) { bestSec = s; best = t; }
+  });
+  return best;
+}
+
 // 30秒ごとに経過時間カウンターを更新（ライブ表示）
 setInterval(() => { if (current) updateLiveTimers(); }, 30000);
 
@@ -5352,13 +5368,10 @@ function recordEvent(key) {
   if (isProcEventKey(key)) {
     if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
     current.procEvents[key] = t;
-    // 局所麻酔ブロックの初回記録は従来の「局所麻酔」時刻にも書く
-    // （麻酔時間サマリ・Sheets/AnesLog連携の後方互換）
-    if (String(key).indexOf('pe_la_') === 0 && !(current.localAnesthTime || '').trim()) {
-      current.localAnesthTime = t;
-      setVal('f_localAnesthTime', t);
-      updateDurations();
-    }
+    // 局所麻酔ブロックを記録しても従来の「局所麻酔」時刻(localAnesthTime)には
+    // 書かない。書くとタイムラインに『局所麻酔』の行が勝手に増え、SomLogの
+    // グラフ/PDFにも二重のマーカーが出るため。記録用紙の『局所麻酔』欄は
+    // localAnesthTimeOf() が最初のブロック記録から導出する。
   } else {
     current[key] = t;
     setVal('f_' + key, t);
@@ -6126,7 +6139,7 @@ function generatePrintHTML(c) {
         ${fld('前投薬', c.anesthStart)}
         ${fld('導入', c.inductionTime)}
         ${fld('挿管', c.intubationTime)}
-        ${fld('局所麻酔', c.localAnesthTime)}
+        ${fld('局所麻酔', localAnesthTimeOf(c))}
         ${fld('抗菌薬', latestAntibioticTime(c))}
         ${fld('手術開始', c.surgStart)}
         ${fld('縫合開始', c.sutureStart)}
