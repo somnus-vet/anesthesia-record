@@ -2906,7 +2906,18 @@ async function pushToSheets(caseObj, options = {}) {
       let sd = {};
       try { sd = JSON.parse(_rr.server_case || '{}'); } catch (e) {}
       const _ld = caseObj.drugLog, _lf = caseObj.freeNotes, _lp = caseObj.procEvents, _lpm = caseObj.procEventsMeta, _lprog = caseObj.progress;
-      Object.keys(sd).forEach(k => caseObj[k] = sd[k]); // スカラーはサーバ優先(server_rev >= local)
+      // スカラーはサーバ優先(server_rev >= local)。ただしサーバが空でローカルに記載が
+      // あるものは残す（mergeReservationsと同じ保護）。これが無いと、2台がほぼ同時に
+      // 別のタイムラインイベント(手術終了と抜管など)を記録したとき、rev負け側の
+      // イベント時刻がサーバの空値で消され、そのまま再pushで全端末から消えていた。
+      Object.keys(sd).forEach(k => {
+        const rv = sd[k];
+        const lv = caseObj[k];
+        const remoteEmpty = (rv === '' || rv === null || rv === undefined);
+        const localHasText = (typeof lv === 'string' && lv.trim() !== '');
+        if (remoteEmpty && localHasText) return; // ローカルの記載を残す
+        caseObj[k] = rv;
+      });
       caseObj.drugLog   = unionEventsC(_ld, sd.drugLog, hashDrugC);
       caseObj.freeNotes = unionEventsC(_lf, sd.freeNotes, hashFreeC);
       const _pe = unionProcEventsC(_lp, sd.procEvents, _lpm, sd.procEventsMeta);
