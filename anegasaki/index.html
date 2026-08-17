@@ -6416,6 +6416,14 @@ if (sheetsConfig.enabled) {
 .ts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
 .ts-btn{min-height:52px;border:1.5px solid var(--border);border-radius:12px;background:#f7fafd;font-size:16.5px;font-weight:800;color:var(--text);cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums}
 .ts-btn:active{background:#eaf3fb;border-color:var(--blue)}
+.ts-ref{max-height:118px;overflow-y:auto;margin-top:10px;border:1.5px solid var(--border);border-radius:12px;background:#fff;padding:3px 0}
+.ts-ref-ttl{font-size:11px;font-weight:700;color:var(--muted);margin:10px 2px -4px;text-align:left}
+.ts-ref-row{display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:12.5px;color:var(--muted)}
+.ts-ref-row .ts-ref-t{font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.ts-ref-row.on{background:#eaf3fb;color:var(--navy)}
+.ts-ref-row.on .ts-ref-t{color:var(--blue)}
+.ts-ref-n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts-ref-mark{font-size:11px;font-weight:800;color:var(--blue);white-space:nowrap}
 .ts-actions{display:flex;gap:10px;margin-top:14px}
 .ts-cancel{flex:1;min-height:50px;border:1.5px solid var(--border);border-radius:12px;background:#fff;font-size:15px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
 .ts-ok{flex:2;min-height:50px;border:none;border-radius:12px;background:var(--blue);font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
@@ -6443,6 +6451,8 @@ if (sheetsConfig.enabled) {
     <button type="button" class="ts-btn" onclick="tsAdd(60)">＋1分</button>
     <button type="button" class="ts-btn" onclick="tsAdd(10)">＋10秒</button>
   </div>
+  <div class="ts-ref-ttl" id="tsRefTtl">他の記録（新しい順・参考）</div>
+  <div class="ts-ref" id="tsRef"></div>
   <div class="ts-actions">
     <button type="button" class="ts-cancel" onclick="tsCancel()">キャンセル</button>
     <button type="button" class="ts-ok" onclick="tsOk()">決定</button>
@@ -6455,7 +6465,31 @@ if (sheetsConfig.enabled) {
    決定時に元のinputへ値を書き戻し input/change イベントを発火させるので、
    既存の editEventTime / editFreeNote / editDrugLog / onFreeNoteFinalize /
    sync まわりのロジックは一切変更せずそのまま動く。 */
-let _tsTarget = null, _tsSec = 0, _tsOrig = null;
+let _tsTarget = null, _tsSec = 0, _tsOrig = null, _tsRefs = [];
+function _tsRowLabel(row) {
+  const n = row.querySelector('.tl-name');
+  if (n && n.textContent.trim()) return n.textContent.trim();
+  const d = row.querySelector('.tl-drug-name');
+  if (d && d.value.trim()) return d.value.trim();
+  const k = row.querySelector('.tl-kind');
+  if (k && k.textContent.trim()) return k.textContent.trim();
+  return '（無題）';
+}
+function _tsPaintRef() {
+  const box = document.getElementById('tsRef'), ttl = document.getElementById('tsRefTtl');
+  if (!box) return;
+  if (_tsRefs.length <= 1) { box.style.display = 'none'; if (ttl) ttl.style.display = 'none'; return; }
+  box.style.display = 'block'; if (ttl) ttl.style.display = 'block';
+  const items = _tsRefs
+    .map(r => ({ label: r.label, sec: r.target ? _tsSec : r.sec, target: !!r.target }))
+    .sort((a, b) => (b.sec - a.sec) || (a.target ? 1 : -1));  // 記録一覧と同じ「新しい順」
+  box.innerHTML = items.map(it =>
+    `<div class="ts-ref-row${it.target ? ' on' : ''}"><span class="ts-ref-t">${_tsFmt(it.sec)}</span>` +
+    `<span class="ts-ref-n">${esc(it.label)}</span>${it.target ? '<span class="ts-ref-mark">← 調整中</span>' : ''}</div>`
+  ).join('');
+  const on = box.querySelector('.ts-ref-row.on');
+  if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
+}
 function _tsFmt(s) {
   s = ((s % 86400) + 86400) % 86400;
   const p = n => String(n).padStart(2, '0');
@@ -6475,6 +6509,15 @@ function openTimeSheet(el) {
   const nameEl = row && (row.querySelector('.tl-name') || row.querySelector('.tl-kind'));
   const nm = nameEl ? nameEl.textContent.trim() : '';
   document.getElementById('tsTitle').textContent = nm ? `「${nm}」の時刻を変更` : '時刻を変更';
+  // 参照用: タイムライン全行の時刻スナップショット（編集対象はライブ値で表示）
+  _tsRefs = [];
+  document.querySelectorAll('#timelineList .tl-row').forEach(r => {
+    const ti = r.querySelector('.tl-time-in');
+    if (!ti) return;
+    if (ti === el) { _tsRefs.push({ label: _tsRowLabel(r), sec: null, target: true }); return; }
+    const sec = timeToSec(ti.value);
+    if (sec !== null) _tsRefs.push({ label: _tsRowLabel(r), sec });
+  });
   _tsPaint();
   document.getElementById('tsBackdrop').classList.add('show');
   document.getElementById('tsSheet').classList.add('show');
@@ -6530,6 +6573,7 @@ function _tsPaint(smooth) {
   _tsSec = ((_tsSec % 86400) + 86400) % 86400;
   _tsSetWheel(false);  // smoothはscroll-snapと競合するため常に即時移動
   _tsPaintDelta();
+  _tsPaintRef();
 }
 function tsAdd(d) { _tsSec += d; _tsPaint(true); }
 function tsCancel() { _tsClose(); }
