@@ -6368,10 +6368,16 @@ if (sheetsConfig.enabled) {
 .ts-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9041;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(26,35,50,.25);max-width:620px;margin:0 auto;padding:16px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .2s ease-out}
 .ts-sheet.show{transform:translateY(0)}
 .ts-title{font-size:13.5px;font-weight:700;color:var(--muted);text-align:center}
-.ts-drum-wrap{display:flex;justify-content:center;margin-top:8px}
-.ts-drum{border:1.5px solid var(--border);border-radius:14px;background:#f7fafd;color:var(--navy);font-family:inherit;font-weight:800;font-size:38px;text-align:center;padding:6px 18px;font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none}
-.ts-drum:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(46,134,193,.18)}
-.ts-drum::-webkit-calendar-picker-indicator{display:none}
+.ts-wheel{position:relative;display:flex;justify-content:center;gap:2px;height:180px;margin-top:8px;overflow:hidden;border-radius:14px;background:#f7fafd;border:1.5px solid var(--border)}
+.ts-col{width:76px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain}
+.ts-col::-webkit-scrollbar{display:none}
+.ts-item{height:36px;line-height:36px;text-align:center;font-size:27px;font-weight:800;color:var(--navy);scroll-snap-align:center;font-variant-numeric:tabular-nums}
+.ts-spacer{height:72px}
+.ts-colon{align-self:center;font-size:24px;font-weight:800;color:var(--muted);z-index:3}
+.ts-wheel::before{content:'';position:absolute;left:0;right:0;top:0;height:64px;background:linear-gradient(#f7fafd,rgba(247,250,253,0));pointer-events:none;z-index:2}
+.ts-wheel::after{content:'';position:absolute;left:0;right:0;bottom:0;height:64px;background:linear-gradient(rgba(247,250,253,0),#f7fafd);pointer-events:none;z-index:2}
+.ts-wheel-bar{position:absolute;left:10px;right:10px;top:50%;height:38px;transform:translateY(-50%);border-top:1.5px solid var(--blue);border-bottom:1.5px solid var(--blue);border-radius:9px;pointer-events:none;opacity:.55}
+.ts-wheel-unit{position:absolute;top:50%;transform:translateY(-50%);font-size:10.5px;font-weight:700;color:var(--muted);pointer-events:none;z-index:3}
 .ts-drum-hint{text-align:center;font-size:11.5px;color:var(--muted);margin-top:4px}
 .ts-delta{text-align:center;font-size:13px;font-weight:700;min-height:20px;margin-top:4px}
 .ts-delta .m{color:#c0392b}.ts-delta .p{color:#1e8449}
@@ -6386,10 +6392,16 @@ if (sheetsConfig.enabled) {
 <div class="ts-backdrop" id="tsBackdrop" onclick="tsCancel()"></div>
 <div class="ts-sheet" id="tsSheet" role="dialog" aria-label="時刻を変更">
   <div class="ts-title" id="tsTitle">時刻を変更</div>
-  <div class="ts-drum-wrap">
-    <input type="time" step="1" class="ts-drum" id="tsDrum" aria-label="時刻を直接選ぶ" onchange="tsDrumPick(this.value)">
+  <div class="ts-wheel" id="tsWheel" aria-label="時刻を選ぶドラム">
+    <div class="ts-col" id="tsColH"></div><span class="ts-colon">:</span>
+    <div class="ts-col" id="tsColM"></div><span class="ts-colon">:</span>
+    <div class="ts-col" id="tsColS"></div>
+    <div class="ts-wheel-bar"></div>
+    <span class="ts-wheel-unit" style="left:calc(50% - 118px)">時</span>
+    <span class="ts-wheel-unit" style="left:calc(50% - 40px)">分</span>
+    <span class="ts-wheel-unit" style="left:calc(50% + 38px)">秒</span>
   </div>
-  <div class="ts-drum-hint">↑ タップで時刻を直接選べます</div>
+  <div class="ts-drum-hint">くるくる回して選べます（±ボタンでも微調整OK）</div>
   <div class="ts-delta" id="tsDelta">&nbsp;</div>
   <div class="ts-grid">
     <button type="button" class="ts-btn" onclick="tsAdd(-300)">−5分</button>
@@ -6435,8 +6447,45 @@ function openTimeSheet(el) {
   document.getElementById('tsBackdrop').classList.add('show');
   document.getElementById('tsSheet').classList.add('show');
 }
-function _tsPaint() {
-  document.getElementById('tsDrum').value = _tsFmt(_tsSec);
+/* ---- 自前ドラムロール（時/分/秒の3列・scroll-snap） ---- */
+const _TS_ITEM = 36;
+let _tsProg = false, _tsProgT = null, _tsScrollT = null, _tsBuilt = false;
+function _tsBuildWheel() {
+  if (_tsBuilt) return;
+  _tsBuilt = true;
+  const mk = n => {
+    let h = '<div class="ts-spacer"></div>';
+    for (let i = 0; i < n; i++) h += `<div class="ts-item">${String(i).padStart(2,'0')}</div>`;
+    return h + '<div class="ts-spacer"></div>';
+  };
+  document.getElementById('tsColH').innerHTML = mk(24);
+  document.getElementById('tsColM').innerHTML = mk(60);
+  document.getElementById('tsColS').innerHTML = mk(60);
+  ['tsColH','tsColM','tsColS'].forEach(id =>
+    document.getElementById(id).addEventListener('scroll', _tsOnScroll, { passive:true }));
+}
+function _tsSetWheel(smooth) {
+  const h = Math.floor(_tsSec/3600), m = Math.floor(_tsSec%3600/60), sec = _tsSec%60;
+  _tsProg = true;
+  [['tsColH',h],['tsColM',m],['tsColS',sec]].forEach(([id,v]) => {
+    const el = document.getElementById(id), top = v*_TS_ITEM;
+    if (smooth && el.scrollTo) el.scrollTo({top, behavior:'smooth'}); else el.scrollTop = top;
+  });
+  clearTimeout(_tsProgT);
+  _tsProgT = setTimeout(() => { _tsProg = false; }, smooth ? 480 : 80);
+}
+function _tsOnScroll() {
+  if (_tsProg) return;
+  clearTimeout(_tsScrollT);
+  _tsScrollT = setTimeout(() => {
+    if (_tsProg) return;
+    const rd = (id,max) => Math.min(max, Math.max(0,
+      Math.round(document.getElementById(id).scrollTop/_TS_ITEM)));
+    _tsSec = rd('tsColH',23)*3600 + rd('tsColM',59)*60 + rd('tsColS',59);
+    _tsPaintDelta();
+  }, 140);
+}
+function _tsPaintDelta() {
   const el = document.getElementById('tsDelta');
   if (_tsOrig === null || _tsSec === _tsOrig) { el.innerHTML = '&nbsp;'; return; }
   const d = _tsSec - _tsOrig, a = Math.abs(d);
@@ -6444,12 +6493,13 @@ function _tsPaint() {
   const w = (mm ? `${mm}分` : '') + (ss ? `${ss}秒` : '');
   el.innerHTML = d < 0 ? `<span class="m">−${w}（早める）</span>` : `<span class="p">＋${w}（遅らせる）</span>`;
 }
-function tsAdd(d) { _tsSec += d; _tsPaint(); }
-function tsDrumPick(v) {
-  const s = timeToSec(v);
-  if (s !== null) _tsSec = s;
-  _tsPaint();
+function _tsPaint(smooth) {
+  _tsBuildWheel();
+  _tsSec = ((_tsSec % 86400) + 86400) % 86400;
+  _tsSetWheel(false);  // smoothはscroll-snapと競合するため常に即時移動
+  _tsPaintDelta();
 }
+function tsAdd(d) { _tsSec += d; _tsPaint(true); }
 function tsCancel() { _tsClose(); }
 function tsOk() {
   if (_tsTarget) {
