@@ -404,6 +404,10 @@ input.fin[readonly]{background:#fff;cursor:pointer}
       <button class="btn-new" onclick="newCase()">＋ 新規症例</button>
     </div>
   </div>
+  <div style="padding:10px 14px 0">
+    <input id="caseSearch" type="search" placeholder="🔎 症例を検索（名前・カルテID・術式）" oninput="renderCasesList()"
+      style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;background:#fff;box-sizing:border-box">
+  </div>
   <div class="cases-list" id="casesList"></div>
 </div>
 
@@ -3530,7 +3534,22 @@ function renderCasesList() {
   const filtered = currentFacility
     ? cases.filter(c => !c.facility || c.facility === currentFacility)
     : cases;
-  if (!filtered.length) {
+  // 検索フィルタ: 名前・カルテID・術式の部分一致（スペース区切りでAND）
+  const _qEl = document.getElementById('caseSearch');
+  const _q = (_qEl ? _qEl.value : '').trim().toLowerCase();
+  const searched = _q ? filtered.filter(c => {
+    const hay = `${c.ownerName||''} ${c.patientName||''} ${c.caseNo||''} ${c.procedure||''} ${c.diagnosis||''}`.toLowerCase();
+    return _q.split(/\s+/).every(t => hay.includes(t));
+  }) : filtered;
+  if (!searched.length) {
+    if (_q) {
+      el.innerHTML = `<div class="empty">
+        <div class="empty-icon">🔎</div>
+        <div class="empty-text">検索に一致する症例がありません</div>
+        <div class="empty-sub">名前・カルテID・術式で検索できます（スペース区切りで絞り込み）</div>
+      </div>`;
+      return;
+    }
     const facName = currentFacility ? (facilityMap[currentFacility] || currentFacility) : '';
     el.innerHTML = `<div class="empty">
       <div class="empty-icon">📋</div>
@@ -3541,7 +3560,7 @@ function renderCasesList() {
   }
   // 新しい順: 日付降順 → updated_at降順 → IDタイムスタンプ降順
   const idTs = id => parseInt((String(id || '').match(/\d{10,}/) || ['0'])[0], 10);
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = [...searched].sort((a, b) => {
     const d = String(b.date || '').localeCompare(String(a.date || ''));
     if (d !== 0) return d;
     const u = String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
