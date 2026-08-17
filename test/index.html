@@ -6419,7 +6419,7 @@ if (sheetsConfig.enabled) {
     <button type="button" class="ts-btn" onclick="tsAdd(60)">＋1分</button>
     <button type="button" class="ts-btn" onclick="tsAdd(10)">＋10秒</button>
   </div>
-  <div class="ts-ref-ttl" id="tsRefTtl">他の記録（時刻順・参考）</div>
+  <div class="ts-ref-ttl" id="tsRefTtl">他の記録（新しい順・参考）</div>
   <div class="ts-ref" id="tsRef"></div>
   <div class="ts-actions">
     <button type="button" class="ts-cancel" onclick="tsCancel()">キャンセル</button>
@@ -6450,7 +6450,7 @@ function _tsPaintRef() {
   box.style.display = 'block'; if (ttl) ttl.style.display = 'block';
   const items = _tsRefs
     .map(r => ({ label: r.label, sec: r.target ? _tsSec : r.sec, target: !!r.target }))
-    .sort((a, b) => (a.sec - b.sec) || (a.target ? 1 : -1));
+    .sort((a, b) => (b.sec - a.sec) || (a.target ? 1 : -1));  // 記録一覧と同じ「新しい順」
   box.innerHTML = items.map(it =>
     `<div class="ts-ref-row${it.target ? ' on' : ''}"><span class="ts-ref-t">${_tsFmt(it.sec)}</span>` +
     `<span class="ts-ref-n">${esc(it.label)}</span>${it.target ? '<span class="ts-ref-mark">← 調整中</span>' : ''}</div>`
