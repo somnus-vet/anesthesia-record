@@ -6392,5 +6392,110 @@ if (sheetsConfig.enabled) {
     </div>
   </div>
 </div>
+
+<!-- ============ 時刻編集シート（タイムラインの時刻をタップで開く） ============ -->
+<style>
+.ts-backdrop{position:fixed;inset:0;background:rgba(26,35,50,.42);z-index:9040;opacity:0;pointer-events:none;transition:opacity .18s}
+.ts-backdrop.show{opacity:1;pointer-events:auto}
+.ts-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9041;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(26,35,50,.25);max-width:620px;margin:0 auto;padding:16px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .2s ease-out}
+.ts-sheet.show{transform:translateY(0)}
+.ts-title{font-size:13.5px;font-weight:700;color:var(--muted);text-align:center}
+.ts-drum-wrap{display:flex;justify-content:center;margin-top:8px}
+.ts-drum{border:1.5px solid var(--border);border-radius:14px;background:#f7fafd;color:var(--navy);font-family:inherit;font-weight:800;font-size:38px;text-align:center;padding:6px 18px;font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none}
+.ts-drum:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(46,134,193,.18)}
+.ts-drum::-webkit-calendar-picker-indicator{display:none}
+.ts-drum-hint{text-align:center;font-size:11.5px;color:var(--muted);margin-top:4px}
+.ts-delta{text-align:center;font-size:13px;font-weight:700;min-height:20px;margin-top:4px}
+.ts-delta .m{color:#c0392b}.ts-delta .p{color:#1e8449}
+.ts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.ts-btn{min-height:52px;border:1.5px solid var(--border);border-radius:12px;background:#f7fafd;font-size:16.5px;font-weight:800;color:var(--text);cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums}
+.ts-btn:active{background:#eaf3fb;border-color:var(--blue)}
+.ts-actions{display:flex;gap:10px;margin-top:14px}
+.ts-cancel{flex:1;min-height:50px;border:1.5px solid var(--border);border-radius:12px;background:#fff;font-size:15px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
+.ts-ok{flex:2;min-height:50px;border:none;border-radius:12px;background:var(--blue);font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
+.ts-ok:active{background:#256fa1}
+</style>
+<div class="ts-backdrop" id="tsBackdrop" onclick="tsCancel()"></div>
+<div class="ts-sheet" id="tsSheet" role="dialog" aria-label="時刻を変更">
+  <div class="ts-title" id="tsTitle">時刻を変更</div>
+  <div class="ts-drum-wrap">
+    <input type="time" step="1" class="ts-drum" id="tsDrum" aria-label="時刻を直接選ぶ" onchange="tsDrumPick(this.value)">
+  </div>
+  <div class="ts-drum-hint">↑ タップで時刻を直接選べます</div>
+  <div class="ts-delta" id="tsDelta">&nbsp;</div>
+  <div class="ts-grid">
+    <button type="button" class="ts-btn" onclick="tsAdd(-300)">−5分</button>
+    <button type="button" class="ts-btn" onclick="tsAdd(-60)">−1分</button>
+    <button type="button" class="ts-btn" onclick="tsAdd(-10)">−10秒</button>
+    <button type="button" class="ts-btn" onclick="tsAdd(300)">＋5分</button>
+    <button type="button" class="ts-btn" onclick="tsAdd(60)">＋1分</button>
+    <button type="button" class="ts-btn" onclick="tsAdd(10)">＋10秒</button>
+  </div>
+  <div class="ts-actions">
+    <button type="button" class="ts-cancel" onclick="tsCancel()">キャンセル</button>
+    <button type="button" class="ts-ok" onclick="tsOk()">決定</button>
+  </div>
+</div>
+<script>
+'use strict';
+/* 時刻編集シート:
+   タイムラインの時刻欄(.tl-time-in)のタップを横取りしてシートを開く。
+   決定時に元のinputへ値を書き戻し input/change イベントを発火させるので、
+   既存の editEventTime / editFreeNote / editDrugLog / onFreeNoteFinalize /
+   sync まわりのロジックは一切変更せずそのまま動く。 */
+let _tsTarget = null, _tsSec = 0, _tsOrig = null;
+function _tsFmt(s) {
+  s = ((s % 86400) + 86400) % 86400;
+  const p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s/3600))}:${p(Math.floor(s%3600/60))}:${p(s%60)}`;
+}
+document.addEventListener('pointerdown', function(e) {
+  const el = e.target;
+  if (!el || !el.classList || !el.classList.contains('tl-time-in')) return;
+  e.preventDefault();          // フォーカスさせない＝キーボードを出さない
+  openTimeSheet(el);
+}, true);
+function openTimeSheet(el) {
+  _tsTarget = el;
+  _tsOrig = timeToSec(el.value);            // 空欄・不正は null
+  _tsSec = _tsOrig !== null ? _tsOrig : timeToSec(nowTime()) || 0;
+  const row = el.closest('.tl-row');
+  const nameEl = row && (row.querySelector('.tl-name') || row.querySelector('.tl-kind'));
+  const nm = nameEl ? nameEl.textContent.trim() : '';
+  document.getElementById('tsTitle').textContent = nm ? `「${nm}」の時刻を変更` : '時刻を変更';
+  _tsPaint();
+  document.getElementById('tsBackdrop').classList.add('show');
+  document.getElementById('tsSheet').classList.add('show');
+}
+function _tsPaint() {
+  document.getElementById('tsDrum').value = _tsFmt(_tsSec);
+  const el = document.getElementById('tsDelta');
+  if (_tsOrig === null || _tsSec === _tsOrig) { el.innerHTML = '&nbsp;'; return; }
+  const d = _tsSec - _tsOrig, a = Math.abs(d);
+  const mm = Math.floor(a / 60), ss = a % 60;
+  const w = (mm ? `${mm}分` : '') + (ss ? `${ss}秒` : '');
+  el.innerHTML = d < 0 ? `<span class="m">−${w}（早める）</span>` : `<span class="p">＋${w}（遅らせる）</span>`;
+}
+function tsAdd(d) { _tsSec += d; _tsPaint(); }
+function tsDrumPick(v) {
+  const s = timeToSec(v);
+  if (s !== null) _tsSec = s;
+  _tsPaint();
+}
+function tsCancel() { _tsClose(); }
+function tsOk() {
+  if (_tsTarget) {
+    _tsTarget.value = _tsFmt(_tsSec);
+    _tsTarget.dispatchEvent(new Event('input',  { bubbles: true }));
+    _tsTarget.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  _tsClose();
+}
+function _tsClose() {
+  _tsTarget = null;
+  document.getElementById('tsBackdrop').classList.remove('show');
+  document.getElementById('tsSheet').classList.remove('show');
+}
+</script>
 </body>
 </html>
