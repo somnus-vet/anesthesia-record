@@ -291,6 +291,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
 .tl-drug-dose{flex:0 0 56px;min-width:0;min-height:38px;text-align:right;padding:6px 6px}
 .tl-dose-unit{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap}
+.tl-opt-chip{flex:0 0 auto;min-height:38px;padding:6px 8px;font-size:12px;font-weight:700;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;color:var(--text);cursor:pointer;font-family:inherit}
+.tl-opt-chip.empty{color:var(--muted);font-weight:400}
+.tl-opt-line{flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;padding:4px 0 2px 6px}
+.tl-opt-btn{min-height:34px;padding:5px 9px;font-size:12.5px;font-weight:700;border:1px solid var(--blue);border-radius:8px;background:#fff;color:var(--blue);cursor:pointer;font-family:inherit}
+.tl-opt-btn.on{background:var(--blue);color:#fff}
 .tl-drug-route{flex:0 0 52px;min-width:0;min-height:38px;text-align:center;padding:6px 2px}
 .tl-tube-in{flex:0 0 50px;min-width:0;min-height:38px;text-align:center;padding:6px 2px;font-size:13px}
 .tl-unit{font-size:11px;font-weight:700;color:var(--muted)}
@@ -4896,13 +4901,24 @@ function renderTimelineList() {
     const _dd = drugDefForLog(en);
     const _perKg = (String(en.dose || '').match(/^\s*([\d.]+)/) || [, ''])[1];
     const _unit = _dd ? _dd.unit : ((String(en.dose || '').match(/^\s*[\d.]*\s*([^\s=]+)/) || [, ''])[1] || '');
-    return `<div class="tl-row tl-drug">
+    // 追加薬剤(定義なし)の単位/経路: チップをタップで行の下に選択ボタンを展開
+    let _optLine = '';
+    if (!_dd && _drugOptOpen && _drugOptOpen.idx === en.idx) {
+      const _opts = _drugOptOpen.which === 'unit' ? MANUAL_UNIT_OPTS : MANUAL_ROUTE_OPTS;
+      const _cur = _drugOptOpen.which === 'unit' ? _unit : en.route;
+      _optLine = `<div class="tl-opt-line">` + _opts.map(o =>
+        `<button type="button" class="tl-opt-btn${o === _cur ? ' on' : ''}" onclick="setDrugOpt(${en.idx},'${_drugOptOpen.which}','${o}')">${o}</button>`).join('') + `</div>`;
+    }
+    return `<div class="tl-row tl-drug" data-drugidx="${en.idx}"${_optLine ? ' style="flex-wrap:wrap"' : ''}>
       <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
       <input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
       <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" oninput="editDrugLogDose(${en.idx},this.value)" autocomplete="off">
-      <span class="tl-dose-unit">${esc(_unit)}</span>
-      <input class="fin tl-drug-route" type="text" value="${esc(en.route)}" placeholder="経路" oninput="editDrugLog(${en.idx},'route',this.value)" autocomplete="off">
+      ${_dd ? `<span class="tl-dose-unit">${esc(_unit)}</span>
+      <input class="fin tl-drug-route" type="text" value="${esc(en.route)}" placeholder="経路" oninput="editDrugLog(${en.idx},'route',this.value)" autocomplete="off">`
+            : `<button type="button" class="tl-opt-chip${_unit ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit) || '単位'}</button>
+      <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`}
       <button class="btn-del" onclick="removeDrugLog(${en.idx})">✕</button>
+      ${_optLine}
     </div>`;
   }).join('');
 }
@@ -4938,6 +4954,30 @@ function editDrugLogDose(idx, perKgStr) {
     r.dose = (perKgStr || '') + (u || '');
   }
   autoSave();
+}
+
+// 追加薬剤(定義に無い薬)の単位/経路はボタン選択式。
+// チップをタップ→行の下に選択肢を展開→タップで確定(定義がある薬は従来通り)。
+let _drugOptOpen = null; // {idx, which:'unit'|'route'}
+const MANUAL_UNIT_OPTS = ['mg/kg','μg/kg','mg','μg','mL','%','mg/kg/hr','μg/kg/hr','μg/kg/min'];
+const MANUAL_ROUTE_OPTS = ['IV','IM','SC','PO','CRI'];
+function toggleDrugOpt(idx, which) {
+  _drugOptOpen = (_drugOptOpen && _drugOptOpen.idx === idx && _drugOptOpen.which === which) ? null : { idx, which };
+  renderTimelineList();
+}
+function setDrugOpt(idx, which, val) {
+  if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
+  const r = current.drugLog[idx];
+  if (which === 'unit') {
+    const num = (String(r.dose || '').match(/^\s*([\d.]+)/) || [, ''])[1] || '';
+    r.dose = num + val;
+  } else {
+    r.route = val;
+  }
+  _drugOptOpen = null;
+  renderTimelineList();
+  autoSave();
+  pushCurrentToSheets();
 }
 
 // 薬剤ログ1件の時刻を現在時刻に
@@ -5578,6 +5618,17 @@ function addDrugLogRow() {
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
   current.drugLog.push({ drug:'', dose:'', route:'', time: nowTime(), uid: genUid() });
   renderTimelineList();
+  // 一覧は時刻降順のため、過去症例では現在時刻の新規行が途中に埋まり
+  // 「追加されていない」ように見える。追加行までスクロールして一時ハイライト。
+  const _row = document.querySelector(`#timelineList .tl-row[data-drugidx="${current.drugLog.length - 1}"]`);
+  if (_row) {
+    _row.scrollIntoView({ block:'center', behavior:'smooth' });
+    _row.style.transition = 'background 1.2s';
+    _row.style.background = '#fff3c4';
+    setTimeout(() => { _row.style.background = ''; }, 1800);
+    const _inp = _row.querySelector('.tl-drug-name');
+    if (_inp) _inp.focus();
+  }
   autoSave();
   pushCurrentToSheets();
 }
