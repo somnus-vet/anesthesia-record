@@ -3796,15 +3796,42 @@ function unionEventsC(a, b, keyFn) {
   a.forEach(add); b.forEach(add);
   return order.map(k => map[k]);
 }
+// procEvents の削除は procEventsMeta {key:{deleted,ts}} の墓標で表現。
+// ts(操作時刻)が新しい側が勝つ＝「削除」も「削除後の再記録」も、後にした操作が生きる。
+// ts無しの旧形式metaのみ従来通り deleted を sticky 扱い。
+function markProcEventMeta(key, deleted) {
+  if (!current) return;
+  if (!current.procEventsMeta || typeof current.procEventsMeta !== 'object') current.procEventsMeta = {};
+  current.procEventsMeta[key] = { deleted: !!deleted, ts: nowIsoStr() };
+}
 function unionProcEventsC(exObj, inObj, exMeta, inMeta) {
   exObj = (exObj && typeof exObj === 'object') ? exObj : {};
   inObj = (inObj && typeof inObj === 'object') ? inObj : {};
-  const meta = Object.assign({}, exMeta || {});
-  for (const k in (inMeta || {})) meta[k] = mergeEventPairC(meta[k] || {}, inMeta[k]);
-  const out = {}, keys = {};
+  exMeta = (exMeta && typeof exMeta === 'object') ? exMeta : {};
+  inMeta = (inMeta && typeof inMeta === 'object') ? inMeta : {};
+  const out = {}, meta = {}, keys = {};
   for (const k in exObj) keys[k] = 1;
   for (const k in inObj) keys[k] = 1;
-  Object.keys(keys).forEach(key => { if (meta[key] && meta[key].deleted) return; out[key] = (inObj[key] != null) ? inObj[key] : exObj[key]; });
+  for (const k in exMeta) keys[k] = 1;
+  for (const k in inMeta) keys[k] = 1;
+  Object.keys(keys).forEach(key => {
+    const em = exMeta[key], im = inMeta[key];
+    const ets = (em && em.ts) ? String(em.ts) : '';
+    const its = (im && im.ts) ? String(im.ts) : '';
+    let winMeta, winVal;
+    if (ets || its) {
+      const exWins = !!(ets && (!its || ets > its));
+      winMeta = exWins ? em : im;
+      winVal = exWins ? exObj[key] : inObj[key];
+      if (winVal == null && !(winMeta && winMeta.deleted)) winVal = exWins ? inObj[key] : exObj[key];
+    } else {
+      winMeta = (em || im) ? mergeEventPairC(em || {}, im || {}) : null;
+      winVal = (inObj[key] != null) ? inObj[key] : exObj[key];
+    }
+    if (winMeta) meta[key] = winMeta;
+    if (winMeta && winMeta.deleted) return;
+    if (winVal != null) out[key] = winVal;
+  });
   return { procEvents: out, procEventsMeta: meta };
 }
 
@@ -5455,6 +5482,7 @@ function recordEvent(key) {
   if (isProcEventKey(key)) {
     if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
     current.procEvents[key] = t;
+    markProcEventMeta(key, false);
     // 局所麻酔ブロックを記録しても従来の「局所麻酔」時刻(localAnesthTime)には
     // 書かない。書くとタイムラインに『局所麻酔』の行が勝手に増え、SomLogの
     // グラフ/PDFにも二重のマーカーが出るため。記録用紙の『局所麻酔』欄は
@@ -5502,6 +5530,7 @@ function editEventTime(key, val) {
   if (isProcEventKey(key)) {
     if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
     current.procEvents[key] = val;
+    markProcEventMeta(key, false);
   } else {
     current[key] = val;
     setVal('f_' + key, val);
@@ -5515,6 +5544,7 @@ function clearEvent(key) {
   if (!current) return;
   if (isProcEventKey(key)) {
     if (current.procEvents) delete current.procEvents[key];
+    markProcEventMeta(key, true);
   } else {
     current[key] = '';
     setVal('f_' + key, '');
