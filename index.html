@@ -6522,26 +6522,31 @@ function openTimeSheet(el) {
 }
 /* ---- 自前ドラムロール（時/分/秒の3列・scroll-snap） ---- */
 const _TS_ITEM = 36;
+// 循環ドラム: 各列を_TS_REP回複製し、止まった位置が端の複製帯なら同じ数字の
+// 中央複製へ無音ジャンプ。00の上に59が見える(23↔00も同様)ので、
+// 59分を01分に(またはその逆に)直すのが2目盛りで済む。
+const _TS_REP = 5, _TS_MID = 2;
+const _TS_N = { tsColH: 24, tsColM: 60, tsColS: 60 };
 let _tsProg = false, _tsProgT = null, _tsScrollT = null, _tsBuilt = false;
 function _tsBuildWheel() {
   if (_tsBuilt) return;
   _tsBuilt = true;
   const mk = n => {
     let h = '<div class="ts-spacer"></div>';
-    for (let i = 0; i < n; i++) h += `<div class="ts-item">${String(i).padStart(2,'0')}</div>`;
+    for (let i = 0; i < n * _TS_REP; i++) h += `<div class="ts-item">${String(i % n).padStart(2,'0')}</div>`;
     return h + '<div class="ts-spacer"></div>';
   };
-  document.getElementById('tsColH').innerHTML = mk(24);
-  document.getElementById('tsColM').innerHTML = mk(60);
-  document.getElementById('tsColS').innerHTML = mk(60);
-  ['tsColH','tsColM','tsColS'].forEach(id =>
-    document.getElementById(id).addEventListener('scroll', _tsOnScroll, { passive:true }));
+  Object.keys(_TS_N).forEach(id => {
+    const el = document.getElementById(id);
+    el.innerHTML = mk(_TS_N[id]);
+    el.addEventListener('scroll', _tsOnScroll, { passive:true });
+  });
 }
 function _tsSetWheel(smooth) {
   const h = Math.floor(_tsSec/3600), m = Math.floor(_tsSec%3600/60), sec = _tsSec%60;
   _tsProg = true;
   [['tsColH',h],['tsColM',m],['tsColS',sec]].forEach(([id,v]) => {
-    const el = document.getElementById(id), top = v*_TS_ITEM;
+    const el = document.getElementById(id), top = (_TS_MID*_TS_N[id] + v)*_TS_ITEM;
     if (smooth && el.scrollTo) el.scrollTo({top, behavior:'smooth'}); else el.scrollTop = top;
   });
   clearTimeout(_tsProgT);
@@ -6552,9 +6557,21 @@ function _tsOnScroll() {
   clearTimeout(_tsScrollT);
   _tsScrollT = setTimeout(() => {
     if (_tsProg) return;
-    const rd = (id,max) => Math.min(max, Math.max(0,
-      Math.round(document.getElementById(id).scrollTop/_TS_ITEM)));
-    _tsSec = rd('tsColH',23)*3600 + rd('tsColM',59)*60 + rd('tsColS',59);
+    let recentered = false;
+    const rd = id => {
+      const n = _TS_N[id], el = document.getElementById(id);
+      const idx = Math.min(n*_TS_REP - 1, Math.max(0, Math.round(el.scrollTop/_TS_ITEM)));
+      const v = idx % n;
+      if (idx < n || idx >= n*(_TS_REP - 1)) {  // 端の複製帯 → 中央の同じ数字へ戻す
+        el.scrollTop = (_TS_MID*n + v)*_TS_ITEM;
+        recentered = true;
+      }
+      return v;
+    };
+    _tsProg = true;  // 戻しジャンプ由来のscrollイベントを無視
+    _tsSec = rd('tsColH')*3600 + rd('tsColM')*60 + rd('tsColS');
+    if (recentered) { clearTimeout(_tsProgT); _tsProgT = setTimeout(() => { _tsProg = false; }, 80); }
+    else _tsProg = false;
     _tsPaintDelta();
   }, 140);
 }
