@@ -4891,7 +4891,7 @@ function renderTimelineList() {
     const _dd = drugDefForLog(en);
     const _perKg = (String(en.dose || '').match(/^\s*([\d.]+)/) || [, ''])[1];
     const _unit = _dd ? _dd.unit : ((String(en.dose || '').match(/^\s*[\d.]*\s*([^\s=]+)/) || [, ''])[1] || '');
-    return `<div class="tl-row tl-drug">
+    return `<div class="tl-row tl-drug" data-drugidx="${en.idx}">
       <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
       <input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
       <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" oninput="editDrugLogDose(${en.idx},this.value)" autocomplete="off">
@@ -5584,6 +5584,17 @@ function addDrugLogRow() {
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
   current.drugLog.push({ drug:'', dose:'', route:'', time: nowTime(), uid: genUid() });
   renderTimelineList();
+  // 一覧は時刻降順のため、過去症例では現在時刻の新規行が途中に埋まり
+  // 「追加されていない」ように見える。追加行までスクロールして一時ハイライト。
+  const _row = document.querySelector(`#timelineList .tl-row[data-drugidx="${current.drugLog.length - 1}"]`);
+  if (_row) {
+    _row.scrollIntoView({ block:'center', behavior:'smooth' });
+    _row.style.transition = 'background 1.2s';
+    _row.style.background = '#fff3c4';
+    setTimeout(() => { _row.style.background = ''; }, 1800);
+    const _inp = _row.querySelector('.tl-drug-name');
+    if (_inp) _inp.focus();
+  }
   autoSave();
   pushCurrentToSheets();
 }
