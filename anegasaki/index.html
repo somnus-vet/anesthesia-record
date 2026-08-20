@@ -4603,8 +4603,9 @@ function renderEventButtons() {
       if (e.key === 'localAnesthTime') {
         laBlocks.forEach(b => baseEvents.push({
           key: 'pe_la_' + b.key,
-          label: laShortLabel(b.label),
+          label: laShortLabel(b.label) + (b.side && BLOCKS_WITH_SIDE.has(b.key) ? '(' + b.side + ')' : ''),
           laHasSide: BLOCKS_WITH_SIDE.has(b.key),
+          laPlanSide: b.side || '',
         }));
       } else {
         baseEvents.push(e);
@@ -4620,8 +4621,12 @@ function renderEventButtons() {
   const unset = shown.filter(e => {
     if (e.laHasSide) {
       // 側付き局麻: 両側 / 左右両方 / (旧データ)側なし が記録済みならボタンを消す。
-      // 片側だけ記録済みならボタンは残り、残りの側を後から記録できる。
-      return !(_pe(e.key) || _pe(e.key + '_bi') || (_pe(e.key + '_r') && _pe(e.key + '_l')));
+      // PLで片側(R/L)を指定している場合は、その側を記録した時点で消える
+      // (予定外に反対側もやった時はPLの側を「両側」に変えればボタンが再表示される)。
+      if (_pe(e.key) || _pe(e.key + '_bi') || (_pe(e.key + '_r') && _pe(e.key + '_l'))) return false;
+      if (e.laPlanSide === 'R' && _pe(e.key + '_r')) return false;
+      if (e.laPlanSide === 'L' && _pe(e.key + '_l')) return false;
+      return true;
     }
     return isProcEventKey(e.key) ? !_pe(e.key) : !((current[e.key] || '').trim());
   });
@@ -4674,9 +4679,10 @@ function renderEventButtons() {
       return `<button type="button" class="qdose-btn" onclick="window._laOpen='${e.key}';renderEventButtons()">${e.label}</button>`;
     }
     const opts = [];
-    if (!_pe(e.key + '_r')) opts.push(`<button type="button" class="qdose-btn" style="background:#2b6cb0;border-color:#2b6cb0;color:#fff" onclick="window._laOpen=null;recordEvent('${e.key}_r')">右</button>`);
-    if (!_pe(e.key + '_l')) opts.push(`<button type="button" class="qdose-btn" style="background:#2b6cb0;border-color:#2b6cb0;color:#fff" onclick="window._laOpen=null;recordEvent('${e.key}_l')">左</button>`);
-    if (!_pe(e.key + '_r') && !_pe(e.key + '_l')) opts.push(`<button type="button" class="qdose-btn" style="background:#fff;border-color:#2b6cb0;color:#2b6cb0" onclick="window._laOpen=null;recordEvent('${e.key}_bi')">両側</button>`);
+    const _star = s => e.laPlanSide === s ? '★' : '';  // PLで選んだ側の目印
+    if (!_pe(e.key + '_r')) opts.push(`<button type="button" class="qdose-btn" style="background:#2b6cb0;border-color:#2b6cb0;color:#fff" onclick="window._laOpen=null;recordEvent('${e.key}_r')">${_star('R')}右</button>`);
+    if (!_pe(e.key + '_l')) opts.push(`<button type="button" class="qdose-btn" style="background:#2b6cb0;border-color:#2b6cb0;color:#fff" onclick="window._laOpen=null;recordEvent('${e.key}_l')">${_star('L')}左</button>`);
+    if (!_pe(e.key + '_r') && !_pe(e.key + '_l')) opts.push(`<button type="button" class="qdose-btn" style="background:#fff;border-color:#2b6cb0;color:#2b6cb0" onclick="window._laOpen=null;recordEvent('${e.key}_bi')">${_star('両側')}両側</button>`);
     return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:4px;background:#eaf3fb;border:1px solid #7fb8e0;border-radius:10px;padding:2px 6px">`
       + `<span style="font-size:12px;color:#1a5478;font-weight:700">${e.label}:</span>`
       + opts.join('')
