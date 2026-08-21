@@ -406,7 +406,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <span id="facilityIcon">🏥</span><span id="facilityName">未設定</span>
         <span id="syncStatus" style="font-size:10px;opacity:.7">⏸</span>
       </button>
-      <button class="btn-new" onclick="openNewCaseSheet()">＋ 新規症例</button>
+      <button class="btn-new" onclick="newCase()">＋ 新規症例</button>
     </div>
   </div>
   <div style="padding:10px 14px 0">
@@ -434,10 +434,6 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <div class="tab" onclick="switchTab(3)"><span class="ti">⏱️</span>術中/薬剤</div>
     <div class="tab" onclick="switchTab(4)"><span class="ti">📋</span>合併/回復</div>
   </nav>
-  <div id="returnBanner" style="display:none;background:#fff7e6;border-bottom:1.5px solid #f0c074;padding:7px 12px;font-size:12.5px;font-weight:700;color:#a35614;text-align:center">
-    📖 過去のカルテを開いています
-    <button type="button" onclick="returnToCurrentCase()" style="margin-left:10px;background:#fff;border:1.5px solid #f0c074;border-radius:8px;padding:5px 12px;font-size:12.5px;font-weight:700;color:#a35614;cursor:pointer;font-family:inherit">↩ 元の症例へ戻る</button>
-  </div>
   <div class="form-main">
 
     <!-- ========== TAB 0: 患者/術前 ========== -->
@@ -458,7 +454,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           </div>
           <div class="frow">
             <span class="flabel">氏名</span>
-            <input class="fin" type="text" id="f_patientName" placeholder="苗字 ペット名（カタカナ例: タナカ ポチ）" oninput="autoSave();renderPatientHistory()">
+            <input class="fin" type="text" id="f_patientName" placeholder="苗字 ペット名（カタカナ例: タナカ ポチ）" oninput="autoSave()">
           </div>
           <div class="frow">
             <span class="flabel">動物種</span>
@@ -530,10 +526,6 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="frow">
             <span class="flabel flabel-w">事前投与中薬剤</span>
             <input class="fin" type="text" id="f_preMeds" placeholder="薬剤名" oninput="autoSave()">
-          </div>
-          <div id="patientHistory" style="display:none;margin-top:10px">
-            <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">🕘 この患者の過去の麻酔歴</div>
-            <div id="patientHistoryList" style="border:1.5px solid var(--border);border-radius:10px;background:#f8fafc;padding:4px 0"></div>
           </div>
         </div>
       </div>
@@ -1047,34 +1039,6 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <!-- ========== TAB 4: 合併症/回復/申し送り ========== -->
     <div class="panel" id="panel4">
 
-      <div class="card acc" id="acc_c9">
-        <div class="c-hdr" onclick="toggleAcc('c9')"><span><span class="acc-arrow">▶</span>経過メモ・インシデント<span class="acc-badge" id="badge_c9"></span></span><span class="c-hdr-en">Phase notes</span></div>
-        <div class="c-sum" id="sum_c9" onclick="toggleAcc('c9')"></div>
-        <div class="c-body">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">各段階のひとことメモ。トラブルがあった段階は ⚠️ をON（過去の麻酔歴に赤く表示され、次回の麻酔時にすぐ分かります）</div>
-          <div class="frow" style="align-items:flex-start">
-            <span class="flabel">導入</span>
-            <div class="chk-item" onclick="toggleChk(this,'phaseFlagInd');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <textarea class="ftxt" id="f_phaseNoteInd" style="min-height:52px;flex:1;overflow:hidden;resize:none" placeholder="様子・対応・次回への注意（例: 迷走神経反射でHR低下→アトロピンで回復。マスク導入は嫌がる）" oninput="autoSave();_autoGrow(this)"></textarea>
-          </div>
-          <div class="frow" style="align-items:flex-start">
-            <span class="flabel">維持</span>
-            <div class="chk-item" onclick="toggleChk(this,'phaseFlagMaint');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <textarea class="ftxt" id="f_phaseNoteMaint" style="min-height:52px;flex:1;overflow:hidden;resize:none" placeholder="様子・対応（例: 執刀後30分からMAP50台が続きエフェドリン2回。イソフル1.5%で安定）" oninput="autoSave();_autoGrow(this)"></textarea>
-          </div>
-          <div class="frow" style="align-items:flex-start">
-            <span class="flabel">覚醒</span>
-            <div class="chk-item" onclick="toggleChk(this,'phaseFlagWake');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <textarea class="ftxt" id="f_phaseNoteWake" style="min-height:52px;flex:1;overflow:hidden;resize:none" placeholder="様子・対応（例: 抜管後に興奮強くメデトミジン追加。抜管は嚥下確認後スムーズ）" oninput="autoSave();_autoGrow(this)"></textarea>
-          </div>
-          <div class="frow" style="align-items:flex-start">
-            <span class="flabel">術後</span>
-            <div class="chk-item" onclick="toggleChk(this,'phaseFlagPost');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <textarea class="ftxt" id="f_phaseNotePost" style="min-height:52px;flex:1;overflow:hidden;resize:none" placeholder="退院までの様子（例: 夜間も静かで食欲あり。疼痛スコア低め、追加鎮痛なし）" oninput="autoSave();_autoGrow(this)"></textarea>
-          </div>
-        </div>
-      </div>
-
       <div class="card acc" id="acc_c6">
         <div class="c-hdr" onclick="toggleAcc('c6')"><span><span class="acc-arrow">▶</span>6. 合併症<span class="acc-badge" id="badge_c6"></span></span><span class="c-hdr-en">Complications</span></div>
         <div class="c-sum" id="sum_c6" onclick="toggleAcc('c6')"></div>
@@ -1225,44 +1189,6 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 <div id="printView"></div>
 
 <!-- ========== PRESET EDITOR MODAL ========== -->
-<style>
-.ncs-opt{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;font-family:inherit;font-size:14px;color:var(--text)}
-.ncs-opt:active{background:#eaf3fb;border-color:var(--blue)}
-.ncs-sub{font-size:11.5px;color:var(--muted);font-weight:400}
-.ncs-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #f0f4f8;cursor:pointer;font-size:13.5px;min-height:44px}
-.ncs-row:active{background:#eaf3fb}
-</style>
-<!-- 新規症例: まっさら or 過去症例から引き継ぎ -->
-<div class="modal-overlay" id="newCaseModal" onclick="if(event.target===this)closeNewCaseSheet()">
-  <div class="modal-box" style="max-width:420px">
-    <div class="modal-hdr">
-      <span>新規症例を作成</span>
-      <button class="modal-close" onclick="closeNewCaseSheet()">×</button>
-    </div>
-    <div class="modal-body">
-      <button type="button" class="ncs-opt" onclick="closeNewCaseSheet();newCase()"><span style="font-size:20px">🆕</span><span><b>まっさらで作成</b><br><span class="ncs-sub">すべて空欄から入力</span></span></button>
-      <button type="button" class="ncs-opt" onclick="showNcsPick()"><span style="font-size:20px">🔁</span><span><b>過去症例から引き継ぐ（再麻酔）</b><br><span class="ncs-sub">カルテID・名前など患者情報をコピー（プラン・記録は引き継がない）</span></span></button>
-      <div id="ncsPick" style="display:none;margin-top:10px">
-        <input class="fin" type="text" id="ncsSearch" placeholder="🔎 名前・カルテID・術式で検索" oninput="renderNcsList()" autocomplete="off" style="width:100%">
-        <div id="ncsList" style="max-height:300px;overflow-y:auto;margin-top:8px;border:1.5px solid var(--border);border-radius:10px"></div>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- 症例削除の確認 -->
-<div class="modal-overlay" id="delCaseModal" onclick="if(event.target===this)closeDelCase()">
-  <div class="modal-box" style="max-width:380px">
-    <div class="modal-hdr"><span>症例を削除</span><button class="modal-close" onclick="closeDelCase()">×</button></div>
-    <div class="modal-body">
-      <div id="delCaseInfo" style="font-size:14px;line-height:1.6;margin-bottom:10px"></div>
-      <div style="font-size:12.5px;color:#c0392b;font-weight:700;margin-bottom:14px">この操作は取り消せません。Sheetsからも削除されます。</div>
-      <div style="display:flex;gap:10px">
-        <button type="button" onclick="closeDelCase()" style="flex:1;min-height:48px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-weight:700;color:var(--muted);font-family:inherit;font-size:14px;cursor:pointer">キャンセル</button>
-        <button type="button" onclick="confirmDelCase()" style="flex:1;min-height:48px;border:none;border-radius:10px;background:#c0392b;color:#fff;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">削除する</button>
-      </div>
-    </div>
-  </div>
-</div>
 <div class="modal-overlay" id="gauzeModal">
   <div class="modal-box" style="max-width:420px">
     <div class="modal-hdr" style="background:#c0392b">⚠️ 抜管前チェック
@@ -2194,7 +2120,7 @@ async function loadPresetsFromSheets() {
     });
     // Sheets未保存の拡張項目は localStorage キャッシュで補完（Sheets値が優先）
     try {
-      const cached = JSON.parse(localStorage.getItem('vet_mhm_presets') || '{}');
+      const cached = JSON.parse(localStorage.getItem('vet_ang_presets') || '{}');
       Object.keys(presets).forEach(k => {
         if (!cached[k]) return;
         EXTRA_PRESET_FIELDS.forEach(f => {
@@ -2243,7 +2169,7 @@ async function loadPresets() {
     // 2) localStorage フォールバック
     let fromLocal = null;
     try {
-      const stored = localStorage.getItem('vet_mhm_presets');
+      const stored = localStorage.getItem('vet_ang_presets');
       if (stored) fromLocal = JSON.parse(stored);
     } catch(e) {}
     if (fromLocal && Object.keys(fromLocal).length > 0) {
@@ -2263,7 +2189,7 @@ async function loadPresets() {
 }
 
 function savePresetsToStorage() {
-  try { localStorage.setItem('vet_mhm_presets', JSON.stringify(userPresets)); } catch(e){}
+  try { localStorage.setItem('vet_ang_presets', JSON.stringify(userPresets)); } catch(e){}
 }
 
 // プリセットバーを描画
@@ -2535,14 +2461,14 @@ async function savePresetEditor() {
 // SHEETS SYNC（Google Spreadsheet連携）
 // ─────────────────────────────────────────────────
 const SHEETS_DEFAULT = {
-  spreadsheetId: '194JpBh1ac8mXNzrqZMWfSYwakqRgKOxOQ2yeZ5LVauM',
-  webappUrl: 'https://script.google.com/macros/s/AKfycbwuIfxG0MogJ4VG5aw5AhRX7MRiXvbXzj_gO8tGqO7aITYfG8fSV8D5j92x4sG_QHj0pQ/exec',
-  facility: 'MHM',
+  spreadsheetId: '1LizbX1BQPprLNikk7CPKIRR2GN2sNcsSyg9mUZRmV2I',
+  webappUrl: 'https://script.google.com/macros/s/AKfycbx3LKoMw0pXFjombv7nl0X_45opzCfmUSzNKO5g5Aw_NdkYjNQGA-DuE3XD7D38161h/exec',
+  facility: 'ANG',
   enabled: true,
 };
 
 const FACILITY_LABELS_FALLBACK = {
-  MHM:'MHM',
+  ANG:'ANG',
 };
 
 let sheetsConfig = { ...SHEETS_DEFAULT };
@@ -2595,19 +2521,19 @@ document.addEventListener('focusout', e => {
 
 function loadSheetsConfig() {
   try {
-    const stored = localStorage.getItem('vet_mhm_sheets_config');
+    const stored = localStorage.getItem('vet_ang_sheets_config');
     if (stored) sheetsConfig = { ...SHEETS_DEFAULT, ...JSON.parse(stored) };
   } catch(e) {}
   try {
-    const q = localStorage.getItem('vet_mhm_push_queue');
+    const q = localStorage.getItem('vet_ang_push_queue');
     if (q) pushQueue = JSON.parse(q);
   } catch(e) { pushQueue = []; }
 }
 function saveSheetsConfig() {
-  try { localStorage.setItem('vet_mhm_sheets_config', JSON.stringify(sheetsConfig)); } catch(e){}
+  try { localStorage.setItem('vet_ang_sheets_config', JSON.stringify(sheetsConfig)); } catch(e){}
 }
 function savePushQueue() {
-  try { localStorage.setItem('vet_mhm_push_queue', JSON.stringify(pushQueue)); } catch(e){}
+  try { localStorage.setItem('vet_ang_push_queue', JSON.stringify(pushQueue)); } catch(e){}
 }
 
 function csvUrl(sheet) {
@@ -3458,8 +3384,6 @@ function makeCase() {
     antagonistTime:'', extubation:'', returnToWard:'',
     anesthDur:'', surgDur:'', events:'',
     // complications
-    phaseFlagInd:false, phaseFlagMaint:false, phaseFlagWake:false, phaseFlagPost:false,
-    phaseNoteInd:'', phaseNoteMaint:'', phaseNoteWake:'', phaseNotePost:'',
     compInductBreathing:false, compInductUpperAirway:false, compInductApnea:false,
     compInductLaryngospasm:false, compInductCyanosis:false, compInductVomiting:false,
     compInductExcitement:false,
@@ -3503,7 +3427,7 @@ function makeCase() {
 // STORAGE
 // ─────────────────────────────────────────────────
 function loadStorage() {
-  try { cases = JSON.parse(localStorage.getItem('vet_mhm_cases') || '[]'); }
+  try { cases = JSON.parse(localStorage.getItem('vet_ang_cases') || '[]'); }
   catch(e) { cases = []; }
   // データのbackfill
   let migrated = false;
@@ -3531,13 +3455,13 @@ function loadStorage() {
   if (migrated) saveStorage();
 }
 function saveStorage() {
-  try { localStorage.setItem('vet_mhm_cases', JSON.stringify(cases)); } catch(e){}
+  try { localStorage.setItem('vet_ang_cases', JSON.stringify(cases)); } catch(e){}
 }
 
 // ── リロード復帰 & 離脱時の保存 ──────────────────────
 // iOS(Safari/ホーム画面起動)はメモリ不足でタブを破棄→再読み込みすることがあり、
 // その際に (a) 一覧へ戻ってしまう (b) 保存待ち(800ms)中の入力が消える、を防ぐ。
-const OPEN_CASE_KEY = 'vet_mhm_open_case';
+const OPEN_CASE_KEY = 'vet_ang_open_case';
 function markOpenCase(id) {
   try { id ? localStorage.setItem(OPEN_CASE_KEY, id) : localStorage.removeItem(OPEN_CASE_KEY); } catch(e){}
 }
@@ -3680,253 +3604,14 @@ function newCase() {
   openForm();
 }
 
-// 新規症例の作成方法を選ぶ（まっさら / 過去症例から患者情報を引き継ぎ）
-function openNewCaseSheet() {
-  const pick = document.getElementById('ncsPick');
-  if (pick) pick.style.display = 'none';
-  const si = document.getElementById('ncsSearch');
-  if (si) si.value = '';
-  document.getElementById('newCaseModal').classList.add('on');
-}
-function closeNewCaseSheet() { document.getElementById('newCaseModal').classList.remove('on'); }
-function showNcsPick() {
-  document.getElementById('ncsPick').style.display = '';
-  renderNcsList();
-  const si = document.getElementById('ncsSearch');
-  if (si) si.focus();
-}
-// 過去症例リスト: 検索(名前/カルテID/術式)＋同一患者は最新1件に集約
-function renderNcsList() {
-  const el = document.getElementById('ncsList');
-  if (!el) return;
-  const fac = (sheetsConfig && sheetsConfig.facility) || '';
-  let list = fac ? cases.filter(c => !c.facility || c.facility === fac) : cases.slice();
-  const q = ((document.getElementById('ncsSearch') || {}).value || '').trim().toLowerCase();
-  if (q) list = list.filter(c => {
-    const hay = `${c.ownerName||''} ${c.patientName||''} ${c.caseNo||''} ${c.procedure||''} ${c.diagnosis||''}`.toLowerCase();
-    return q.split(/\s+/).every(t => hay.includes(t));
-  });
-  list.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  const seen = new Set(), rows = [];
-  list.forEach(c => {
-    const k = `${c.caseNo || ''}|${c.patientName || c.ownerName || ''}`;
-    if (seen.has(k)) return;
-    seen.add(k);
-    rows.push(c);
-  });
-  if (!rows.length) {
-    el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px">該当する症例がありません</div>';
-    return;
-  }
-  el.innerHTML = rows.slice(0, 50).map(c => {
-    const sp = c.species === 'dog' ? '🐶' : c.species === 'cat' ? '🐱' : c.species === 'rabbit' ? '🐰' : '🐾';
-    const nm = c.patientName || c.ownerName || '—';
-    return `<div class="ncs-row" onclick="closeNewCaseSheet();copyCaseAsNew('${c.id}')">
-      <span>${sp}</span>
-      <span style="font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm)}</span>
-      <span style="color:var(--muted);font-size:11.5px;white-space:nowrap">${c.caseNo ? 'No.' + esc(c.caseNo) + ' | ' : ''}前回 ${esc(c.date || '')}</span>
-    </div>`;
-  }).join('');
-}
-// 経過メモのtextareaは内容に合わせて自動で高さを変える(狭い枠内スクロール防止)
-function _autoGrow(el) {
-  if (!el || el.offsetParent === null) return; // 非表示中は測定不可
-  el.style.height = 'auto';
-  el.style.height = Math.max(52, el.scrollHeight) + 'px';
-}
-function _growPhaseNotes() {
-  ['f_phaseNoteInd','f_phaseNoteMaint','f_phaseNoteWake','f_phaseNotePost']
-    .forEach(id => _autoGrow(document.getElementById(id)));
-}
-
-// 患者情報に同じ患者の過去麻酔歴を表示。IDが入っていればID一致、
-// 無ければ 名前＋動物種 一致で探す(現在の症例自身は除外)。
-// 段階ごとのトラブル判定: ⚠️フラグ or 合併症チェック or 覚醒quality≠良好
-const PHASE_COMPS_IND = ['compInductBreathing','compInductUpperAirway','compInductApnea','compInductLaryngospasm','compInductCyanosis','compInductVomiting','compInductExcitement'];
-const PHASE_COMPS_MAINT = ['compVomiting','compSeizure','compCardiacArrest','compDeath','compApnea','compHypothermia','compHyperthermia','compBleed','compTachy','compBrady','compHtn','compHypotension','compArrhythmia','compTachyBreath','compBradyBreath','compHypoxemia','compHypocapnia','compHypercapnia'];
-function caseTroubles(c) {
-  const t = [];
-  if (c.phaseFlagInd || PHASE_COMPS_IND.some(k => c[k])) t.push({ ph: '導入', note: c.phaseNoteInd || '' });
-  if (c.phaseFlagMaint || PHASE_COMPS_MAINT.some(k => c[k])) t.push({ ph: '維持', note: c.phaseNoteMaint || '' });
-  const wakeBad = c.recQuality && c.recQuality !== '良好';
-  if (c.phaseFlagWake || wakeBad) t.push({ ph: '覚醒', note: c.phaseNoteWake || (wakeBad ? '覚醒' + c.recQuality : '') });
-  if (c.phaseFlagPost) t.push({ ph: '術後', note: c.phaseNotePost || '' });
-  return t;
-}
-// ── 過去カルテのプレビュー ──
-// 履歴行タップ→まず読み取り専用シートで内容を見せる。編集で開くのは確認後のみ
-// (画面が似ていて過去データを誤編集する事故の防止。スマホでも下からのシートで見やすい)。
-let _ppCaseId = null;
-let _returnCaseId = null;
-const PP_COMP_LABELS = [['compInductBreathing','呼吸(導入)'],['compInductUpperAirway','上部気道閉塞'],['compInductApnea','誘発呼吸停止'],['compInductLaryngospasm','喉頭痙攣'],['compInductCyanosis','チアノーゼ'],['compInductVomiting','嘔吐/逆流(導入)'],['compInductExcitement','不整脈(導入)'],['compVomiting','嘔吐/逆流'],['compSeizure','発作'],['compCardiacArrest','心停止'],['compDeath','安楽死'],['compApnea','無呼吸'],['compHypothermia','低体温'],['compHyperthermia','高体温'],['compBleed','大量出血'],['compTachy','頻脈'],['compBrady','徐脈'],['compHtn','高血圧'],['compHypotension','低血圧'],['compArrhythmia','不整脈'],['compTachyBreath','頻呼吸'],['compBradyBreath','徐呼吸'],['compHypoxemia','低酸素症'],['compHypocapnia','低CO₂'],['compHypercapnia','高CO₂']];
-function openPastPreview(id) {
-  const c = cases.find(x => x.id === id);
-  if (!c) return;
-  _ppCaseId = id;
-  const nm = c.patientName || c.ownerName || '—';
-  document.getElementById('ppTitle').textContent = `📖 ${nm} ｜ ${c.date || ''}`;
-  const sec = (t, body) => body ? `<div style="margin-top:7px"><span style="font-size:11px;font-weight:800;color:var(--muted)">${t}</span><div>${body}</div></div>` : '';
-  const esc2 = v => esc(String(v || ''));
-  const _tube = [c.tubeSize ? esc2(c.tubeSize) + 'mm' : '', c.tubeSizeFr ? esc2(c.tubeSizeFr) + 'Fr' : ''].filter(Boolean).join(' / ');
-  let base = `${esc2(c.procedure || c.diagnosis || '術式未記載')} ／ ${esc2(c.weight || '—')}kg`
-    + (_tube ? ` ／ ET ${_tube}` : '') + (c.intubationDifficult ? ' ／ <b style="color:#c0392b">⚠️挿管困難</b>' : '');
-  const phases = [['導入', c.phaseFlagInd, c.phaseNoteInd], ['維持', c.phaseFlagMaint, c.phaseNoteMaint], ['覚醒', c.phaseFlagWake, c.phaseNoteWake], ['術後', c.phaseFlagPost, c.phaseNotePost]]
-    .filter(x => x[1] || (x[2] || '').trim())
-    .map(x => `<div>${x[1] ? '<b style="color:#c0392b">⚠️' : '<b>'}${x[0]}</b>: ${esc2(x[2] || '(メモなし)')}</div>`).join('');
-  // 麻酔プラン: チェック済み薬剤(用量/経路)・維持・輸液・局所麻酔ブロック
-  const _gn = { premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
-  const planParts = [];
-  Object.entries(DRUG_GROUPS).forEach(([gk, defs]) => {
-    const on = defs.filter(d => c.drugs && c.drugs[d.key] && c.drugs[d.key].use)
-      .map(d => { const v = c.drugs[d.key]; return `${d.label}${(v.dose || '').trim() ? ' ' + v.dose + d.unit : ''}${v.route ? ' ' + v.route : ''}`; });
-    if (on.length) planParts.push(`<div><b>${_gn[gk] || gk}</b>: ${esc2(on.join('、'))}</div>`);
-  });
-  const _mt = [c.maintIsoflurane ? 'イソフルラン' : '', c.maintSevoflurane ? 'セボフルラン' : '', c.maintPropofol ? 'プロポフォール' : ''].filter(Boolean).join('・');
-  if (_mt) planParts.push(`<div><b>維持</b>: ${esc2(_mt)}${(c.maintConc || '').trim() ? ' ' + esc2(c.maintConc) + '%' : ''}${((c.maintO2 || '').trim() || (c.maintAir || '').trim()) ? `（O2 ${esc2(c.maintO2 || '0')} / Air ${esc2(c.maintAir || '0')} L/min）` : ''}</div>`);
-  if ((c.fluidType || '').trim() || (c.fluidRate || '').trim()) planParts.push(`<div><b>輸液</b>: ${esc2(c.fluidType || '')}${(c.fluidRate || '').trim() ? ' ' + esc2(c.fluidRate) + 'mL/kg/h' : ''}</div>`);
-  const _blk = [];
-  ['localBlocks', 'localBlocks2'].forEach(bf => {
-    Object.entries(c[bf] || {}).forEach(([k, d]) => {
-      if (!d || !d.use) return;
-      const def = getBlockDef(k);
-      const lbl = (def ? def.label : k) + (d.side ? `(${d.side})` : '');
-      if (_blk.indexOf(lbl) === -1) _blk.push(lbl);
-    });
-  });
-  if (_blk.length) planParts.push(`<div><b>局所麻酔</b>: ${esc2(_blk.join('、'))}</div>`);
-  const comps = PP_COMP_LABELS.filter(x => c[x[0]]).map(x => x[1]).join('・');
-  const wake = [c.recQuality ? `覚醒: ${esc2(c.recQuality)}` : '', (c.recNotes || '').trim() ? esc2(c.recNotes) : ''].filter(Boolean).join(' ／ ');
-  const drugs = (Array.isArray(c.drugLog) ? c.drugLog : []).filter(d => d && !d.deleted && ((d.drug || '').trim() || (d.dose || '').trim()));
-  const drugHtml = drugs.slice(0, 20).map(d =>
-    `<div style="display:flex;gap:6px;font-size:12px"><span style="color:var(--muted);font-variant-numeric:tabular-nums">${esc2(d.time)}</span><span style="flex:1">${esc2(d.drug)}</span><span>${esc2(d.dose)}</span><span style="color:var(--muted)">${esc2(d.route)}</span></div>`).join('')
-    + (drugs.length > 20 ? `<div style="color:var(--muted);font-size:11px">…他${drugs.length - 20}件</div>` : '');
-  document.getElementById('ppBody').innerHTML =
-    `<div>${base}</div>`
-    + sec('麻酔プラン', planParts.join(''))
-    + sec('経過メモ・インシデント', phases)
-    + sec('合併症チェック', comps ? `<span style="color:#c0392b">${esc2(comps)}</span>` : '')
-    + sec('覚醒・回復', wake)
-    + sec('薬剤・投与記録', drugHtml)
-    + sec('改善点・申し送り', (c.notes || '').trim() ? esc2(c.notes) : '');
-  document.getElementById('ppConfirm').style.display = 'none';
-  document.getElementById('ppBackdrop').classList.add('show');
-  document.getElementById('ppSheet').classList.add('show');
-}
-function closePastPreview() {
-  document.getElementById('ppBackdrop').classList.remove('show');
-  document.getElementById('ppSheet').classList.remove('show');
-}
-function ppJump() {
-  const id = _ppCaseId;
-  closePastPreview();
-  if (!id) return;
-  try { collectForm(); saveStorage(); } catch (_) {}
-  const back = current ? current.id : null;
-  openCase(id);
-  _returnCaseId = back;
-  _showReturnBanner(!!back);
-}
-function _showReturnBanner(show) {
-  const b = document.getElementById('returnBanner');
-  if (b) b.style.display = show ? '' : 'none';
-}
-function returnToCurrentCase() {
-  const id = _returnCaseId;
-  _returnCaseId = null;
-  _showReturnBanner(false);
-  try { collectForm(); saveStorage(); } catch (_) {}
-  if (id) openCase(id);
-}
-function renderPatientHistory() {
-  const box = document.getElementById('patientHistory');
-  const list = document.getElementById('patientHistoryList');
-  if (!box || !list || !current) return;
-  const fac = (sheetsConfig && sheetsConfig.facility) || '';
-  const pid = String(getVal('f_patientId') || current.patientId || current.caseNo || '').trim();
-  const nm = String(getVal('f_patientName') || current.patientName || '').trim();
-  let hits = cases.filter(c => {
-    if (c.id === current.id) return false;
-    if (fac && c.facility && c.facility !== fac) return false;
-    if (pid) return String(c.caseNo || '').trim() === pid || String(c.patientId || '').trim() === pid;
-    if (nm) return String(c.patientName || '').trim() === nm && c.species === current.species;
-    return false;
-  });
-  if (!hits.length) { box.style.display = 'none'; return; }
-  hits.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  list.innerHTML = hits.slice(0, 10).map(c => {
-    const proc = c.procedure || c.diagnosis || '術式未記載';
-    const wt = c.weight ? ` / ${esc(c.weight)}kg` : '';
-    const tube = c.tubeSize ? ` / ET${esc(c.tubeSize)}` : '';
-    const diff = c.intubationDifficult ? ' / ⚠️挿管困難' : '';
-    const tr = caseTroubles(c);
-    const badges = tr.map(x => `<span style="background:#ffe1e1;color:#c0392b;font-weight:800;font-size:10.5px;border-radius:5px;padding:1px 5px;margin-left:3px;white-space:nowrap">⚠️${x.ph}</span>`).join('');
-    const noteLine = tr.filter(x => x.note).map(x => `${x.ph}: ${esc(x.note)}`).join(' ／ ');
-    return `<div onclick="openPastPreview('${c.id}')" style="padding:6px 12px;border-bottom:1px solid #eef2f7;cursor:pointer">
-      <div style="display:flex;gap:8px;align-items:center;font-size:12.5px">
-        <span style="font-weight:700;font-variant-numeric:tabular-nums;color:var(--navy);white-space:nowrap">${esc(c.date || '')}</span>
-        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(proc)}${wt}${tube}${diff}${badges}</span>
-        <span style="color:var(--muted);font-size:11px;white-space:nowrap">›</span>
-      </div>
-      ${noteLine ? `<div style="font-size:11.5px;color:#a33;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">└ ${noteLine}</div>` : ''}
-    </div>`;
-  }).join('');
-  if (list.lastElementChild) list.lastElementChild.style.borderBottom = 'none';
-  box.style.display = '';
-}
-
-// 再麻酔用: 過去症例から患者情報だけ引き継いだ新規症例を作る。
-// 引き継ぐのは患者の基本情報(カルテID/名前/動物種/品種/生年月日/年齢/性別/体重/BCS/担当)と、
-// 患者固有で変わらない気管チューブサイズ・挿管困難の有無。
-// 日付は今日・進捗は予約から。麻酔プラン・術式・イベント記録・薬剤ログはコピーしない。
-function copyCaseAsNew(id) {
-  const src = cases.find(c => c.id === id);
-  if (!src) return;
-  const c = makeCase();
-  ['caseNo','patientId','ownerName','patientName','species','breed','birthdate',
-   'ageY','ageM','sex','weight','bcs','staff',
-   'tubeSize','tubeSizeFr','intubationDifficult'].forEach(k => {
-    if (src[k] !== undefined && src[k] !== null) c[k] = src[k];
-  });
-  // patientIdとcaseNoは常に同期(片方だけの旧データ対策)
-  if (!c.patientId && c.caseNo) c.patientId = c.caseNo;
-  if (!c.caseNo && c.patientId) c.caseNo = c.patientId;
-  current = c;
-  cases.push(current);
-  saveStorage();
-  openForm();
-  const nm = c.patientName || c.ownerName || c.caseNo || '';
-  showToast(`📋 ${nm} の再麻酔症例を作成しました（患者情報を引き継ぎ）`);
-}
-
 function openCase(id) {
   current = cases.find(c => c.id === id);
   if (!current) return;
   openForm();
-  // 過去カルテ閲覧バナーは、戻る/ジャンプ以外の通常オープンでは消す
-  // (初期化中のリロード復帰などで変数が未評価でも落ちないようtryで保護)
-  try {
-    if (!_returnCaseId || current.id !== _ppCaseId) _showReturnBanner(false);
-    if (_returnCaseId && current.id === _returnCaseId) { _returnCaseId = null; _showReturnBanner(false); }
-  } catch (_) {}
 }
 
-// 症例削除: OS標準confirmはiOSのホーム画面アプリで出ないことがあるため
-// アプリ内の確認モーダルで行い、削除後はトーストで結果を知らせる。
-let _delCaseId = null;
 function deleteCase(id) {
-  const t = cases.find(c => c.id === id);
-  if (!t) return;
-  _delCaseId = id;
-  const nm = t.patientName || t.ownerName || '—';
-  document.getElementById('delCaseInfo').innerHTML =
-    `<b>${esc(nm)}</b>（${esc(t.date || '')}${t.caseNo ? ' / No.' + esc(t.caseNo) : ''}）を削除しますか？`;
-  document.getElementById('delCaseModal').classList.add('on');
-}
-function closeDelCase() { _delCaseId = null; document.getElementById('delCaseModal').classList.remove('on'); }
-function confirmDelCase() {
-  const id = _delCaseId;
-  closeDelCase();
-  if (!id) return;
+  if (!confirm('この症例を削除しますか？\n（Sheetsからも削除されます）')) return;
   const target = cases.find(c => c.id === id);
   cases = cases.filter(c => c.id !== id);
   saveStorage();
@@ -3935,7 +3620,6 @@ function confirmDelCase() {
   if (target && sheetsConfig.enabled && sheetsConfig.webappUrl && target.date && target.caseNo) {
     deleteFromSheets(target);
   }
-  showToast('🗑 症例を削除しました');
 }
 
 async function deleteFromSheets(caseObj) {
@@ -3990,11 +3674,11 @@ function nowIsoStr() {
 // ============================================================
 function getDeviceId() {
   try {
-    let id = localStorage.getItem('vet_mhm_device_id');
+    let id = localStorage.getItem('vet_fah_device_id');
     if (!id) {
       id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
          : ('dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
-      localStorage.setItem('vet_mhm_device_id', id);
+      localStorage.setItem('vet_fah_device_id', id);
     }
     return id;
   } catch (e) { return 'dev_unknown'; }
@@ -4167,7 +3851,6 @@ function openForm() {
   renderLocalBlocks();
   renderPresetBar();
   populateForm();
-  try { renderPatientHistory(); } catch(_) {}
   try { updateAccUI(); initAccStates(); } catch(_) {}
   switchTab(0);
 }
@@ -4219,7 +3902,6 @@ function populateForm() {
   // Simple text / number fields
   const fields = [
     'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
-    'phaseNoteInd','phaseNoteMaint','phaseNoteWake','phaseNotePost',
     'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
     'diagnosis','procedure','surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
     'otherComplications',
@@ -4267,7 +3949,6 @@ function populateForm() {
     'compTachyBreath','compBradyBreath','compHypothermia','compHyperthermia',
     'compBleed','compTachy','compBrady','compHtn','compHypotension',
     'compArrhythmia','compHypoxemia','compHypocapnia','compHypercapnia',
-    'phaseFlagInd','phaseFlagMaint','phaseFlagWake','phaseFlagPost',
   ];
   chks.forEach(k => {
     const el = document.querySelector(`.chk-item[onclick*="'${k}'"]`);
@@ -4350,7 +4031,6 @@ function collectForm() {
 
   const fields = [
     'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
-    'phaseNoteInd','phaseNoteMaint','phaseNoteWake','phaseNotePost',
     'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
     'diagnosis','procedure','surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
     'otherComplications',
@@ -5879,14 +5559,14 @@ function recordEvent(key) {
     const t0 = current.intubationTime;
     addFreeNote('flow', { time: shiftTime(t0, 1) });   // 酸素流量（O2/Air）
     addFreeNote('vent', { time: shiftTime(t0, 2) });   // 呼吸管理（換気・モード未選択）
-    // 維持ガス: 既定はセボフルラン（みはま仕様）。イソ選択時はイソ、プロポフォール単独(TIVA)はガスなし。
+    // 維持ガス: 既定はイソフルラン。セボ選択時はセボ、プロポフォール単独(TIVA)はガスなし。
     let gas;
-    if (current.maintIsoflurane && !current.maintSevoflurane) {
-      gas = { drugKey:'iso', drugLabel:'イソフルラン', unit:'%' };
+    if (current.maintSevoflurane && !current.maintIsoflurane) {
+      gas = { drugKey:'sevo', drugLabel:'セボフルラン', unit:'%' };
     } else if (current.maintPropofol && !current.maintIsoflurane && !current.maintSevoflurane) {
       gas = null;  // プロポフォール単独はガスなし
     } else {
-      gas = { drugKey:'sevo', drugLabel:'セボフルラン', unit:'%' };  // 既定＝セボフルラン（みはま）
+      gas = { drugKey:'iso', drugLabel:'イソフルラン', unit:'%' };  // 既定＝イソフルラン
     }
     if (gas) addFreeNote('gas', { ...gas, time: shiftTime(t0, 3) });
     addFreeNote('fluid', { time: shiftTime(t0, 4) });  // 輸液（初回はプランの輸液速度が初期値）
@@ -6008,7 +5688,6 @@ function toggleAcc(id){
     const panel=card.closest('.panel');
     if(panel) panel.querySelectorAll('.card.acc.open').forEach(c=>{ if(c!==card) c.classList.remove('open'); });
     card.classList.add('open');
-    if(id==='c9'){ try{ _growPhaseNotes(); }catch(_){} }
     setTimeout(()=>{ try{ card.scrollIntoView({behavior:'smooth',block:'start'}); }catch(_){}}, 80);
   } else {
     card.classList.remove('open');
@@ -6169,8 +5848,6 @@ function switchTab(i) {
   if (i === 1) renderHypotensionDrugs();
   // 「術中/薬剤」タブを開いたら、統合タイムラインを再描画
   if (i === 3) renderTimeline();
-  // 「合併/回復」タブを開いたら、経過メモの高さを内容に合わせる
-  if (i === 4) { try { _growPhaseNotes(); } catch (_) {} }
   // 開いたタブは常に先頭から表示（前回のスクロール位置を持ち越さない）
   const _panel = document.querySelectorAll('.panel')[i];
   if (_panel) _panel.scrollTop = 0;
@@ -6291,7 +5968,6 @@ function onCaseNoInput() {
     el.style.background = '';
     el.style.borderColor = '';
   }
-  try { renderPatientHistory(); } catch (_) {}
 }
 
 // ─────────────────────────────────────────────────
@@ -6844,26 +6520,6 @@ if (sheetsConfig.enabled) {
 .ts-ok{flex:2;min-height:50px;border:none;border-radius:12px;background:var(--blue);font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
 .ts-ok:active{background:#256fa1}
 </style>
-<!-- 過去カルテの読み取り専用プレビュー（下から出るシート） -->
-<div class="ts-backdrop" id="ppBackdrop" onclick="closePastPreview()"></div>
-<div class="ts-sheet" id="ppSheet" role="dialog" aria-label="過去カルテのプレビュー" style="max-height:85vh;overflow-y:auto">
-  <div style="display:flex;align-items:center;gap:8px">
-    <div id="ppTitle" style="flex:1;font-weight:800;font-size:15px;color:var(--navy)"></div>
-    <button class="btn-del" type="button" onclick="closePastPreview()">✕</button>
-  </div>
-  <div id="ppBody" style="font-size:13px;line-height:1.7;margin-top:6px"></div>
-  <div id="ppConfirm" style="display:none;background:#fff7e6;border:1.5px solid #f0c074;border-radius:10px;padding:10px;margin-top:10px;font-size:13px">
-    過去のカルテを<b>編集モード</b>で開きます。変更するとこの過去の記録が書き換わります。よろしいですか？
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button type="button" onclick="document.getElementById('ppConfirm').style.display='none'" style="flex:1;min-height:44px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-weight:700;color:var(--muted);font-family:inherit;font-size:13.5px;cursor:pointer">やめる</button>
-      <button type="button" onclick="ppJump()" style="flex:1;min-height:44px;border:none;border-radius:10px;background:#a35614;color:#fff;font-weight:800;font-family:inherit;font-size:13.5px;cursor:pointer">開く</button>
-    </div>
-  </div>
-  <div style="display:flex;gap:10px;margin-top:12px">
-    <button class="ts-cancel" type="button" onclick="closePastPreview()">閉じる</button>
-    <button class="ts-ok" type="button" style="background:#8b5fbf" onclick="document.getElementById('ppConfirm').style.display=''">✏️ このカルテを開く</button>
-  </div>
-</div>
 <div class="ts-backdrop" id="tsBackdrop" onclick="tsCancel()"></div>
 <div class="ts-sheet" id="tsSheet" role="dialog" aria-label="時刻を変更">
   <div class="ts-title" id="tsTitle">時刻を変更</div>
