@@ -1050,22 +1050,22 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="frow" style="align-items:flex-start">
             <span class="flabel">導入</span>
             <div class="chk-item" onclick="toggleChk(this,'phaseFlagInd');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <textarea class="ftxt" id="f_phaseNoteInd" style="min-height:52px;flex:1" placeholder="様子・対応・次回への注意（例: 迷走神経反射でHR低下→アトロピンで回復。マスク導入は嫌がる）" oninput="autoSave()"></textarea>
+            <textarea class="ftxt" id="f_phaseNoteInd" style="min-height:52px;flex:1;overflow:hidden;resize:none" placeholder="様子・対応・次回への注意（例: 迷走神経反射でHR低下→アトロピンで回復。マスク導入は嫌がる）" oninput="autoSave();_autoGrow(this)"></textarea>
           </div>
           <div class="frow" style="align-items:flex-start">
             <span class="flabel">維持</span>
             <div class="chk-item" onclick="toggleChk(this,'phaseFlagMaint');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <textarea class="ftxt" id="f_phaseNoteMaint" style="min-height:52px;flex:1" placeholder="様子・対応（例: 執刀後30分からMAP50台が続きエフェドリン2回。イソフル1.5%で安定）" oninput="autoSave()"></textarea>
+            <textarea class="ftxt" id="f_phaseNoteMaint" style="min-height:52px;flex:1;overflow:hidden;resize:none" placeholder="様子・対応（例: 執刀後30分からMAP50台が続きエフェドリン2回。イソフル1.5%で安定）" oninput="autoSave();_autoGrow(this)"></textarea>
           </div>
           <div class="frow" style="align-items:flex-start">
             <span class="flabel">覚醒</span>
             <div class="chk-item" onclick="toggleChk(this,'phaseFlagWake');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <textarea class="ftxt" id="f_phaseNoteWake" style="min-height:52px;flex:1" placeholder="様子・対応（例: 抜管後に興奮強くメデトミジン追加。抜管は嚥下確認後スムーズ）" oninput="autoSave()"></textarea>
+            <textarea class="ftxt" id="f_phaseNoteWake" style="min-height:52px;flex:1;overflow:hidden;resize:none" placeholder="様子・対応（例: 抜管後に興奮強くメデトミジン追加。抜管は嚥下確認後スムーズ）" oninput="autoSave();_autoGrow(this)"></textarea>
           </div>
           <div class="frow" style="align-items:flex-start">
             <span class="flabel">術後</span>
             <div class="chk-item" onclick="toggleChk(this,'phaseFlagPost');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <textarea class="ftxt" id="f_phaseNotePost" style="min-height:52px;flex:1" placeholder="退院までの様子（例: 夜間も静かで食欲あり。疼痛スコア低め、追加鎮痛なし）" oninput="autoSave()"></textarea>
+            <textarea class="ftxt" id="f_phaseNotePost" style="min-height:52px;flex:1;overflow:hidden;resize:none" placeholder="退院までの様子（例: 夜間も静かで食欲あり。疼痛スコア低め、追加鎮痛なし）" oninput="autoSave();_autoGrow(this)"></textarea>
           </div>
         </div>
       </div>
@@ -3723,6 +3723,17 @@ function renderNcsList() {
     </div>`;
   }).join('');
 }
+// 経過メモのtextareaは内容に合わせて自動で高さを変える(狭い枠内スクロール防止)
+function _autoGrow(el) {
+  if (!el || el.offsetParent === null) return; // 非表示中は測定不可
+  el.style.height = 'auto';
+  el.style.height = Math.max(52, el.scrollHeight) + 'px';
+}
+function _growPhaseNotes() {
+  ['f_phaseNoteInd','f_phaseNoteMaint','f_phaseNoteWake','f_phaseNotePost']
+    .forEach(id => _autoGrow(document.getElementById(id)));
+}
+
 // 患者情報に同じ患者の過去麻酔歴を表示。IDが入っていればID一致、
 // 無ければ 名前＋動物種 一致で探す(現在の症例自身は除外)。
 // 段階ごとのトラブル判定: ⚠️フラグ or 合併症チェック or 覚醒quality≠良好
@@ -5991,6 +6002,7 @@ function toggleAcc(id){
     const panel=card.closest('.panel');
     if(panel) panel.querySelectorAll('.card.acc.open').forEach(c=>{ if(c!==card) c.classList.remove('open'); });
     card.classList.add('open');
+    if(id==='c9'){ try{ _growPhaseNotes(); }catch(_){} }
     setTimeout(()=>{ try{ card.scrollIntoView({behavior:'smooth',block:'start'}); }catch(_){}}, 80);
   } else {
     card.classList.remove('open');
@@ -6151,6 +6163,8 @@ function switchTab(i) {
   if (i === 1) renderHypotensionDrugs();
   // 「術中/薬剤」タブを開いたら、統合タイムラインを再描画
   if (i === 3) renderTimeline();
+  // 「合併/回復」タブを開いたら、経過メモの高さを内容に合わせる
+  if (i === 4) { try { _growPhaseNotes(); } catch (_) {} }
   // 開いたタブは常に先頭から表示（前回のスクロール位置を持ち越さない）
   const _panel = document.querySelectorAll('.panel')[i];
   if (_panel) _panel.scrollTop = 0;
