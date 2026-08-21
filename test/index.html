@@ -454,7 +454,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           </div>
           <div class="frow">
             <span class="flabel">氏名</span>
-            <input class="fin" type="text" id="f_patientName" placeholder="苗字 ペット名（カタカナ例: タナカ ポチ）" oninput="autoSave()">
+            <input class="fin" type="text" id="f_patientName" placeholder="苗字 ペット名（カタカナ例: タナカ ポチ）" oninput="autoSave();renderPatientHistory()">
           </div>
           <div class="frow">
             <span class="flabel">動物種</span>
@@ -526,6 +526,10 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="frow">
             <span class="flabel flabel-w">事前投与中薬剤</span>
             <input class="fin" type="text" id="f_preMeds" placeholder="薬剤名" oninput="autoSave()">
+          </div>
+          <div id="patientHistory" style="display:none;margin-top:10px">
+            <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">🕘 この患者の過去の麻酔歴</div>
+            <div id="patientHistoryList" style="border:1.5px solid var(--border);border-radius:10px;background:#f8fafc;padding:4px 0"></div>
           </div>
         </div>
       </div>
@@ -3685,6 +3689,38 @@ function renderNcsList() {
     </div>`;
   }).join('');
 }
+// 患者情報に同じ患者の過去麻酔歴を表示。IDが入っていればID一致、
+// 無ければ 名前＋動物種 一致で探す(現在の症例自身は除外)。
+function renderPatientHistory() {
+  const box = document.getElementById('patientHistory');
+  const list = document.getElementById('patientHistoryList');
+  if (!box || !list || !current) return;
+  const fac = (sheetsConfig && sheetsConfig.facility) || '';
+  const pid = String(getVal('f_patientId') || current.patientId || current.caseNo || '').trim();
+  const nm = String(getVal('f_patientName') || current.patientName || '').trim();
+  let hits = cases.filter(c => {
+    if (c.id === current.id) return false;
+    if (fac && c.facility && c.facility !== fac) return false;
+    if (pid) return String(c.caseNo || '').trim() === pid || String(c.patientId || '').trim() === pid;
+    if (nm) return String(c.patientName || '').trim() === nm && c.species === current.species;
+    return false;
+  });
+  if (!hits.length) { box.style.display = 'none'; return; }
+  hits.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  list.innerHTML = hits.slice(0, 10).map(c => {
+    const proc = c.procedure || c.diagnosis || '術式未記載';
+    const wt = c.weight ? ` / ${esc(c.weight)}kg` : '';
+    const tube = c.tubeSize ? ` / ET${esc(c.tubeSize)}` : '';
+    const diff = c.intubationDifficult ? ' / ⚠️挿管困難' : '';
+    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:12.5px;border-bottom:1px solid #eef2f7">
+      <span style="font-weight:700;font-variant-numeric:tabular-nums;color:var(--navy);white-space:nowrap">${esc(c.date || '')}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(proc)}${wt}${tube}${diff}</span>
+    </div>`;
+  }).join('');
+  if (list.lastElementChild) list.lastElementChild.style.borderBottom = 'none';
+  box.style.display = '';
+}
+
 // 再麻酔用: 過去症例から患者情報だけ引き継いだ新規症例を作る。
 // 引き継ぐのは患者の基本情報(カルテID/名前/動物種/品種/生年月日/年齢/性別/体重/BCS/担当)と、
 // 患者固有で変わらない気管チューブサイズ・挿管困難の有無。
@@ -3972,6 +4008,7 @@ function openForm() {
   renderLocalBlocks();
   renderPresetBar();
   populateForm();
+  try { renderPatientHistory(); } catch(_) {}
   try { updateAccUI(); initAccStates(); } catch(_) {}
   switchTab(0);
 }
@@ -6062,6 +6099,7 @@ function onCaseNoInput() {
     el.style.background = '';
     el.style.borderColor = '';
   }
+  try { renderPatientHistory(); } catch (_) {}
 }
 
 // ─────────────────────────────────────────────────
