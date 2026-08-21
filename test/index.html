@@ -1038,6 +1038,34 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <!-- ========== TAB 4: 合併症/回復/申し送り ========== -->
     <div class="panel" id="panel4">
 
+      <div class="card acc" id="acc_c9">
+        <div class="c-hdr" onclick="toggleAcc('c9')"><span><span class="acc-arrow">▶</span>経過メモ・インシデント<span class="acc-badge" id="badge_c9"></span></span><span class="c-hdr-en">Phase notes</span></div>
+        <div class="c-sum" id="sum_c9" onclick="toggleAcc('c9')"></div>
+        <div class="c-body">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">各段階のひとことメモ。トラブルがあった段階は ⚠️ をON（過去の麻酔歴に赤く表示され、次回の麻酔時にすぐ分かります）</div>
+          <div class="frow">
+            <span class="flabel">導入</span>
+            <div class="chk-item" onclick="toggleChk(this,'phaseFlagInd');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
+            <input class="fin" type="text" id="f_phaseNoteInd" placeholder="ひとこと（例: 挿管2回目で成功）" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">維持</span>
+            <div class="chk-item" onclick="toggleChk(this,'phaseFlagMaint');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
+            <input class="fin" type="text" id="f_phaseNoteMaint" placeholder="ひとこと（例: 低血圧ぎみ→エフェドリンで対応）" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">覚醒</span>
+            <div class="chk-item" onclick="toggleChk(this,'phaseFlagWake');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
+            <input class="fin" type="text" id="f_phaseNoteWake" placeholder="ひとこと（例: 興奮強め・鎮静追加）" oninput="autoSave()">
+          </div>
+          <div class="frow">
+            <span class="flabel">術後</span>
+            <div class="chk-item" onclick="toggleChk(this,'phaseFlagPost');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
+            <input class="fin" type="text" id="f_phaseNotePost" placeholder="ひとこと（例: 夜間も食欲あり問題なし）" oninput="autoSave()">
+          </div>
+        </div>
+      </div>
+
       <div class="card acc" id="acc_c6">
         <div class="c-hdr" onclick="toggleAcc('c6')"><span><span class="acc-arrow">▶</span>6. 合併症<span class="acc-badge" id="badge_c6"></span></span><span class="c-hdr-en">Complications</span></div>
         <div class="c-sum" id="sum_c6" onclick="toggleAcc('c6')"></div>
@@ -3421,6 +3449,8 @@ function makeCase() {
     antagonistTime:'', extubation:'', returnToWard:'',
     anesthDur:'', surgDur:'', events:'',
     // complications
+    phaseFlagInd:false, phaseFlagMaint:false, phaseFlagWake:false, phaseFlagPost:false,
+    phaseNoteInd:'', phaseNoteMaint:'', phaseNoteWake:'', phaseNotePost:'',
     compInductBreathing:false, compInductUpperAirway:false, compInductApnea:false,
     compInductLaryngospasm:false, compInductCyanosis:false, compInductVomiting:false,
     compInductExcitement:false,
@@ -3691,6 +3721,23 @@ function renderNcsList() {
 }
 // 患者情報に同じ患者の過去麻酔歴を表示。IDが入っていればID一致、
 // 無ければ 名前＋動物種 一致で探す(現在の症例自身は除外)。
+// 段階ごとのトラブル判定: ⚠️フラグ or 合併症チェック or 覚醒quality≠良好
+const PHASE_COMPS_IND = ['compInductBreathing','compInductUpperAirway','compInductApnea','compInductLaryngospasm','compInductCyanosis','compInductVomiting','compInductExcitement'];
+const PHASE_COMPS_MAINT = ['compVomiting','compSeizure','compCardiacArrest','compDeath','compApnea','compHypothermia','compHyperthermia','compBleed','compTachy','compBrady','compHtn','compHypotension','compArrhythmia','compTachyBreath','compBradyBreath','compHypoxemia','compHypocapnia','compHypercapnia'];
+function caseTroubles(c) {
+  const t = [];
+  if (c.phaseFlagInd || PHASE_COMPS_IND.some(k => c[k])) t.push({ ph: '導入', note: c.phaseNoteInd || '' });
+  if (c.phaseFlagMaint || PHASE_COMPS_MAINT.some(k => c[k])) t.push({ ph: '維持', note: c.phaseNoteMaint || '' });
+  const wakeBad = c.recQuality && c.recQuality !== '良好';
+  if (c.phaseFlagWake || wakeBad) t.push({ ph: '覚醒', note: c.phaseNoteWake || (wakeBad ? '覚醒' + c.recQuality : '') });
+  if (c.phaseFlagPost) t.push({ ph: '術後', note: c.phaseNotePost || '' });
+  return t;
+}
+// 履歴行タップ: 現症例を保存してからその過去カルテを開く
+function jumpToCase(id) {
+  try { collectForm(); saveStorage(); } catch (_) {}
+  openCase(id);
+}
 function renderPatientHistory() {
   const box = document.getElementById('patientHistory');
   const list = document.getElementById('patientHistoryList');
@@ -3712,9 +3759,16 @@ function renderPatientHistory() {
     const wt = c.weight ? ` / ${esc(c.weight)}kg` : '';
     const tube = c.tubeSize ? ` / ET${esc(c.tubeSize)}` : '';
     const diff = c.intubationDifficult ? ' / ⚠️挿管困難' : '';
-    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 12px;font-size:12.5px;border-bottom:1px solid #eef2f7">
-      <span style="font-weight:700;font-variant-numeric:tabular-nums;color:var(--navy);white-space:nowrap">${esc(c.date || '')}</span>
-      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(proc)}${wt}${tube}${diff}</span>
+    const tr = caseTroubles(c);
+    const badges = tr.map(x => `<span style="background:#ffe1e1;color:#c0392b;font-weight:800;font-size:10.5px;border-radius:5px;padding:1px 5px;margin-left:3px;white-space:nowrap">⚠️${x.ph}</span>`).join('');
+    const noteLine = tr.filter(x => x.note).map(x => `${x.ph}: ${esc(x.note)}`).join(' ／ ');
+    return `<div onclick="jumpToCase('${c.id}')" style="padding:6px 12px;border-bottom:1px solid #eef2f7;cursor:pointer">
+      <div style="display:flex;gap:8px;align-items:center;font-size:12.5px">
+        <span style="font-weight:700;font-variant-numeric:tabular-nums;color:var(--navy);white-space:nowrap">${esc(c.date || '')}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(proc)}${wt}${tube}${diff}${badges}</span>
+        <span style="color:var(--muted);font-size:11px;white-space:nowrap">›</span>
+      </div>
+      ${noteLine ? `<div style="font-size:11.5px;color:#a33;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">└ ${noteLine}</div>` : ''}
     </div>`;
   }).join('');
   if (list.lastElementChild) list.lastElementChild.style.borderBottom = 'none';
@@ -4059,6 +4113,7 @@ function populateForm() {
   // Simple text / number fields
   const fields = [
     'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
+    'phaseNoteInd','phaseNoteMaint','phaseNoteWake','phaseNotePost',
     'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
     'diagnosis','procedure','surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
     'otherComplications',
@@ -4106,6 +4161,7 @@ function populateForm() {
     'compTachyBreath','compBradyBreath','compHypothermia','compHyperthermia',
     'compBleed','compTachy','compBrady','compHtn','compHypotension',
     'compArrhythmia','compHypoxemia','compHypocapnia','compHypercapnia',
+    'phaseFlagInd','phaseFlagMaint','phaseFlagWake','phaseFlagPost',
   ];
   chks.forEach(k => {
     const el = document.querySelector(`.chk-item[onclick*="'${k}'"]`);
@@ -4188,6 +4244,7 @@ function collectForm() {
 
   const fields = [
     'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
+    'phaseNoteInd','phaseNoteMaint','phaseNoteWake','phaseNotePost',
     'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
     'diagnosis','procedure','surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
     'otherComplications',
