@@ -4906,7 +4906,7 @@ function renderTimelineList() {
     }
     const _dd = drugDefForLog(en);
     const _perKg = (String(en.dose || '').match(/^\s*([\d.]+)/) || [, ''])[1];
-    const _unit = _dd ? _dd.unit : ((String(en.dose || '').match(/^\s*[\d.]*\s*([^\s=]+)/) || [, ''])[1] || '');
+    const _unit = _dd ? _dd.unit : ((String(en.dose || '').match(/^\s*[\d.]*\s*([^\s=\d.][^\s=]*)/) || [, ''])[1] || '');
     // 追加薬剤(定義なし)の単位/経路: チップをタップで行の下に選択ボタンを展開
     let _optLine = '';
     if (!_dd && _drugOptOpen && _drugOptOpen.idx === en.idx) {
@@ -4940,7 +4940,7 @@ function editDrugLog(idx, field, val) {
 // 薬剤ログ1件に対応する薬剤定義を取得。同名薬は保存済み用量の単位に一致するものを優先。
 function drugDefForLog(r) {
   if (!r) return null;
-  const storedUnit = (String(r.dose || '').match(/^\s*[\d.]*\s*([^\s=]+)/) || [, ''])[1];
+  const storedUnit = (String(r.dose || '').match(/^\s*[\d.]*\s*([^\s=\d.][^\s=]*)/) || [, ''])[1];
   const cands = Object.values(DRUG_GROUPS).flat().filter(x => x.label === r.drug);
   return cands.find(x => x.unit === storedUnit) || cands[0] || null;
 }
@@ -4956,7 +4956,7 @@ function editDrugLogDose(idx, perKgStr) {
     r.dose = formatDose(dd, perKg);
   } else {
     // 薬剤定義が無い/数値でない時は、既存の単位を保って数値だけ差し替え
-    const u = (String(r.dose || '').match(/^\s*[\d.]*\s*([^\s=]+)/) || [, ''])[1];
+    const u = (String(r.dose || '').match(/^\s*[\d.]*\s*([^\s=\d.][^\s=]*)/) || [, ''])[1];
     r.dose = (perKgStr || '') + (u || '');
   }
   autoSave();
