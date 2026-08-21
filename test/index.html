@@ -434,6 +434,10 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <div class="tab" onclick="switchTab(3)"><span class="ti">⏱️</span>術中/薬剤</div>
     <div class="tab" onclick="switchTab(4)"><span class="ti">📋</span>合併/回復</div>
   </nav>
+  <div id="returnBanner" style="display:none;background:#fff7e6;border-bottom:1.5px solid #f0c074;padding:7px 12px;font-size:12.5px;font-weight:700;color:#a35614;text-align:center">
+    📖 過去のカルテを開いています
+    <button type="button" onclick="returnToCurrentCase()" style="margin-left:10px;background:#fff;border:1.5px solid #f0c074;border-radius:8px;padding:5px 12px;font-size:12.5px;font-weight:700;color:#a35614;cursor:pointer;font-family:inherit">↩ 元の症例へ戻る</button>
+  </div>
   <div class="form-main">
 
     <!-- ========== TAB 0: 患者/術前 ========== -->
@@ -1043,25 +1047,25 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <div class="c-sum" id="sum_c9" onclick="toggleAcc('c9')"></div>
         <div class="c-body">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px">各段階のひとことメモ。トラブルがあった段階は ⚠️ をON（過去の麻酔歴に赤く表示され、次回の麻酔時にすぐ分かります）</div>
-          <div class="frow">
+          <div class="frow" style="align-items:flex-start">
             <span class="flabel">導入</span>
             <div class="chk-item" onclick="toggleChk(this,'phaseFlagInd');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <input class="fin" type="text" id="f_phaseNoteInd" placeholder="ひとこと（例: 挿管2回目で成功）" oninput="autoSave()">
+            <textarea class="ftxt" id="f_phaseNoteInd" style="min-height:52px;flex:1" placeholder="様子・対応・次回への注意（例: 迷走神経反射でHR低下→アトロピンで回復。マスク導入は嫌がる）" oninput="autoSave()"></textarea>
           </div>
-          <div class="frow">
+          <div class="frow" style="align-items:flex-start">
             <span class="flabel">維持</span>
             <div class="chk-item" onclick="toggleChk(this,'phaseFlagMaint');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <input class="fin" type="text" id="f_phaseNoteMaint" placeholder="ひとこと（例: 低血圧ぎみ→エフェドリンで対応）" oninput="autoSave()">
+            <textarea class="ftxt" id="f_phaseNoteMaint" style="min-height:52px;flex:1" placeholder="様子・対応（例: 執刀後30分からMAP50台が続きエフェドリン2回。イソフル1.5%で安定）" oninput="autoSave()"></textarea>
           </div>
-          <div class="frow">
+          <div class="frow" style="align-items:flex-start">
             <span class="flabel">覚醒</span>
             <div class="chk-item" onclick="toggleChk(this,'phaseFlagWake');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <input class="fin" type="text" id="f_phaseNoteWake" placeholder="ひとこと（例: 興奮強め・鎮静追加）" oninput="autoSave()">
+            <textarea class="ftxt" id="f_phaseNoteWake" style="min-height:52px;flex:1" placeholder="様子・対応（例: 抜管後に興奮強くメデトミジン追加。抜管は嚥下確認後スムーズ）" oninput="autoSave()"></textarea>
           </div>
-          <div class="frow">
+          <div class="frow" style="align-items:flex-start">
             <span class="flabel">術後</span>
             <div class="chk-item" onclick="toggleChk(this,'phaseFlagPost');renderPatientHistory()" style="flex:0 0 auto"><div class="chk-box"></div><span class="chk-label">⚠️</span></div>
-            <input class="fin" type="text" id="f_phaseNotePost" placeholder="ひとこと（例: 夜間も食欲あり問題なし）" oninput="autoSave()">
+            <textarea class="ftxt" id="f_phaseNotePost" style="min-height:52px;flex:1" placeholder="退院までの様子（例: 夜間も静かで食欲あり。疼痛スコア低め、追加鎮痛なし）" oninput="autoSave()"></textarea>
           </div>
         </div>
       </div>
@@ -3733,10 +3737,66 @@ function caseTroubles(c) {
   if (c.phaseFlagPost) t.push({ ph: '術後', note: c.phaseNotePost || '' });
   return t;
 }
-// 履歴行タップ: 現症例を保存してからその過去カルテを開く
-function jumpToCase(id) {
+// ── 過去カルテのプレビュー ──
+// 履歴行タップ→まず読み取り専用シートで内容を見せる。編集で開くのは確認後のみ
+// (画面が似ていて過去データを誤編集する事故の防止。スマホでも下からのシートで見やすい)。
+let _ppCaseId = null;
+let _returnCaseId = null;
+const PP_COMP_LABELS = [['compInductBreathing','呼吸(導入)'],['compInductUpperAirway','上部気道閉塞'],['compInductApnea','誘発呼吸停止'],['compInductLaryngospasm','喉頭痙攣'],['compInductCyanosis','チアノーゼ'],['compInductVomiting','嘔吐/逆流(導入)'],['compInductExcitement','不整脈(導入)'],['compVomiting','嘔吐/逆流'],['compSeizure','発作'],['compCardiacArrest','心停止'],['compDeath','安楽死'],['compApnea','無呼吸'],['compHypothermia','低体温'],['compHyperthermia','高体温'],['compBleed','大量出血'],['compTachy','頻脈'],['compBrady','徐脈'],['compHtn','高血圧'],['compHypotension','低血圧'],['compArrhythmia','不整脈'],['compTachyBreath','頻呼吸'],['compBradyBreath','徐呼吸'],['compHypoxemia','低酸素症'],['compHypocapnia','低CO₂'],['compHypercapnia','高CO₂']];
+function openPastPreview(id) {
+  const c = cases.find(x => x.id === id);
+  if (!c) return;
+  _ppCaseId = id;
+  const nm = c.patientName || c.ownerName || '—';
+  document.getElementById('ppTitle').textContent = `📖 ${nm} ｜ ${c.date || ''}`;
+  const sec = (t, body) => body ? `<div style="margin-top:7px"><span style="font-size:11px;font-weight:800;color:var(--muted)">${t}</span><div>${body}</div></div>` : '';
+  const esc2 = v => esc(String(v || ''));
+  let base = `${esc2(c.procedure || c.diagnosis || '術式未記載')} ／ ${esc2(c.weight || '—')}kg`
+    + (c.tubeSize ? ` ／ ET ${esc2(c.tubeSize)}mm` : '') + (c.intubationDifficult ? ' ／ <b style="color:#c0392b">⚠️挿管困難</b>' : '');
+  const phases = [['導入', c.phaseFlagInd, c.phaseNoteInd], ['維持', c.phaseFlagMaint, c.phaseNoteMaint], ['覚醒', c.phaseFlagWake, c.phaseNoteWake], ['術後', c.phaseFlagPost, c.phaseNotePost]]
+    .filter(x => x[1] || (x[2] || '').trim())
+    .map(x => `<div>${x[1] ? '<b style="color:#c0392b">⚠️' : '<b>'}${x[0]}</b>: ${esc2(x[2] || '(メモなし)')}</div>`).join('');
+  const comps = PP_COMP_LABELS.filter(x => c[x[0]]).map(x => x[1]).join('・');
+  const wake = [c.recQuality ? `覚醒: ${esc2(c.recQuality)}` : '', (c.recNotes || '').trim() ? esc2(c.recNotes) : ''].filter(Boolean).join(' ／ ');
+  const drugs = (Array.isArray(c.drugLog) ? c.drugLog : []).filter(d => d && !d.deleted && ((d.drug || '').trim() || (d.dose || '').trim()));
+  const drugHtml = drugs.slice(0, 20).map(d =>
+    `<div style="display:flex;gap:6px;font-size:12px"><span style="color:var(--muted);font-variant-numeric:tabular-nums">${esc2(d.time)}</span><span style="flex:1">${esc2(d.drug)}</span><span>${esc2(d.dose)}</span><span style="color:var(--muted)">${esc2(d.route)}</span></div>`).join('')
+    + (drugs.length > 20 ? `<div style="color:var(--muted);font-size:11px">…他${drugs.length - 20}件</div>` : '');
+  document.getElementById('ppBody').innerHTML =
+    `<div>${base}</div>`
+    + sec('経過メモ・インシデント', phases)
+    + sec('合併症チェック', comps ? `<span style="color:#c0392b">${esc2(comps)}</span>` : '')
+    + sec('覚醒・回復', wake)
+    + sec('薬剤・投与記録', drugHtml)
+    + sec('改善点・申し送り', (c.notes || '').trim() ? esc2(c.notes) : '');
+  document.getElementById('ppConfirm').style.display = 'none';
+  document.getElementById('ppBackdrop').classList.add('show');
+  document.getElementById('ppSheet').classList.add('show');
+}
+function closePastPreview() {
+  document.getElementById('ppBackdrop').classList.remove('show');
+  document.getElementById('ppSheet').classList.remove('show');
+}
+function ppJump() {
+  const id = _ppCaseId;
+  closePastPreview();
+  if (!id) return;
   try { collectForm(); saveStorage(); } catch (_) {}
+  const back = current ? current.id : null;
   openCase(id);
+  _returnCaseId = back;
+  _showReturnBanner(!!back);
+}
+function _showReturnBanner(show) {
+  const b = document.getElementById('returnBanner');
+  if (b) b.style.display = show ? '' : 'none';
+}
+function returnToCurrentCase() {
+  const id = _returnCaseId;
+  _returnCaseId = null;
+  _showReturnBanner(false);
+  try { collectForm(); saveStorage(); } catch (_) {}
+  if (id) openCase(id);
 }
 function renderPatientHistory() {
   const box = document.getElementById('patientHistory');
@@ -3762,7 +3822,7 @@ function renderPatientHistory() {
     const tr = caseTroubles(c);
     const badges = tr.map(x => `<span style="background:#ffe1e1;color:#c0392b;font-weight:800;font-size:10.5px;border-radius:5px;padding:1px 5px;margin-left:3px;white-space:nowrap">⚠️${x.ph}</span>`).join('');
     const noteLine = tr.filter(x => x.note).map(x => `${x.ph}: ${esc(x.note)}`).join(' ／ ');
-    return `<div onclick="jumpToCase('${c.id}')" style="padding:6px 12px;border-bottom:1px solid #eef2f7;cursor:pointer">
+    return `<div onclick="openPastPreview('${c.id}')" style="padding:6px 12px;border-bottom:1px solid #eef2f7;cursor:pointer">
       <div style="display:flex;gap:8px;align-items:center;font-size:12.5px">
         <span style="font-weight:700;font-variant-numeric:tabular-nums;color:var(--navy);white-space:nowrap">${esc(c.date || '')}</span>
         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(proc)}${wt}${tube}${diff}${badges}</span>
@@ -3803,6 +3863,12 @@ function openCase(id) {
   current = cases.find(c => c.id === id);
   if (!current) return;
   openForm();
+  // 過去カルテ閲覧バナーは、戻る/ジャンプ以外の通常オープンでは消す
+  // (初期化中のリロード復帰などで変数が未評価でも落ちないようtryで保護)
+  try {
+    if (!_returnCaseId || current.id !== _ppCaseId) _showReturnBanner(false);
+    if (_returnCaseId && current.id === _returnCaseId) { _returnCaseId = null; _showReturnBanner(false); }
+  } catch (_) {}
 }
 
 // 症例削除: OS標準confirmはiOSのホーム画面アプリで出ないことがあるため
@@ -6709,6 +6775,26 @@ if (sheetsConfig.enabled) {
 .ts-ok{flex:2;min-height:50px;border:none;border-radius:12px;background:var(--blue);font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
 .ts-ok:active{background:#256fa1}
 </style>
+<!-- 過去カルテの読み取り専用プレビュー（下から出るシート） -->
+<div class="ts-backdrop" id="ppBackdrop" onclick="closePastPreview()"></div>
+<div class="ts-sheet" id="ppSheet" role="dialog" aria-label="過去カルテのプレビュー" style="max-height:85vh;overflow-y:auto">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div id="ppTitle" style="flex:1;font-weight:800;font-size:15px;color:var(--navy)"></div>
+    <button class="btn-del" type="button" onclick="closePastPreview()">✕</button>
+  </div>
+  <div id="ppBody" style="font-size:13px;line-height:1.7;margin-top:6px"></div>
+  <div id="ppConfirm" style="display:none;background:#fff7e6;border:1.5px solid #f0c074;border-radius:10px;padding:10px;margin-top:10px;font-size:13px">
+    過去のカルテを<b>編集モード</b>で開きます。変更するとこの過去の記録が書き換わります。よろしいですか？
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button type="button" onclick="document.getElementById('ppConfirm').style.display='none'" style="flex:1;min-height:44px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-weight:700;color:var(--muted);font-family:inherit;font-size:13.5px;cursor:pointer">やめる</button>
+      <button type="button" onclick="ppJump()" style="flex:1;min-height:44px;border:none;border-radius:10px;background:#a35614;color:#fff;font-weight:800;font-family:inherit;font-size:13.5px;cursor:pointer">開く</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <button class="ts-cancel" type="button" onclick="closePastPreview()">閉じる</button>
+    <button class="ts-ok" type="button" style="background:#8b5fbf" onclick="document.getElementById('ppConfirm').style.display=''">✏️ このカルテを開く</button>
+  </div>
+</div>
 <div class="ts-backdrop" id="tsBackdrop" onclick="tsCancel()"></div>
 <div class="ts-sheet" id="tsSheet" role="dialog" aria-label="時刻を変更">
   <div class="ts-title" id="tsTitle">時刻を変更</div>
