@@ -3751,11 +3751,33 @@ function openPastPreview(id) {
   document.getElementById('ppTitle').textContent = `📖 ${nm} ｜ ${c.date || ''}`;
   const sec = (t, body) => body ? `<div style="margin-top:7px"><span style="font-size:11px;font-weight:800;color:var(--muted)">${t}</span><div>${body}</div></div>` : '';
   const esc2 = v => esc(String(v || ''));
+  const _tube = [c.tubeSize ? esc2(c.tubeSize) + 'mm' : '', c.tubeSizeFr ? esc2(c.tubeSizeFr) + 'Fr' : ''].filter(Boolean).join(' / ');
   let base = `${esc2(c.procedure || c.diagnosis || '術式未記載')} ／ ${esc2(c.weight || '—')}kg`
-    + (c.tubeSize ? ` ／ ET ${esc2(c.tubeSize)}mm` : '') + (c.intubationDifficult ? ' ／ <b style="color:#c0392b">⚠️挿管困難</b>' : '');
+    + (_tube ? ` ／ ET ${_tube}` : '') + (c.intubationDifficult ? ' ／ <b style="color:#c0392b">⚠️挿管困難</b>' : '');
   const phases = [['導入', c.phaseFlagInd, c.phaseNoteInd], ['維持', c.phaseFlagMaint, c.phaseNoteMaint], ['覚醒', c.phaseFlagWake, c.phaseNoteWake], ['術後', c.phaseFlagPost, c.phaseNotePost]]
     .filter(x => x[1] || (x[2] || '').trim())
     .map(x => `<div>${x[1] ? '<b style="color:#c0392b">⚠️' : '<b>'}${x[0]}</b>: ${esc2(x[2] || '(メモなし)')}</div>`).join('');
+  // 麻酔プラン: チェック済み薬剤(用量/経路)・維持・輸液・局所麻酔ブロック
+  const _gn = { premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
+  const planParts = [];
+  Object.entries(DRUG_GROUPS).forEach(([gk, defs]) => {
+    const on = defs.filter(d => c.drugs && c.drugs[d.key] && c.drugs[d.key].use)
+      .map(d => { const v = c.drugs[d.key]; return `${d.label}${(v.dose || '').trim() ? ' ' + v.dose + d.unit : ''}${v.route ? ' ' + v.route : ''}`; });
+    if (on.length) planParts.push(`<div><b>${_gn[gk] || gk}</b>: ${esc2(on.join('、'))}</div>`);
+  });
+  const _mt = [c.maintIsoflurane ? 'イソフルラン' : '', c.maintSevoflurane ? 'セボフルラン' : '', c.maintPropofol ? 'プロポフォール' : ''].filter(Boolean).join('・');
+  if (_mt) planParts.push(`<div><b>維持</b>: ${esc2(_mt)}${(c.maintConc || '').trim() ? ' ' + esc2(c.maintConc) + '%' : ''}${((c.maintO2 || '').trim() || (c.maintAir || '').trim()) ? `（O2 ${esc2(c.maintO2 || '0')} / Air ${esc2(c.maintAir || '0')} L/min）` : ''}</div>`);
+  if ((c.fluidType || '').trim() || (c.fluidRate || '').trim()) planParts.push(`<div><b>輸液</b>: ${esc2(c.fluidType || '')}${(c.fluidRate || '').trim() ? ' ' + esc2(c.fluidRate) + 'mL/kg/h' : ''}</div>`);
+  const _blk = [];
+  ['localBlocks', 'localBlocks2'].forEach(bf => {
+    Object.entries(c[bf] || {}).forEach(([k, d]) => {
+      if (!d || !d.use) return;
+      const def = getBlockDef(k);
+      const lbl = (def ? def.label : k) + (d.side ? `(${d.side})` : '');
+      if (_blk.indexOf(lbl) === -1) _blk.push(lbl);
+    });
+  });
+  if (_blk.length) planParts.push(`<div><b>局所麻酔</b>: ${esc2(_blk.join('、'))}</div>`);
   const comps = PP_COMP_LABELS.filter(x => c[x[0]]).map(x => x[1]).join('・');
   const wake = [c.recQuality ? `覚醒: ${esc2(c.recQuality)}` : '', (c.recNotes || '').trim() ? esc2(c.recNotes) : ''].filter(Boolean).join(' ／ ');
   const drugs = (Array.isArray(c.drugLog) ? c.drugLog : []).filter(d => d && !d.deleted && ((d.drug || '').trim() || (d.dose || '').trim()));
@@ -3764,6 +3786,7 @@ function openPastPreview(id) {
     + (drugs.length > 20 ? `<div style="color:var(--muted);font-size:11px">…他${drugs.length - 20}件</div>` : '');
   document.getElementById('ppBody').innerHTML =
     `<div>${base}</div>`
+    + sec('麻酔プラン', planParts.join(''))
     + sec('経過メモ・インシデント', phases)
     + sec('合併症チェック', comps ? `<span style="color:#c0392b">${esc2(comps)}</span>` : '')
     + sec('覚醒・回復', wake)
