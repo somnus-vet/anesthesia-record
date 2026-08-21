@@ -3686,14 +3686,16 @@ function renderNcsList() {
   }).join('');
 }
 // 再麻酔用: 過去症例から患者情報だけ引き継いだ新規症例を作る。
-// 引き継ぐのは患者の基本情報のみ(カルテID/名前/動物種/品種/生年月日/年齢/性別/体重/BCS/担当)。
+// 引き継ぐのは患者の基本情報(カルテID/名前/動物種/品種/生年月日/年齢/性別/体重/BCS/担当)と、
+// 患者固有で変わらない気管チューブサイズ・挿管困難の有無。
 // 日付は今日・進捗は予約から。麻酔プラン・術式・イベント記録・薬剤ログはコピーしない。
 function copyCaseAsNew(id) {
   const src = cases.find(c => c.id === id);
   if (!src) return;
   const c = makeCase();
   ['caseNo','patientId','ownerName','patientName','species','breed','birthdate',
-   'ageY','ageM','sex','weight','bcs','staff'].forEach(k => {
+   'ageY','ageM','sex','weight','bcs','staff',
+   'tubeSize','tubeSizeFr','intubationDifficult'].forEach(k => {
     if (src[k] !== undefined && src[k] !== null) c[k] = src[k];
   });
   // patientIdとcaseNoは常に同期(片方だけの旧データ対策)
