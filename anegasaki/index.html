@@ -5060,8 +5060,12 @@ function addFreeNote(kind, opts) {
     // vent は前回と同じ値を最初から入れておく（変わった項目だけ書き替えれば良い）
     entry.to = (k === 'vent') ? prev : '';
     if (k === 'vent' && !entry.rr) entry.rr = prevRR;
-    // 初回(過去に記録なし)の輸液は麻酔プランの輸液速度を初期値に
-    if (k === 'fluid' && !prev) entry.to = current.fluidRate || '';
+    // 初回(過去に記録なし)の輸液はプランの速度を初期値に。
+    // プランは mL/kg/h・記録欄は mL/hr なので体重を掛けて換算し、正の整数に丸める。
+    if (k === 'fluid' && !prev) {
+      const _rate = parseFloat(current.fluidRate), _wt = parseFloat(current.weight);
+      entry.to = (_rate > 0 && _wt > 0) ? String(Math.max(1, Math.round(_rate * _wt))) : '';
+    }
     if (k === 'vent' && (entry.mode === 'PCV' || entry.mode === 'VCV')) {
       if (!entry.to) entry.to = (entry.mode === 'PCV' ? (current.hvent_pcvPIP || '') : (current.hvent_vcvVT || '')) || '';
       if (!entry.rr) entry.rr = (entry.mode === 'PCV' ? (current.hvent_pcvRR || '') : (current.hvent_vcvRR || '')) || '';
@@ -6686,6 +6690,8 @@ function tsOk() {
     _tsTarget.value = _tsFmt(_tsSec);
     _tsTarget.dispatchEvent(new Event('input',  { bubbles: true }));
     _tsTarget.dispatchEvent(new Event('change', { bubbles: true }));
+    // 時刻修正の決定は確定操作: ローカル保存(デバウンス)を待たずSheetsへ即保存
+    try { pushCurrentToSheets(); } catch (_) {}
   }
   _tsClose();
 }
