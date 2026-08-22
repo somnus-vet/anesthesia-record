@@ -5402,8 +5402,11 @@ function addFreeNote(kind, opts) {
     }
     entry.from = prev || '0';
     entry.to = '';
-    // 初回(過去に記録なし)の維持薬は麻酔プランの維持濃度を初期値に
-    if (k === 'gas' && !prev) entry.to = current.maintConc || '';
+    if (k === 'gas') {
+      // 初回(過去に記録なし)は麻酔プランの維持濃度、2回目以降はひとまず0を自動入力
+      // （終了時のガスOFFがワンタップで記録できる。他の値にする時は欄タップ→入力）
+      entry.to = prev ? '0' : (current.maintConc || '0');
+    }
   }
   // 'spont' / 'ventOff' は時刻マーカーのみ（追加フィールド無し）
   current.freeNotes.push(entry);
