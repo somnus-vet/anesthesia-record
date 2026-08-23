@@ -4833,7 +4833,7 @@ function latestAntibioticTime(c) {
   let best = '', bestSec = -1;
   const consider = t => { const s = timeToSec(t); if (s !== null && s > bestSec) { bestSec = s; best = t; } };
   if ((c.antibioticTime || '').trim()) consider(c.antibioticTime);
-  (c.drugLog || []).forEach(r => { if (r.time && abxLabels.includes(r.drug)) consider(r.time); });
+  (c.drugLog || []).forEach(r => { if (r.time && !r.deleted && abxLabels.includes(r.drug)) consider(r.time); });  // 削除墓標は計時に使わない
   return best;
 }
 
@@ -5625,7 +5625,7 @@ function renderQuickDoseBar() {
   }
   const log = current.drugLog || [];
   bar.innerHTML = used.map(d => {
-    const hits = log.filter(r => r.drug === d.label && r.time);
+    const hits = log.filter(r => r.drug === d.label && r.time && !r.deleted);  // 削除墓標は回数に数えない
     // バッジは回数のみ。時刻まで載せるとボタンが横に伸びて折り返し、縦に積み上がるため。
     const badge = hits.length ? `<span class="qdose-badge">×${hits.length}</span>` : '';
     return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${badge}</button>`;
