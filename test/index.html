@@ -420,7 +420,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 <style>
 /* 過去カルテの閲覧モード: 編集系UIを無効化し、色でも過去だと分かるように */
 #formScreen.readonly-mode .form-hdr{background:#7a5c2e}
-#formScreen.readonly-mode .form-main{background:#f7f2e7}
+#formScreen.readonly-mode .form-main{background:#e9dec4;filter:sepia(.45)}
+#formScreen.readonly-mode .form-main .card{background:#fdf6e3}
+#formScreen.readonly-mode .tab-bar{filter:sepia(.6)}
+#formScreen.readonly-mode .act-bar{filter:sepia(.45)}
+#formScreen.readonly-mode::after{content:'過去カルテ';position:fixed;top:45%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);font-size:64px;font-weight:900;color:rgba(122,92,46,.13);pointer-events:none;z-index:5;white-space:nowrap}
 #formScreen.readonly-mode .form-main :is(input,textarea,select,button),
 #formScreen.readonly-mode .form-main .seg-i,
 #formScreen.readonly-mode .form-main .chk-item,
