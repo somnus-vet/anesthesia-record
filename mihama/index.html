@@ -1447,6 +1447,7 @@ const DRUG_GROUPS = {
     { key:'tramadol_c',     label:'トラマドール',     unit:'mg/kg/hr',  dog:'—',        cat:'0.1〜0.3', routes:['IV'], def:'IV' },
     { key:'dopamine_c',     label:'ドパミン',         unit:'μg/kg/min', dog:'3〜10',    cat:'3〜10',    routes:['IV'], def:'IV' },
     { key:'dobutamine_c',   label:'ドブタミン',       unit:'μg/kg/min', dog:'2〜10',    cat:'2〜10',    routes:['IV'], def:'IV' },
+    { key:'rocuronium_c',   label:'ロクロニウム',     unit:'mg/kg/hr',  dog:'0.1〜0.2', cat:'0.1〜0.2', routes:['IV'], def:'IV' },
   ],
   vasopressors: [
     { key:'atropine_v',     label:'アトロピン',       unit:'μg/kg', dog:'20〜40',     cat:'20〜40',     routes:['IV','IM','SC'], def:'IV', conc:500 },
@@ -1460,6 +1461,8 @@ const DRUG_GROUPS = {
   antagonists: [
     { key:'atipamezole',    label:'アチパメゾール',   unit:'μg/kg', dog:'40〜200', cat:'40〜200', routes:['IM','IV','SC'], def:'IM', conc:5000 },
     { key:'sugammadex',     label:'スガマデクス',     unit:'mg/kg', dog:'2〜4',      cat:'2〜4',      routes:['IV'],           def:'IV', conc:100 },
+    { key:'flumazenil',     label:'フルマゼニル',     unit:'μg/kg', dog:'10〜20',    cat:'10〜20',    routes:['IV'],           def:'IV', conc:100 },
+    { key:'naloxone',       label:'ナロキソン',       unit:'μg/kg', dog:'10〜40',    cat:'10〜40',    routes:['IV','IM'],      def:'IV', conc:200 },
   ],
   postAnalg: [
     { key:'meloxicam',      label:'メロキシカム',      unit:'mg/kg', dog:'0.1〜0.2',cat:'0.1',       routes:['SC','IV','PO'], def:'SC', conc:5 },
