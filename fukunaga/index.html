@@ -2706,7 +2706,14 @@ async function syncFromSheets() {
     const _csvTrusted = _headerLine.includes('施設コード') &&
                         _headerLine.includes('内部ID') &&
                         _headerLine.includes('詳細');
-    if (!_csvTrusted) throw new Error('CSV応答が不正（ヘッダ欠落）: 削除判定を中止');
+    if (!_csvTrusted) {
+      // 合言葉なし/不一致のとき GAS は本文 "unauthorized" だけを返す（HTTP 200）。
+      // 「ヘッダ欠落」では原因が分からず遠回りになるため、設定案内を出し分ける。
+      if (/^\s*unauthorized\s*$/i.test(csv.slice(0, 64))) {
+        throw new Error('合言葉が未入力か違います。⚙️設定画面で合言葉を確認してください');
+      }
+      throw new Error('CSV応答が不正（ヘッダ欠落）: 削除判定を中止');
+    }
     const rows = parseCSV(csv);
     const reserved = rows.filter(r => r['施設コード'] === sheetsConfig.facility);
     const formIsOpen = !document.getElementById('formScreen').classList.contains('hidden');
