@@ -1518,7 +1518,11 @@ const LOCAL_BLOCKS = [
   { key:'maxillary',          label:'上顎神経',           desc:'上顎広範' },
   { key:'inferior_alveolar',  label:'下歯槽神経',         desc:'下顎' },
   { key:'mental',             label:'オトガイ神経',       desc:'下顎前歯' },
-  { key:'retrobulbar',        label:'Retrobulbar',        desc:'眼球摘出' },
+  // 眼科（眼球摘出・眼内手術）
+  { key:'retrobulbar',        label:'球後ブロック',        desc:'眼球摘出/眼内' },
+  { key:'peribulbar',         label:'眼球周囲ブロック',    desc:'眼球摘出/眼内' },
+  { key:'subtenon',           label:'テノン嚢下ブロック',  desc:'眼内手術' },
+  { key:'auriculopalpebral',  label:'耳介眼瞼神経ブロック', desc:'眼瞼の動き止め' },
   { key:'wound_soaker',       label:'創部留置カテーテル',  desc:'持続注入' },
 ];
 
@@ -1562,7 +1566,8 @@ const LOCAL_BLOCKS_BY_CATEGORY = [
   { cat: '神経軸', keys: ['ls_epidural','sc_epidural'] },
   { cat: '体幹',   keys: ['tap','ql','esp','paravertebral','intercostal'] },
   { cat: '四肢',   keys: ['brachial','rumm_distal','rumm_proximal','femoral','sciatic','ls_plexus'] },
-  { cat: '頭部',   keys: ['infraorbital','maxillary','inferior_alveolar','mental','retrobulbar'] },
+  { cat: '頭部',   keys: ['infraorbital','maxillary','inferior_alveolar','mental'] },
+  { cat: '眼科',   keys: ['retrobulbar','peribulbar','subtenon','auriculopalpebral'] },
   { cat: 'その他', keys: ['wound_soaker'] },
 ];
 
@@ -1818,7 +1823,8 @@ function ensureBlockData(si, key) {
 
 // 左右指定が有効なブロック（中心線/部位非依存は除外）
 const BLOCKS_WITH_SIDE = new Set([
-  'infraorbital','maxillary','inferior_alveolar','mental','retrobulbar',
+  'infraorbital','maxillary','inferior_alveolar','mental',
+  'retrobulbar','peribulbar','subtenon','auriculopalpebral',
   'brachial','rumm_distal','rumm_proximal','femoral','sciatic','ls_plexus',
   'tap','ql','esp','paravertebral','intercostal','intratesticular'
 ]);
