@@ -278,6 +278,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-kind-ventoff{background:#e8e0d4;color:#6b4f1d}
 .tl-row.tl-ventoff{border-left-color:#b08642}
 .tl-kind-tubechange{background:#e0e8f2;color:#2b4a73}
+.tl-kind-suture{background:#fbe4ec;color:#8a2a4d}
+.tl-suture{border-left-color:#c2506f}
 .tl-row.tl-tubechange{border-left-color:#5a7fae}
 .tl-kind-glove{background:#e7eef7;color:#2b4a73}
 .tl-row.tl-glove{border-left-color:#5a7fae}
@@ -1047,6 +1049,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <input type="hidden" id="f_events">
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px">⏱ イベントを記録 <span style="opacity:.7">— タップした時刻で記録</span></div>
           <div id="eventBtnBar" class="qdose-bar"></div>
+          <div style="font-size:12px;color:var(--muted);margin:12px 0 6px">🧵 縫合糸を記録 <span style="opacity:.7">— 出した糸の種類をタップ（本数は記録行の±で調整・請求用）</span></div>
+          <div id="sutureBtnBar" class="qdose-bar"></div>
           <div style="font-size:12px;color:var(--muted);margin:12px 0 6px">💊 薬剤を記録 <span style="opacity:.7">— タップで用量を選んで記録</span></div>
           <div id="quickDoseBar" class="qdose-bar"></div>
           <button class="btn-add-row" onclick="addDrugLogRow()" style="margin-top:6px">＋ 薬剤行を追加</button>
@@ -4149,7 +4153,7 @@ function pickStatusC(a, b) {
   return statusRankC(b) >= statusRankC(a) ? b : a;
 }
 function hashDrugC(e) { return ['d', e && e.time, e && e.drug, e && e.dose, e && e.route].join('|'); }
-function hashFreeC(e) { return ['f', e && e.time, e && e.kind, e && e.text, e && e.from, e && e.to, e && e.mode, e && e.rr, e && e.o2, e && e.air, e && e.drugKey, e && e.drugLabel, e && e.size, e && e.sizeFr].join('|'); }
+function hashFreeC(e) { return ['f', e && e.time, e && e.kind, e && e.text, e && e.from, e && e.to, e && e.mode, e && e.rr, e && e.o2, e && e.air, e && e.drugKey, e && e.drugLabel, e && e.size, e && e.sizeFr, e && e.sutureKey, e && e.count].join('|'); }
 function mergeEventPairC(x, y) { const o = Object.assign({}, x, y); if ((x && x.deleted) || (y && y.deleted)) o.deleted = true; return o; }
 function unionEventsC(a, b, keyFn) {
   a = Array.isArray(a) ? a : []; b = Array.isArray(b) ? b : [];
@@ -5076,7 +5080,17 @@ function renderEventButtons() {
 }
 
 // イベント＋薬剤を時刻順に統合して1本のリストに描画
+function renderSutureButtons() {
+  const bar = document.getElementById('sutureBtnBar');
+  if (!bar || !current) return;
+  const _bs = 'background:#fbe4ec;border-color:#c2506f;color:#8a2a4d';
+  bar.innerHTML = SUTURE_TYPES.map(t =>
+    `<button type="button" class="qdose-btn" style="${_bs}" onclick="addFreeNote('suture',{sutureKey:'${t.key}'})">${esc(t.label)}</button>`
+  ).join('');
+}
+
 function renderTimelineList() {
+  try { renderSutureButtons(); } catch (_) {}
   const list = document.getElementById('timelineList');
   if (!list || !current) return;
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
@@ -5111,6 +5125,8 @@ function renderTimelineList() {
       air:       n.air       || '',
       size:      n.size      || '',
       sizeFr:    n.sizeFr    || '',
+      sutureKey: n.sutureKey || '',
+      count:     n.count     || '',
     });
   });
   entries.sort((a, b) => {
@@ -5231,6 +5247,20 @@ function renderTimelineList() {
           <span class="tl-kind tl-kind-tubechange">チューブ交換</span>
           <input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(en.size||'')}" placeholder="-" oninput="editFreeNote(${en.idx},'size',this.value)" autocomplete="off"><span class="tl-unit">mm</span>
           <input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(en.sizeFr||'')}" placeholder="-" oninput="editFreeNote(${en.idx},'sizeFr',this.value)" autocomplete="off"><span class="tl-unit">Fr</span>
+          <span class="tl-spacer"></span>
+          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+        </div>`;
+      }
+      // 縫合糸: 種類＋本数（±で調整）。請求用なので削除は✕で明示的に
+      if (k === 'suture') {
+        const _sb = 'min-width:34px;padding:5px 8px;border-radius:8px;border:1px solid #c2506f;background:#fff;color:#8a2a4d;font-weight:700;font-size:14px;cursor:pointer';
+        return `<div class="tl-row tl-suture">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
+          <span class="tl-kind tl-kind-suture">縫合糸</span>
+          <span style="font-weight:700;color:#8a2a4d;white-space:nowrap;margin-right:6px">${esc(sutureLabel(en.sutureKey))}</span>
+          <button type="button" style="${_sb}" onclick="setSutureCount(${en.idx},-1)">−</button>
+          <span style="min-width:34px;text-align:center;font-weight:800;font-size:15px;color:#8a2a4d">${esc(en.count||'1')}本</span>
+          <button type="button" style="${_sb}" onclick="setSutureCount(${en.idx},1)">＋</button>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
@@ -5366,7 +5396,22 @@ function removeDrugLog(idx) {
 }
 
 // フリー記載イベントを現在時刻で1件追加（複数回登録可）
-// kind: 'memo' | 'position' | 'fluid' | 'vent' | 'spont' | 'cri' | 'gas' | 'ventOff' | 'flow'
+// 縫合糸（姉ヶ崎の在庫。請求用に「どの糸を何本出したか」を記録）
+const SUTURE_TYPES = [
+  { key:'pds_plus_3_0', label:'PDS Plus 3-0',  ref:'PDP311H' },
+  { key:'pds2_2_0',     label:'PDS II 2-0',    ref:'Z317H' },
+  { key:'pds2_4_0',     label:'PDS II 4-0',    ref:'Z310H' },
+  { key:'pds2_5_0',     label:'PDS II 5-0',    ref:'Z303H' },
+  { key:'pds2_6_0',     label:'PDS II 6-0',    ref:'' },
+  { key:'pds2_0',       label:'PDS II 0',      ref:'' },
+  { key:'ethilon_3_0',  label:'エチロン 3-0',   ref:'669H' },
+  { key:'monosof_4_0',  label:'モノソフ 4-0',   ref:'SN-644' },
+  { key:'prolene_3_0',  label:'プロリーン 3-0', ref:'' },
+  { key:'bone_wax',     label:'ボーンワックス', ref:'' },
+];
+function sutureLabel(key) { const t = SUTURE_TYPES.find(x => x.key === key); return t ? t.label : (key || '縫合糸'); }
+
+// kind: 'memo' | 'position' | 'fluid' | 'vent' | 'spont' | 'cri' | 'gas' | 'ventOff' | 'flow' | 'suture'
 // opts (cri/gasのみ): { drugKey, drugLabel, unit }
 // 値変化型（fluid/vent/cri/gas）は同種(+CRI/gasは同薬剤)の最新 to を新 from に自動引継ぎ。無ければ '0'。
 // 'flow' は { o2, air } をスナップショットで保持（from/to は使わない）。
@@ -5374,7 +5419,7 @@ function removeDrugLog(idx) {
 function addFreeNote(kind, opts) {
   if (!current) return;
   if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
-  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange'];
+  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange','suture'];
   const k = valid.indexOf(kind) >= 0 ? kind : 'memo';
   // opts.time があればその時刻で追加（挿管後の自動入力で数秒ずらすため）。無ければ現在時刻。
   const entry = { time: (opts && opts.time) ? opts.time : nowTime(), kind: k, uid: genUid() };
@@ -5390,6 +5435,11 @@ function addFreeNote(kind, opts) {
     // 交換後のチューブサイズを記録（mm / Fr）
     entry.size = '';
     entry.sizeFr = '';
+  } else if (k === 'suture') {
+    // 縫合糸: 種類(sutureKey)と本数(count)。text にも表示用文字列を入れ下流(SomLog)互換にする
+    entry.sutureKey = (opts && opts.sutureKey) || '';
+    entry.count = '1';
+    entry.text = sutureLabel(entry.sutureKey) + ' ×1';
   } else if (k === 'flow') {
     // O2/Air流量スナップショット: 直前の記録を引き継ぎ、無ければ麻酔プランの維持設定(O₂/Air)を初期値に
     let po2 = '', pair = '';
@@ -5456,8 +5506,20 @@ function addFreeNote(kind, opts) {
   updateLiveTimers(); // グローブ交換等を上部カウンターへ即反映
   autoSave();
   pushCurrentToSheets();
-  const FREE_LABELS = { memo:'メモ', position:'体位変換', fluid:'輸液', vent:'換気', spont:'自発呼吸', cri:'CRI', gas:'維持薬', ventOff:'人工呼吸OFF', flow:'O2/Air流量', tubeChange:'チューブ交換', gloveChange:'グローブ交換' };
+  const FREE_LABELS = { memo:'メモ', position:'体位変換', fluid:'輸液', vent:'換気', spont:'自発呼吸', cri:'CRI', gas:'維持薬', ventOff:'人工呼吸OFF', flow:'O2/Air流量', tubeChange:'チューブ交換', gloveChange:'グローブ交換', suture:'縫合糸' };
   showToast(`✅ ${FREE_LABELS[k] || 'イベント'} を ${entry.time} に追加`);
+}
+
+// 縫合糸の本数を ±1（最小1）。text も同期して下流互換を保つ。
+function setSutureCount(idx, delta) {
+  if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
+  const n = current.freeNotes[idx];
+  const c = Math.max(1, (parseInt(n.count, 10) || 1) + delta);
+  n.count = String(c);
+  n.text = sutureLabel(n.sutureKey) + ' ×' + c;
+  renderTimelineList();
+  autoSave();
+  pushCurrentToSheets();
 }
 
 // 呼吸管理の換気モード(PCV/VCV/OFF)を切替。行の構造が変わるので再描画する。
@@ -6457,11 +6519,20 @@ function generatePrintHTML(c) {
     .map(r => `<tr><td>${esc(r.time||'')}</td><td>${esc(r.drug||'')}</td><td>${esc(r.dose||'')}</td><td>${esc(r.route||'')}</td><td>${esc(r.note||'')}</td></tr>`).join('');
 
   // フリー記載イベント（メモ/体位変換/輸液/気道内圧/CRI/維持薬/自発呼吸/人工呼吸OFF/O2/Air）
+  // 縫合糸の合計（種類ごとに本数を集計。請求用）
+  const _sutTotals = {};
+  (c.freeNotes || []).forEach(n => {
+    if (!n || n.deleted || n.kind !== 'suture' || !n.sutureKey) return;
+    _sutTotals[n.sutureKey] = (_sutTotals[n.sutureKey] || 0) + (parseInt(n.count, 10) || 1);
+  });
+  const sutureRows = SUTURE_TYPES.filter(t => _sutTotals[t.key]).map(t =>
+    `<tr><td>${esc(t.label)}</td><td>${_sutTotals[t.key]} 本</td><td>${esc(t.ref||'')}</td></tr>`).join('');
   const freeNoteRows = (c.freeNotes || []).filter(n => {
     if (!n || n.deleted) return false;
     const k = n.kind || 'memo';
     if (k === 'spont' || k === 'ventOff' || k === 'gloveChange') return !!n.time;
     if (k === 'tubeChange') return !!n.time;
+    if (k === 'suture') return !!(n.time && n.sutureKey);
     if (k === 'flow') return !!(n.time && (n.o2 || n.air));
     if (k === 'fluid' || k === 'vent' || k === 'cri' || k === 'gas') return !!(n.time && (n.from || n.to));
     return !!(n.time || n.text);
@@ -6486,6 +6557,7 @@ function generatePrintHTML(c) {
     else if (k === 'gloveChange') { kindLbl = 'グローブ交換'; body = ''; }
     else if (k === 'flow') { kindLbl = 'O2/Air'; body = `O2 ${n.o2||'0'} L/min / Air ${n.air||'0'} L/min`; }
     else if (k === 'tubeChange') { kindLbl = 'チューブ交換'; body = [n.size?n.size+'mm':'', n.sizeFr?n.sizeFr+'Fr':''].filter(Boolean).join(' / '); }
+    else if (k === 'suture') { kindLbl = '縫合糸'; body = `${sutureLabel(n.sutureKey)} ×${n.count||'1'}`; }
     else if (k === 'cri') { kindLbl = `${n.drugLabel||'CRI'}(CRI)`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||''}`; }
     else if (k === 'gas') { kindLbl = `${n.drugLabel||'維持薬'}`; body = `${n.from||'0'} → ${n.to||''} ${n.unit||'%'}`; }
     else { kindLbl = 'メモ'; body = n.text || ''; }
@@ -6754,6 +6826,14 @@ function generatePrintHTML(c) {
       <table class="p-table">
         <thead><tr><th style="width:50px">時刻</th><th>薬剤</th><th>用量</th><th style="width:42px">経路</th><th>備考</th></tr></thead>
         <tbody>${drugLogRows}</tbody>
+      </table>
+    </div>` : ''}
+
+    ${sutureRows ? `<div class="p-section">
+      <h3>使用縫合糸（請求用） / Sutures</h3>
+      <table class="p-table">
+        <thead><tr><th>種類</th><th style="width:70px">本数</th><th style="width:90px">REF</th></tr></thead>
+        <tbody>${sutureRows}</tbody>
       </table>
     </div>` : ''}
 
