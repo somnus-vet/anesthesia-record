@@ -6345,6 +6345,16 @@ function printCase() {
   collectForm();
   if (!current) return;
   document.getElementById('printView').innerHTML = generatePrintHTML(current);
+  // 印刷/PDF保存のファイル名はページタイトルから付くため、印刷中だけ
+  // 「カルテID 患者名」に差し替える（例: 1234-5 ポチ）。終わったら元に戻す。
+  const _origTitle = document.title;
+  const _pid = String(current.patientId || '').trim();
+  const _nm = String(current.patientName || '').trim();
+  const _fname = [_pid, _nm].filter(Boolean).join(' ').replace(/[\/\\:*?"<>|]/g, '_');
+  if (_fname) document.title = _fname;
+  const _restore = () => { document.title = _origTitle; window.removeEventListener('afterprint', _restore); };
+  window.addEventListener('afterprint', _restore);
+  setTimeout(_restore, 60000); // afterprint が来ない環境の保険
   window.print();
 }
 
