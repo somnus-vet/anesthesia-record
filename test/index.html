@@ -1244,8 +1244,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .pid-sg-hdr{font-size:11.5px;font-weight:700;color:var(--blue);padding:6px 12px 4px;background:#eef6fc}
 .pid-sg-row{display:flex;align-items:center;gap:8px;padding:9px 12px;border-top:1px solid #f0f4f8;cursor:pointer;font-size:13.5px;min-height:44px}
 .pid-sg-row:active{background:#eaf3fb}
-.pid-sg-row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pid-sg-row small{color:var(--muted);font-size:11.5px;white-space:nowrap}
+.pid-sg-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pid-sg-main b,.pid-sg-main small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pid-sg-main small{color:var(--muted);font-size:11.5px}
 .pid-sg-row .pid-sg-go{color:var(--blue);font-weight:800;font-size:12px;white-space:nowrap}
 </style>
 <!-- 新規症例: まっさら or 過去症例から引き継ぎ -->
@@ -3752,8 +3753,8 @@ function onNcsIdInput() {
         const nm = c.patientName || c.ownerName || '—';
         const wt = c.weight ? ` ${esc(c.weight)}kg` : '';
         return `<div class="pid-sg-row" onclick="closeNewCaseSheet();copyCaseAsNew('${c.id}')">
-          <span>${sp}</span><b>${esc(nm)}</b>
-          <small>No.${esc(c.caseNo || c.patientId || '')} | 前回 ${esc(c.date || '')}${wt}</small>
+          <span>${sp}</span><div class="pid-sg-main"><b>${esc(nm)}</b>
+          <small>No.${esc(c.caseNo || c.patientId || '')} | 前回 ${esc(c.date || '')}${wt}</small></div>
           <span class="pid-sg-go">この患者で作成 ›</span>
         </div>`;
       }).join('');
@@ -6416,8 +6417,8 @@ function renderPidSuggest() {
       const nm = c.patientName || c.ownerName || '—';
       const wt = c.weight ? ` ${esc(c.weight)}kg` : '';
       return `<div class="pid-sg-row" onpointerdown="event.preventDefault();_pidHold=Date.now()" onclick="applyPidSuggest('${c.id}')">
-        <span>${sp}</span><b>${esc(nm)}</b>
-        <small>No.${esc(c.caseNo || c.patientId || '')} | 前回 ${esc(c.date || '')}${wt}</small>
+        <span>${sp}</span><div class="pid-sg-main"><b>${esc(nm)}</b>
+        <small>No.${esc(c.caseNo || c.patientId || '')} | 前回 ${esc(c.date || '')}${wt}</small></div>
         <span class="pid-sg-go">引き継ぐ ›</span>
       </div>`;
     }).join('');
