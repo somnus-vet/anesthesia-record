@@ -462,10 +462,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <div class="c-body">
           <div class="frow">
             <span class="flabel">ID★</span>
-            <input class="fin" type="text" inputmode="numeric" pattern="[0-9\-]*" id="f_patientId" placeholder="患者ID（例: 1234-5）必須" oninput="autoSave();onCaseNoInput()" onfocus="onCaseNoInput()" onblur="setTimeout(()=>hidePidSuggest(true),150)" autocomplete="off" style="flex:1;min-width:80px">
+            <input class="fin" type="text" inputmode="numeric" pattern="[0-9\-]*" id="f_patientId" placeholder="患者ID（例: 1234-5）必須" oninput="autoSave();onCaseNoInput()" style="flex:1;min-width:80px">
             <button type="button" onclick="insertHyphen('f_patientId')" title="ハイフン挿入" style="background:#f0f4f8;border:1.5px solid var(--border);border-radius:6px;padding:8px 14px;font-size:18px;font-weight:700;cursor:pointer;min-height:44px;color:var(--text);flex-shrink:0;line-height:1">−</button>
           </div>
-          <div id="pidSuggest" class="pid-suggest" style="display:none"></div>
           <div class="frow">
             <span class="flabel">担当者</span>
             <input class="fin" type="text" id="f_staff" readonly placeholder="担当獣医師" onclick="openStaffPicker('f_staff','担当獣医師')">
@@ -603,6 +602,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <div class="c-hdr" onclick="toggleAcc('c3')"><span><span class="acc-arrow">▶</span>3. 手術情報<span class="acc-badge" id="badge_c3"></span></span><span class="c-hdr-en">Surgery</span></div>
         <div class="c-sum" id="sum_c3" onclick="toggleAcc('c3')"></div>
         <div class="c-body">
+          <div class="frow">
+            <span class="flabel flabel-w">手術日</span>
+            <input class="fin" type="date" id="f_surgDate" onchange="onSurgDateChange()">
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin:-2px 0 8px">📅 翌日以降の手術はここで日付を指定（AnesLogにはこの日付の日に表示されます）</div>
           <div class="frow">
             <span class="flabel flabel-w">診断名</span>
             <input class="fin" type="text" id="f_diagnosis" placeholder="診断名" oninput="autoSave();renderEventButtons()">
@@ -1240,14 +1244,6 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .ncs-sub{font-size:11.5px;color:var(--muted);font-weight:400}
 .ncs-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #f0f4f8;cursor:pointer;font-size:13.5px;min-height:44px}
 .ncs-row:active{background:#eaf3fb}
-.pid-suggest{margin:-4px 0 10px 0;border:1.5px solid var(--blue);border-radius:10px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.12);overflow:hidden}
-.pid-sg-hdr{font-size:11.5px;font-weight:700;color:var(--blue);padding:6px 12px 4px;background:#eef6fc}
-.pid-sg-row{display:flex;align-items:center;gap:8px;padding:9px 12px;border-top:1px solid #f0f4f8;cursor:pointer;font-size:13.5px;min-height:44px}
-.pid-sg-row:active{background:#eaf3fb}
-.pid-sg-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.pid-sg-main b,.pid-sg-main small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pid-sg-main small{color:var(--muted);font-size:11.5px}
-.pid-sg-row .pid-sg-go{color:var(--blue);font-weight:800;font-size:12px;white-space:nowrap}
 </style>
 <!-- 新規症例: まっさら or 過去症例から引き継ぎ -->
 <div class="modal-overlay" id="newCaseModal" onclick="if(event.target===this)closeNewCaseSheet()">
@@ -1257,18 +1253,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
       <button class="modal-close" onclick="closeNewCaseSheet()">×</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">まずカルテIDを入力してください。過去に麻酔した患者なら候補が出ます。</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <input class="fin" type="text" inputmode="numeric" pattern="[0-9\-]*" id="ncsId" placeholder="カルテID（例: 1234-5）" oninput="onNcsIdInput()" autocomplete="off" style="flex:1;min-width:80px;font-size:18px">
-        <button type="button" onclick="insertHyphen('ncsId')" title="ハイフン挿入" style="background:#f0f4f8;border:1.5px solid var(--border);border-radius:6px;padding:8px 14px;font-size:18px;font-weight:700;cursor:pointer;min-height:44px;color:var(--text);flex-shrink:0;line-height:1">−</button>
-      </div>
-      <div id="ncsIdHits" style="display:none;margin-top:8px;border:1.5px solid var(--blue);border-radius:10px;overflow:hidden"></div>
-      <button type="button" class="ncs-opt" id="ncsNewBtn" style="display:none;margin-top:8px" onclick="closeNewCaseSheet();newCaseWithId()"><span style="font-size:20px">🆕</span><span><b id="ncsNewLbl"></b><br><span class="ncs-sub">IDが入った状態で空の症例を開きます</span></span></button>
-      <div style="display:flex;gap:14px;justify-content:space-between;align-items:center;margin-top:12px;font-size:12.5px">
-        <button type="button" onclick="showNcsPick()" style="background:none;border:none;color:var(--blue);font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px;padding:6px 0">🔎 名前・術式で探す</button>
-        <button type="button" onclick="closeNewCaseSheet();newCase()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-family:inherit;font-size:12.5px;padding:6px 0">IDなしで作成 ›</button>
-      </div>
-      <div id="ncsPick" style="display:none;margin-top:6px">
+      <button type="button" class="ncs-opt" onclick="closeNewCaseSheet();newCase()"><span style="font-size:20px">🆕</span><span><b>まっさらで作成</b><br><span class="ncs-sub">すべて空欄から入力</span></span></button>
+      <button type="button" class="ncs-opt" onclick="showNcsPick()"><span style="font-size:20px">🔁</span><span><b>過去症例から引き継ぐ（再麻酔）</b><br><span class="ncs-sub">カルテID・名前など患者情報をコピー（プラン・記録は引き継がない）</span></span></button>
+      <div id="ncsPick" style="display:none;margin-top:10px">
         <input class="fin" type="text" id="ncsSearch" placeholder="🔎 名前・カルテID・術式で検索" oninput="renderNcsList()" autocomplete="off" style="width:100%">
         <div id="ncsList" style="max-height:300px;overflow-y:auto;margin-top:8px;border:1.5px solid var(--border);border-radius:10px"></div>
       </div>
@@ -2230,7 +2217,7 @@ async function loadPresetsFromSheets() {
     });
     // Sheets未保存の拡張項目は localStorage キャッシュで補完（Sheets値が優先）
     try {
-      const cached = JSON.parse(localStorage.getItem('vet_presets') || '{}');
+      const cached = JSON.parse(localStorage.getItem('vet_mhm_presets') || '{}');
       Object.keys(presets).forEach(k => {
         if (!cached[k]) return;
         EXTRA_PRESET_FIELDS.forEach(f => {
@@ -2279,7 +2266,7 @@ async function loadPresets() {
     // 2) localStorage フォールバック
     let fromLocal = null;
     try {
-      const stored = localStorage.getItem('vet_presets');
+      const stored = localStorage.getItem('vet_mhm_presets');
       if (stored) fromLocal = JSON.parse(stored);
     } catch(e) {}
     if (fromLocal && Object.keys(fromLocal).length > 0) {
@@ -2299,7 +2286,7 @@ async function loadPresets() {
 }
 
 function savePresetsToStorage() {
-  try { localStorage.setItem('vet_presets', JSON.stringify(userPresets)); } catch(e){}
+  try { localStorage.setItem('vet_mhm_presets', JSON.stringify(userPresets)); } catch(e){}
 }
 
 // プリセットバーを描画
@@ -2571,19 +2558,14 @@ async function savePresetEditor() {
 // SHEETS SYNC（Google Spreadsheet連携）
 // ─────────────────────────────────────────────────
 const SHEETS_DEFAULT = {
-  spreadsheetId: '15nHPYpwnQtzGqtoHaMYMvV8s_LEB6xIp3SBfuwjWZNQ',
-  webappUrl: 'https://script.google.com/macros/s/AKfycbwQ_Oqtsl4ptT2g2JNpCyjsnl_hqpGd2CYQf7S7Uzbf4WmJkSG6aIOVTpgbGFjrkK9Z/exec',
-  facility: 'BDY',
-  token: '', // 合言葉（コードには書かず、各端末の設定画面で入力する）
-  enabled: false,
+  spreadsheetId: '194JpBh1ac8mXNzrqZMWfSYwakqRgKOxOQ2yeZ5LVauM',
+  webappUrl: 'https://script.google.com/macros/s/AKfycbwuIfxG0MogJ4VG5aw5AhRX7MRiXvbXzj_gO8tGqO7aITYfG8fSV8D5j92x4sG_QHj0pQ/exec',
+  facility: 'MHM',
+  enabled: true,
 };
 
 const FACILITY_LABELS_FALLBACK = {
-  FAH:'FAH', TAC:'TAC', ANG:'ANG',
-  BDY:'BDY',   CKE:'CKE',
-  FDC:'FDC', KSN:'KSN', HDM:'HDM',
-  MZR:'MZR', YDG:'淀川中央動物病院',
-  KUU:'クウ動物病院 鴫野',
+  MHM:'MHM',
 };
 
 let sheetsConfig = { ...SHEETS_DEFAULT };
@@ -2636,24 +2618,23 @@ document.addEventListener('focusout', e => {
 
 function loadSheetsConfig() {
   try {
-    const stored = localStorage.getItem('vet_sheets_config');
+    const stored = localStorage.getItem('vet_mhm_sheets_config');
     if (stored) sheetsConfig = { ...SHEETS_DEFAULT, ...JSON.parse(stored) };
   } catch(e) {}
   try {
-    const q = localStorage.getItem('vet_push_queue');
+    const q = localStorage.getItem('vet_mhm_push_queue');
     if (q) pushQueue = JSON.parse(q);
   } catch(e) { pushQueue = []; }
 }
 function saveSheetsConfig() {
-  try { localStorage.setItem('vet_sheets_config', JSON.stringify(sheetsConfig)); } catch(e){}
+  try { localStorage.setItem('vet_mhm_sheets_config', JSON.stringify(sheetsConfig)); } catch(e){}
 }
 function savePushQueue() {
-  try { localStorage.setItem('vet_push_queue', JSON.stringify(pushQueue)); } catch(e){}
+  try { localStorage.setItem('vet_mhm_push_queue', JSON.stringify(pushQueue)); } catch(e){}
 }
 
 function csvUrl(sheet) {
-  // セキュリティ改修: スプレッドシートを直接読まず、合言葉つきでGAS(doGet)経由で取得する。
-  // これによりスプレッドシートは非公開のままにできる。
+  // セキュリティ改修: 合言葉つきでGAS(doGet)経由で取得（シートは非公開のまま）
   if (!sheetsConfig.webappUrl) return '';
   // キャッシュバスター(&_=)で毎回URLをユニーク化。Apps Script doGet応答はGoogle側で
   // エッジキャッシュされるため、固定URLだと保存直後の読み戻しが古いCSVになり
@@ -3440,6 +3421,11 @@ function nowTime() {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
 }
 
+// 手術日フィールド用の日付フォーマット変換
+// 内部・Sheetsは YYYY/MM/DD、<input type="date"> は YYYY-MM-DD
+function dateToInput(s) { return s ? String(s).replace(/\//g, '-') : ''; }
+function inputToDate(s) { return s ? String(s).replace(/-/g, '/') : ''; }
+
 function makeCase() {
   return {
     id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -3547,7 +3533,7 @@ function makeCase() {
 // STORAGE
 // ─────────────────────────────────────────────────
 function loadStorage() {
-  try { cases = JSON.parse(localStorage.getItem('vet_cases') || '[]'); }
+  try { cases = JSON.parse(localStorage.getItem('vet_mhm_cases') || '[]'); }
   catch(e) { cases = []; }
   // データのbackfill
   let migrated = false;
@@ -3575,13 +3561,13 @@ function loadStorage() {
   if (migrated) saveStorage();
 }
 function saveStorage() {
-  try { localStorage.setItem('vet_cases', JSON.stringify(cases)); } catch(e){}
+  try { localStorage.setItem('vet_mhm_cases', JSON.stringify(cases)); } catch(e){}
 }
 
 // ── リロード復帰 & 離脱時の保存 ──────────────────────
 // iOS(Safari/ホーム画面起動)はメモリ不足でタブを破棄→再読み込みすることがあり、
 // その際に (a) 一覧へ戻ってしまう (b) 保存待ち(800ms)中の入力が消える、を防ぐ。
-const OPEN_CASE_KEY = 'vet_open_case';
+const OPEN_CASE_KEY = 'vet_mhm_open_case';
 function markOpenCase(id) {
   try { id ? localStorage.setItem(OPEN_CASE_KEY, id) : localStorage.removeItem(OPEN_CASE_KEY); } catch(e){}
 }
@@ -3730,68 +3716,7 @@ function openNewCaseSheet() {
   if (pick) pick.style.display = 'none';
   const si = document.getElementById('ncsSearch');
   if (si) si.value = '';
-  const idIn = document.getElementById('ncsId');
-  if (idIn) idIn.value = '';
-  onNcsIdInput();
   document.getElementById('newCaseModal').classList.add('on');
-  if (idIn) setTimeout(() => idIn.focus(), 50);
-}
-// 新規症例シート: カルテID入力→過去患者の候補(この患者で作成) or 新規患者として作成
-function onNcsIdInput() {
-  const idIn = document.getElementById('ncsId');
-  const hits = document.getElementById('ncsIdHits');
-  const nb = document.getElementById('ncsNewBtn');
-  const nl = document.getElementById('ncsNewLbl');
-  if (!idIn || !hits || !nb) return;
-  const raw = String(idIn.value || '').trim();
-  const q = _pidNorm(raw);
-  const rows = q.length >= 2 ? _pidCandidates(q, null) : [];
-  if (rows.length) {
-    hits.innerHTML = '<div class="pid-sg-hdr">🔁 このIDの過去患者（タップで患者情報を引き継いで作成）</div>' +
-      rows.slice(0, 5).map(c => {
-        const sp = c.species === 'dog' ? '🐶' : c.species === 'cat' ? '🐱' : c.species === 'rabbit' ? '🐰' : '🐾';
-        const nm = c.patientName || c.ownerName || '—';
-        const wt = c.weight ? ` ${esc(c.weight)}kg` : '';
-        return `<div class="pid-sg-row" onclick="closeNewCaseSheet();copyCaseAsNew('${c.id}')">
-          <span>${sp}</span><div class="pid-sg-main"><b>${esc(nm)}</b>
-          <small>No.${esc(c.caseNo || c.patientId || '')} | 前回 ${esc(c.date || '')}${wt}</small></div>
-          <span class="pid-sg-go">この患者で作成 ›</span>
-        </div>`;
-      }).join('');
-    hits.style.display = '';
-  } else { hits.style.display = 'none'; hits.innerHTML = ''; }
-  if (raw) {
-    const exact = rows.some(c => _pidNorm(c.caseNo || c.patientId) === q);
-    nl.textContent = exact ? `⚠️ 同じID「${raw}」で別の新規患者として作成` : `ID「${raw}」の新規患者として作成`;
-    nb.style.display = '';
-  } else nb.style.display = 'none';
-}
-function newCaseWithId() {
-  const raw = String((document.getElementById('ncsId') || {}).value || '').trim();
-  current = makeCase();
-  if (raw) { current.caseNo = raw; current.patientId = raw; }
-  cases.push(current);
-  saveStorage();
-  openForm();
-  if (raw) showToast(`🆕 ID ${raw} の新規症例を作成しました`);
-}
-// カルテID前方一致(ハイフン無視)の過去症例を、同一施設・患者ごと最新1件で返す
-function _pidCandidates(q, excludeId) {
-  const fac = (sheetsConfig && sheetsConfig.facility) || '';
-  let hits = cases.filter(c => {
-    if (excludeId && c.id === excludeId) return false;
-    if (fac && c.facility && c.facility !== fac) return false;
-    const cid = _pidNorm(c.caseNo || c.patientId);
-    return cid && cid.startsWith(q);
-  });
-  hits.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  const seen = new Set(), rows = [];
-  hits.forEach(c => {
-    const k = `${_pidNorm(c.caseNo || c.patientId)}|${(c.patientName || c.ownerName || '').trim()}`;
-    if (seen.has(k)) return;
-    seen.add(k); rows.push(c);
-  });
-  return rows;
 }
 function closeNewCaseSheet() { document.getElementById('newCaseModal').classList.remove('on'); }
 function showNcsPick() {
@@ -4106,11 +4031,11 @@ function nowIsoStr() {
 // ============================================================
 function getDeviceId() {
   try {
-    let id = localStorage.getItem('vet_fah_device_id');
+    let id = localStorage.getItem('vet_mhm_device_id');
     if (!id) {
       id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
          : ('dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
-      localStorage.setItem('vet_fah_device_id', id);
+      localStorage.setItem('vet_mhm_device_id', id);
     }
     return id;
   } catch (e) { return 'dev_unknown'; }
@@ -4327,6 +4252,7 @@ function renderDrugRow(d) {
 function populateForm() {
   if (!current) return;
   document.getElementById('hDate').textContent = current.date;
+  setVal('f_surgDate', dateToInput(current.date));
   // 患者ID = カルテNo として運用。古いcaseNoがあればそれを優先表示
   setVal('f_patientId', current.patientId || current.caseNo || '');
   setVal('f_staff', current.staff || '');
@@ -5538,7 +5464,7 @@ function addFreeNote(kind, opts) {
 function setVentMode(idx, mode) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
   const n = current.freeNotes[idx];
-  n.mode = (n.mode === mode) ? '' : mode;  // 同じものを再タップで未選択に戻す
+  n.mode = (n.mode === mode) ? '' : mode;
   if (n.mode === 'OFF' || n.mode === 'SPONT') { n.to = ''; n.rr = ''; }
   // PCV/VCV選択時: 空欄の設定値/RRは直前(同モード)の値を引き継ぐ＝「変更なし」を明示的に記録
   if (n.mode === 'PCV' || n.mode === 'VCV') {
@@ -5997,14 +5923,14 @@ function recordEvent(key) {
     const t0 = current.intubationTime;
     addFreeNote('flow', { time: shiftTime(t0, 1) });   // 酸素流量（O2/Air）
     addFreeNote('vent', { time: shiftTime(t0, 2) });   // 呼吸管理（換気・モード未選択）
-    // 維持ガス: 既定はイソフルラン。セボ選択時はセボ、プロポフォール単独(TIVA)はガスなし。
+    // 維持ガス: 既定はセボフルラン（みはま仕様）。イソ選択時はイソ、プロポフォール単独(TIVA)はガスなし。
     let gas;
-    if (current.maintSevoflurane && !current.maintIsoflurane) {
-      gas = { drugKey:'sevo', drugLabel:'セボフルラン', unit:'%' };
+    if (current.maintIsoflurane && !current.maintSevoflurane) {
+      gas = { drugKey:'iso', drugLabel:'イソフルラン', unit:'%' };
     } else if (current.maintPropofol && !current.maintIsoflurane && !current.maintSevoflurane) {
       gas = null;  // プロポフォール単独はガスなし
     } else {
-      gas = { drugKey:'iso', drugLabel:'イソフルラン', unit:'%' };  // 既定＝イソフルラン
+      gas = { drugKey:'sevo', drugLabel:'セボフルラン', unit:'%' };  // 既定＝セボフルラン（みはま）
     }
     if (gas) addFreeNote('gas', { ...gas, time: shiftTime(t0, 3) });
     addFreeNote('fluid', { time: shiftTime(t0, 4) });  // 輸液（初回はプランの輸液速度が初期値）
@@ -6337,6 +6263,32 @@ function pushCurrentToSheets() {
   pushToSheets(current, {skipFollowupSync: true});
 }
 
+// 手術日（current.date）の変更。翌日以降の症例をその手術日にAnesLog表示させる用途。
+// 日付は Sheets の upsertキー(日付+施設+カルテNo)の一部なので、
+// 旧日付の行を削除 → 新日付で upsert し直して二重行を防ぐ。
+function onSurgDateChange() {
+  if (!current) return;
+  const newDate = inputToDate(getVal('f_surgDate'));
+  if (!newDate) {                       // 空にされたら元の日付に戻す
+    setVal('f_surgDate', dateToInput(current.date));
+    return;
+  }
+  const oldDate = current.date;
+  if (newDate === oldDate) return;
+  current.date = newDate;
+  const hd = document.getElementById('hDate');
+  if (hd) hd.textContent = current.date;
+  const idx = cases.findIndex(c => c.id === current.id);
+  if (idx >= 0) cases[idx] = current;
+  saveStorage();
+  // Sheets同期: 旧日付の行を消してから新日付で送り直す
+  if (sheetsConfig.enabled && sheetsConfig.webappUrl && current.caseNo) {
+    deleteFromSheets({ id: current.id, caseNo: current.caseNo, date: oldDate });
+    pushToSheets(current);
+  }
+  showToast(`🗓 手術日を ${current.date} に変更しました`);
+}
+
 function saveCase() {
   collectForm();
   if (current) current.updated_at = nowIsoStr();
@@ -6384,71 +6336,6 @@ function onCaseNoInput() {
     el.style.borderColor = '';
   }
   try { renderPatientHistory(); } catch (_) {}
-  try { renderPidSuggest(); } catch (_) {}
-}
-
-// ── カルテID入力中のサジェスト ──
-// 入力中の文字列で始まるカルテIDを持つ過去症例(同一施設・自分以外)を
-// 患者ごとに最新1件へ集約してID欄の直下に出す。タップで患者情報を引き継ぐ。
-// ハイフン有無の違い(1234-5 / 12345)は無視して前方一致させる。
-function _pidNorm(v) { return String(v || '').replace(/[\s\-－ー]/g, '').toLowerCase(); }
-let _pidHold = 0; // 候補をタップした直後はblurによる非表示を抑える(タップが空振りしない保険)
-function hidePidSuggest(fromBlur) {
-  if (fromBlur && Date.now() - _pidHold < 800) return;
-  const el = document.getElementById('pidSuggest');
-  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
-}
-function renderPidSuggest() {
-  const el = document.getElementById('pidSuggest');
-  const inp = document.getElementById('f_patientId');
-  if (!el || !inp || !current) return;
-  if (document.activeElement !== inp) { hidePidSuggest(); return; }
-  const raw = String(inp.value || '').trim();
-  const q = _pidNorm(raw);
-  if (q.length < 2) { hidePidSuggest(); return; }
-  const curName = String(current.patientName || '').trim();
-  const rows = _pidCandidates(q, current.id);
-  // 既にその患者の情報が入っている(同じID・同じ名前)なら出さない
-  const filtered = rows.filter(c => !(_pidNorm(c.caseNo || c.patientId) === q && (c.patientName || '').trim() === curName && curName));
-  if (!filtered.length) { hidePidSuggest(); return; }
-  el.innerHTML = '<div class="pid-sg-hdr">🔎 このIDの過去症例（タップで患者情報を引き継ぎ）</div>' +
-    filtered.slice(0, 5).map(c => {
-      const sp = c.species === 'dog' ? '🐶' : c.species === 'cat' ? '🐱' : c.species === 'rabbit' ? '🐰' : '🐾';
-      const nm = c.patientName || c.ownerName || '—';
-      const wt = c.weight ? ` ${esc(c.weight)}kg` : '';
-      return `<div class="pid-sg-row" onpointerdown="event.preventDefault();_pidHold=Date.now()" onclick="applyPidSuggest('${c.id}')">
-        <span>${sp}</span><div class="pid-sg-main"><b>${esc(nm)}</b>
-        <small>No.${esc(c.caseNo || c.patientId || '')} | 前回 ${esc(c.date || '')}${wt}</small></div>
-        <span class="pid-sg-go">引き継ぐ ›</span>
-      </div>`;
-    }).join('');
-  el.style.display = '';
-}
-// 選んだ過去症例から患者情報を今の症例へ入れる。
-// ID/名前/動物種/性別/ETチューブ/挿管困難は患者固有なので上書き、
-// 体重・BCS・品種・生年月日・担当は「空欄のところだけ」埋める(入力済みの今日の値は守る)。
-// 生年月日があれば年齢は今日基準で計算し直す。
-function applyPidSuggest(id) {
-  const src = cases.find(c => c.id === id);
-  if (!src || !current) return;
-  collectForm();
-  const fixed = ['caseNo','patientId','patientName','ownerName','species','sex','tubeSize','tubeSizeFr','intubationDifficult'];
-  const fillEmpty = ['breed','birthdate','weight','bcs','staff','ageY','ageM'];
-  fixed.forEach(k => { if (src[k] !== undefined && src[k] !== null && src[k] !== '') current[k] = src[k]; });
-  fillEmpty.forEach(k => {
-    const cur = current[k];
-    if ((cur === undefined || cur === null || String(cur).trim() === '') && src[k] !== undefined && src[k] !== null && src[k] !== '') current[k] = src[k];
-  });
-  if (!current.patientId && current.caseNo) current.patientId = current.caseNo;
-  if (!current.caseNo && current.patientId) current.caseNo = current.patientId;
-  const age = calcAge(current.birthdate);
-  if (age) { current.ageY = String(age.years); current.ageM = String(age.months); }
-  hidePidSuggest();
-  populateForm();
-  try { renderPatientHistory(); } catch (_) {}
-  autoSave();
-  const nm = current.patientName || current.ownerName || current.caseNo || '';
-  showToast(`📋 ${nm} の患者情報を引き継ぎました`);
 }
 
 // ─────────────────────────────────────────────────
