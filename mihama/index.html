@@ -5167,6 +5167,10 @@ function renderTimelineList() {
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
   if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
   if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
+  // 引継ぎ値(from)は「追加した瞬間の直前値」で固定されていたため、あとから前の行の値を
+  // 直したり、同期で前の行が書き換わったりすると「0→0」のように食い違ったまま残っていた。
+  // 描画のたびに時刻順で計算し直し、常に直前の行の値と一致させる（保存値も同時に更新）。
+  try { recomputeFreeNotesFroms(); } catch (_) {}
   const entries = [];
   INTRAOP_EVENTS.forEach(e => {
     if ((current[e.key] || '').trim()) entries.push({ type:'event', key:e.key, label:e.label, time:current[e.key] });
