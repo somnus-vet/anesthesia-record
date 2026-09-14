@@ -4932,7 +4932,9 @@ function updateLiveTimers() {
   if (!current) return;
   const now = nowTime();
   setTimerBox('Anesth', current.anesthStart, current.returnToWard, now);
-  setTimerBox('Abx', latestAntibioticTime(), current.surgEnd, now);
+  // 抗菌薬は手術終了で計時停止。終了後に投与した分(術後投与)を起点にすると
+  // 「終了−投与」が負になり日またぎ扱いで1421分などになるため、終了以前の最終投与だけを見る。
+  setTimerBox('Abx', latestAntibioticTime(current, current.surgEnd), current.surgEnd, now);
   setTimerBox('Surg', current.surgStart, current.surgEnd, now);
   // グローブ交換から: 最後のグローブ交換時刻（無ければ手術開始）→手術終了で停止
   setTimerBox('Glove', latestGloveTime(), current.surgEnd, now);
@@ -4968,12 +4970,14 @@ function setTimerBox(suffix, startT, endT, now) {
 
 // 直近の抗菌薬投与時刻。薬剤ログ内のセファゾリン/アンピシリン投与の最新時刻を採用し、
 // 追加投与のたびにタイマーが計り直される。旧データは抗菌薬イベントも後方互換で考慮。
-function latestAntibioticTime(c) {
+function latestAntibioticTime(c, notAfter) {
   c = c || current;
   if (!c) return '';
   const abxLabels = (DRUG_GROUPS.antibiotics || []).map(d => d.label);
+  // notAfter(例: 手術終了時刻)があれば、それ以前の投与だけを候補にする
+  const limitSec = (notAfter && String(notAfter).trim()) ? timeToSec(notAfter) : null;
   let best = '', bestSec = -1;
-  const consider = t => { const s = timeToSec(t); if (s !== null && s > bestSec) { bestSec = s; best = t; } };
+  const consider = t => { const s = timeToSec(t); if (s !== null && s > bestSec && (limitSec === null || s <= limitSec)) { bestSec = s; best = t; } };
   if ((c.antibioticTime || '').trim()) consider(c.antibioticTime);
   (c.drugLog || []).forEach(r => { if (r.time && !r.deleted && abxLabels.includes(r.drug)) consider(r.time); });  // 削除墓標は計時に使わない
   return best;
