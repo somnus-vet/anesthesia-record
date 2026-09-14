@@ -1474,6 +1474,7 @@ const DRUG_GROUPS = {
     { key:'lidocaine_c',    label:'リドカイン',       unit:'mg/kg/hr',  dog:'1.5〜3',  cat:'—',       routes:['IV'], def:'IV' },
     { key:'ketamine_c',     label:'ケタミン',         unit:'mg/kg/hr',  dog:'0.1〜0.6',cat:'0.1〜0.6',routes:['IV'], def:'IV' },
     { key:'noradrenaline_c',label:'ノルアドレナリン', unit:'μg/kg/min', dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'], def:'IV' },
+    { key:'adrenaline_c',   label:'アドレナリン',     unit:'μg/kg/min', dog:'0.05〜0.4',cat:'0.05〜0.4',routes:['IV'], def:'IV', dilution:'100倍希釈', dilutionNote:'原液(1mg/mL) 0.1mL を生食で 10mL にメスアップ → 10μg/mL' },
     { key:'phenylephrine_c',label:'フェニレフリン',   unit:'μg/kg/min', dog:'1〜5',     cat:'1〜5',      routes:['IV'], def:'IV' },
     { key:'tramadol_c',     label:'トラマドール',     unit:'mg/kg/hr',  dog:'—',        cat:'0.1〜0.3', routes:['IV'], def:'IV' },
     { key:'dopamine_c',     label:'ドパミン',         unit:'μg/kg/min', dog:'3〜10',    cat:'3〜10',    routes:['IV'], def:'IV' },
@@ -1509,6 +1510,7 @@ const DRUG_GROUPS = {
     { key:'diphenhydramine', label:'ジフェンヒドラミン',    unit:'mg/kg', dog:'1〜2',  cat:'1〜2',  routes:['IV'],      def:'IV', conc:15 },
     { key:'famotidine',      label:'ファモチジン',         unit:'mg/kg', dog:'0.5〜1', cat:'0.5〜1', routes:['IV'],      def:'IV', conc:10 },
     { key:'methylprednisolone_acetate', label:'メチルプレドニゾロン酢酸エステル', unit:'mg/kg', dog:'1', cat:'1', routes:['SC'], def:'SC', conc:20 },
+    { key:'lipid20',         label:'20%脂肪乳剤(イントラリポス)', unit:'mL/kg', dog:'1.5', cat:'1.5', routes:['IV'], def:'IV', dilutionNote:'リピッドレスキュー: 1.5mL/kg を1分でボーラス → 0.25mL/kg/min 持続' },
   ],
 };
 
@@ -5409,7 +5411,7 @@ function editDrugLogDose(idx, perKgStr) {
 // 追加薬剤(定義に無い薬)の単位/経路はボタン選択式。
 // チップをタップ→行の下に選択肢を展開→タップで確定(定義がある薬は従来通り)。
 let _drugOptOpen = null; // {idx, which:'unit'|'route'}
-const MANUAL_UNIT_OPTS = ['mg/kg','μg/kg','mg','μg','mL','%','mg/kg/hr','μg/kg/hr','μg/kg/min'];
+const MANUAL_UNIT_OPTS = ['mg/kg','μg/kg','mL/kg','mg','μg','mL','%','mg/kg/hr','μg/kg/hr','μg/kg/min'];
 const MANUAL_ROUTE_OPTS = ['IV','IM','SC','PO','CRI'];
 function toggleDrugOpt(idx, which) {
   _drugOptOpen = (_drugOptOpen && _drugOptOpen.idx === idx && _drugOptOpen.which === which) ? null : { idx, which };
