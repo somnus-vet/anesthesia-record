@@ -4895,7 +4895,13 @@ function calcMinutesBetween(start, end) {
   if (!m1 || !m2) return null;
   const startMin = parseInt(m1[1],10) * 60 + parseInt(m1[2],10);
   let endMin = parseInt(m2[1],10) * 60 + parseInt(m2[2],10);
-  if (endMin < startMin) endMin += 24 * 60; // 日跨ぎ対応
+  // 日跨ぎ対応: 終了が開始より前なら翌日扱い。ただし「開始が終了(今)より少し先」は
+  // 深夜またぎではなく時刻の入力ミス(例: 抗菌薬を16:38と誤記→16:19時点で1421分)なので、
+  // 12時間未満の逆転は計算せず「—」にする。
+  if (endMin < startMin) {
+    if (startMin - endMin < 12 * 60) return null;
+    endMin += 24 * 60;
+  }
   const diff = endMin - startMin;
   return diff >= 0 ? diff : null;
 }
