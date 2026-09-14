@@ -398,8 +398,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .rv-title small{display:block;font-weight:600;font-size:11.5px;opacity:.75}
 .rv-hbtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:700;cursor:pointer;min-height:38px;white-space:nowrap;font-family:inherit}
 .rv-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:12px;align-items:start}
-.rv-left{position:sticky;top:0}
-@media (max-width:860px){.rv-body{grid-template-columns:1fr}.rv-left{position:static}}
+.rv-left{position:sticky;top:0;max-height:calc(100dvh - 72px);overflow:auto}
+@media (max-width:860px){.rv-body{grid-template-columns:1fr}.rv-left{position:static;max-height:none;overflow:visible}}
 .rv-card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:10px 12px;margin-bottom:12px}
 .rv-card h3{margin:-10px -12px 8px;background:var(--navy);color:#fff;font-size:13px;padding:6px 12px;border-radius:10px 10px 0 0;font-weight:700}
 .rv-card h4{margin:8px 0 4px;font-size:12.5px;color:var(--navy);border-left:3px solid var(--blue);padding-left:6px}
@@ -447,7 +447,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   body.rv-print #reviewScreen{display:block!important;position:static!important;transform:none!important;height:auto!important;overflow:visible!important;background:#fff!important;pointer-events:auto}
   body.rv-print .rv-hdr{display:none!important}
   body.rv-print .rv-body{display:block!important;overflow:visible!important;height:auto!important;padding:0}
-  body.rv-print .rv-left{position:static!important}
+  body.rv-print .rv-left{position:static!important;max-height:none!important;overflow:visible!important}
   body.rv-print .rv-card{box-shadow:none;border:1px solid #999;border-radius:3px;padding:6px 8px;margin:0 0 5px;break-inside:avoid}
   body.rv-print .rv-card h3{margin:-6px -8px 5px;border-radius:2px 2px 0 0;font-size:9.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body.rv-print .rv-kv,body.rv-print .rv-block,body.rv-print .rv-table,body.rv-print .rv-chk{font-size:8.6pt}
@@ -7308,10 +7308,10 @@ function renderReviewTrend() {
   const plotW = W - L - R;
   const bandEvtH = 34, bandDrugH = 58, axisH = 22, gap = 8;
   const panels = [
-    { key: 'circ', title: '循環', h: Math.round(W * 0.30), min: 0, max: 200 },
-    { key: 'resp', title: '呼吸', h: Math.round(W * 0.22), min: 0, max: 60 },
-    { key: 'gas',  title: '吸入麻酔薬', h: Math.round(W * 0.12), min: 0, max: 5 },
-    { key: 'temp', title: '体温', h: Math.round(W * 0.13), min: 34, max: 40 },
+    { key: 'circ', title: '循環', h: Math.round(W * 0.27), min: 0, max: 200 },
+    { key: 'resp', title: '呼吸', h: Math.round(W * 0.19), min: 0, max: 60 },
+    { key: 'gas',  title: '吸入麻酔薬', h: Math.round(W * 0.10), min: 0, max: 5 },
+    { key: 'temp', title: '体温', h: Math.round(W * 0.11), min: 34, max: 40 },
   ];
   const has = k => rows.some(r => r[k] !== undefined);
   if (!has('ISOin') && !has('ISOex')) panels.splice(2, 1);
@@ -7472,7 +7472,14 @@ function renderReviewTrend() {
   // 薬剤・変更マーカー（3段ずらし、帯内に短い縦線）
   const rowsEnd = [-Infinity, -Infinity, -Infinity, -Infinity];
   const bandTop = bandEvtH;
+  // ほぼ同時刻（10px以内）のマーカーは「PCV8·Iso1.5·輸液24」のように1ラベルに結合
+  const mgroups = [];
   marks.sort((a, b) => a.t - b.t).forEach(m => {
+    const g = mgroups[mgroups.length - 1];
+    if (g && x(m.t) - x(g.t) < 10 && g.lbl.length < 22) { g.lbl += '·' + m.lbl; g.title += '\n' + m.title; if (g.color !== m.color) g.color = '#444'; }
+    else mgroups.push({ t: m.t, lbl: m.lbl, color: m.color, title: m.title || '' });
+  });
+  mgroups.forEach(m => {
     const xx = x(m.t);
     const wpx = m.lbl.replace(/[^\x01-\x7e]/g, 'xx').length * 5.6 + 4;
     let row = rowsEnd.findIndex(e => e <= xx - wpx / 2 - 1);
