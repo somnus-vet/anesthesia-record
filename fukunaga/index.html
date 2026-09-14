@@ -7153,12 +7153,24 @@ function _tsFmt(s) {
   const p = n => String(n).padStart(2, '0');
   return `${p(Math.floor(s/3600))}:${p(Math.floor(s%3600/60))}:${p(s%60)}`;
 }
+// 時刻欄は「指が触れた瞬間」に開くと、一覧を時刻欄のあたりからスクロールし始めただけで
+// 編集シートが開いてしまう。触れた位置から動かさずに離した時(=タップ)だけ開く。
+// 10px以上動いた / 0.6秒以上押していた場合はスクロールや長押しとみなして開かない。
+let _tsPress = null;
 document.addEventListener('pointerdown', function(e) {
   const el = e.target;
   if (!el || !el.classList || !el.classList.contains('tl-time-in')) return;
   e.preventDefault();          // フォーカスさせない＝キーボードを出さない
-  openTimeSheet(el);
+  _tsPress = { el, x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
 }, true);
+document.addEventListener('pointerup', function(e) {
+  const p = _tsPress; _tsPress = null;
+  if (!p || p.el !== e.target) return;
+  if (Math.abs(e.clientX - p.x) > 10 || Math.abs(e.clientY - p.y) > 10) return;
+  if (Date.now() - p.t > 600) return;
+  openTimeSheet(p.el);
+}, true);
+document.addEventListener('pointercancel', function() { _tsPress = null; }, true);
 function openTimeSheet(el) {
   _tsTarget = el;
   _tsOrig = timeToSec(el.value);            // 空欄・不正は null
