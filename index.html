@@ -4006,6 +4006,10 @@ function copyCaseAsNew(id) {
   // patientIdとcaseNoは常に同期(片方だけの旧データ対策)
   if (!c.patientId && c.caseNo) c.patientId = c.caseNo;
   if (!c.caseNo && c.patientId) c.caseNo = c.patientId;
+  // 年齢は前回時点の値をそのまま持ってこず、生年月日から今日基準で計算し直す
+  // (生年月日が無い/不正なときだけ前回の年齢をそのまま使う)
+  const _age = calcAge(c.birthdate);
+  if (_age) { c.ageY = String(_age.years); c.ageM = String(_age.months); }
   current = c;
   cases.push(current);
   saveStorage();
