@@ -5355,8 +5355,8 @@ function renderTimelineList() {
     const _unit = _dd ? _dd.unit : ((String(en.dose || '').match(/^\s*[\d.]*\s*([^\s=\d.][^\s=]*)/) || [, ''])[1] || '');
     // 追加薬剤(定義なし)の単位/経路: チップをタップで行の下に選択ボタンを展開
     let _optLine = '';
-    if (!_dd && _drugOptOpen && _drugOptOpen.idx === en.idx) {
-      const _opts = _drugOptOpen.which === 'unit' ? MANUAL_UNIT_OPTS : MANUAL_ROUTE_OPTS;
+    if (_drugOptOpen && _drugOptOpen.idx === en.idx && (!_dd || _drugOptOpen.which === 'unit')) {
+      const _opts = _drugOptOpen.which === 'unit' ? unitOptsForDrug(en.drug) : MANUAL_ROUTE_OPTS;
       const _cur = _drugOptOpen.which === 'unit' ? _unit : en.route;
       _optLine = `<div class="tl-opt-line">` + _opts.map(o =>
         `<button type="button" class="tl-opt-btn${o === _cur ? ' on' : ''}" onclick="setDrugOpt(${en.idx},'${_drugOptOpen.which}','${o}')">${o}</button>`).join('') + `</div>`;
@@ -5365,7 +5365,7 @@ function renderTimelineList() {
       <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
       <input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
       <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" oninput="editDrugLogDose(${en.idx},this.value)" autocomplete="off">
-      ${_dd ? `<span class="tl-dose-unit">${esc(_unit)}</span>
+      ${_dd ? `<button type="button" class="tl-opt-chip" title="単位を変更" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit)}</button>
       <input class="fin tl-drug-route" type="text" value="${esc(en.route)}" placeholder="経路" oninput="editDrugLog(${en.idx},'route',this.value)" autocomplete="off">`
             : `<button type="button" class="tl-opt-chip${_unit ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit) || '単位'}</button>
       <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`}
@@ -5388,7 +5388,16 @@ function drugDefForLog(r) {
   if (!r) return null;
   const storedUnit = (String(r.dose || '').match(/^\s*[\d.]*\s*([^\s=\d.][^\s=]*)/) || [, ''])[1];
   const cands = Object.values(DRUG_GROUPS).flat().filter(x => x.label === r.drug);
-  return cands.find(x => x.unit === storedUnit) || cands[0] || null;
+  const hit = cands.find(x => x.unit === storedUnit);
+  if (hit) return hit;
+  // 単位が既に入っていて、その単位の定義が無い(例: アドレナリンをμg/kg/hrで)時は
+  // 定義に引き戻さず手動薬剤として扱う。単位未設定の時だけ最初の定義を既定にする。
+  return storedUnit ? null : (cands[0] || null);
+}
+// 薬剤名に対する単位の選択肢: 定義済みの単位(ボーラス/CRI等)を先頭に、汎用単位を続ける
+function unitOptsForDrug(name) {
+  const defs = Object.values(DRUG_GROUPS).flat().filter(x => x.label === name).map(x => x.unit);
+  return [...new Set([...defs, ...MANUAL_UNIT_OPTS])];
 }
 
 // 用量(数値/kg)の編集。単位は固定ラベル表示なので、ここでは数値だけ受け取り、
@@ -5423,6 +5432,9 @@ function setDrugOpt(idx, which, val) {
   if (which === 'unit') {
     const num = (String(r.dose || '').match(/^\s*([\d.]+)/) || [, ''])[1] || '';
     r.dose = num + val;
+    // 選んだ単位に一致する定義(例: アドレナリンCRI μg/kg/min)があれば総量計算込みに整形
+    const dd = drugDefForLog(r);
+    if (dd && num !== '' && !isNaN(parseFloat(num))) r.dose = formatDose(dd, parseFloat(num));
   } else {
     r.route = val;
   }
