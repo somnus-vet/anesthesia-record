@@ -1256,9 +1256,18 @@ input.fin[readonly]{background:#fff;cursor:pointer}
       <button class="modal-close" onclick="closeNewCaseSheet()">×</button>
     </div>
     <div class="modal-body">
-      <button type="button" class="ncs-opt" onclick="closeNewCaseSheet();newCase()"><span style="font-size:20px">🆕</span><span><b>まっさらで作成</b><br><span class="ncs-sub">すべて空欄から入力</span></span></button>
-      <button type="button" class="ncs-opt" onclick="showNcsPick()"><span style="font-size:20px">🔁</span><span><b>過去症例から引き継ぐ（再麻酔）</b><br><span class="ncs-sub">カルテID・名前など患者情報をコピー（プラン・記録は引き継がない）</span></span></button>
-      <div id="ncsPick" style="display:none;margin-top:10px">
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">まずカルテIDを入力してください。過去に麻酔した患者なら候補が出ます。</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="fin" type="text" inputmode="numeric" pattern="[0-9\-]*" id="ncsId" placeholder="カルテID（例: 1234-5）" oninput="onNcsIdInput()" autocomplete="off" style="flex:1;min-width:80px;font-size:18px">
+        <button type="button" onclick="insertHyphen('ncsId')" title="ハイフン挿入" style="background:#f0f4f8;border:1.5px solid var(--border);border-radius:6px;padding:8px 14px;font-size:18px;font-weight:700;cursor:pointer;min-height:44px;color:var(--text);flex-shrink:0;line-height:1">−</button>
+      </div>
+      <div id="ncsIdHits" style="display:none;margin-top:8px;border:1.5px solid var(--blue);border-radius:10px;overflow:hidden"></div>
+      <button type="button" class="ncs-opt" id="ncsNewBtn" style="display:none;margin-top:8px" onclick="closeNewCaseSheet();newCaseWithId()"><span style="font-size:20px">🆕</span><span><b id="ncsNewLbl"></b><br><span class="ncs-sub">IDが入った状態で空の症例を開きます</span></span></button>
+      <div style="display:flex;gap:14px;justify-content:space-between;align-items:center;margin-top:12px;font-size:12.5px">
+        <button type="button" onclick="showNcsPick()" style="background:none;border:none;color:var(--blue);font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px;padding:6px 0">🔎 名前・術式で探す</button>
+        <button type="button" onclick="closeNewCaseSheet();newCase()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-family:inherit;font-size:12.5px;padding:6px 0">IDなしで作成 ›</button>
+      </div>
+      <div id="ncsPick" style="display:none;margin-top:6px">
         <input class="fin" type="text" id="ncsSearch" placeholder="🔎 名前・カルテID・術式で検索" oninput="renderNcsList()" autocomplete="off" style="width:100%">
         <div id="ncsList" style="max-height:300px;overflow-y:auto;margin-top:8px;border:1.5px solid var(--border);border-radius:10px"></div>
       </div>
@@ -3720,7 +3729,68 @@ function openNewCaseSheet() {
   if (pick) pick.style.display = 'none';
   const si = document.getElementById('ncsSearch');
   if (si) si.value = '';
+  const idIn = document.getElementById('ncsId');
+  if (idIn) idIn.value = '';
+  onNcsIdInput();
   document.getElementById('newCaseModal').classList.add('on');
+  if (idIn) setTimeout(() => idIn.focus(), 50);
+}
+// 新規症例シート: カルテID入力→過去患者の候補(この患者で作成) or 新規患者として作成
+function onNcsIdInput() {
+  const idIn = document.getElementById('ncsId');
+  const hits = document.getElementById('ncsIdHits');
+  const nb = document.getElementById('ncsNewBtn');
+  const nl = document.getElementById('ncsNewLbl');
+  if (!idIn || !hits || !nb) return;
+  const raw = String(idIn.value || '').trim();
+  const q = _pidNorm(raw);
+  const rows = q.length >= 2 ? _pidCandidates(q, null) : [];
+  if (rows.length) {
+    hits.innerHTML = '<div class="pid-sg-hdr">🔁 このIDの過去患者（タップで患者情報を引き継いで作成）</div>' +
+      rows.slice(0, 5).map(c => {
+        const sp = c.species === 'dog' ? '🐶' : c.species === 'cat' ? '🐱' : c.species === 'rabbit' ? '🐰' : '🐾';
+        const nm = c.patientName || c.ownerName || '—';
+        const wt = c.weight ? ` ${esc(c.weight)}kg` : '';
+        return `<div class="pid-sg-row" onclick="closeNewCaseSheet();copyCaseAsNew('${c.id}')">
+          <span>${sp}</span><b>${esc(nm)}</b>
+          <small>No.${esc(c.caseNo || c.patientId || '')} | 前回 ${esc(c.date || '')}${wt}</small>
+          <span class="pid-sg-go">この患者で作成 ›</span>
+        </div>`;
+      }).join('');
+    hits.style.display = '';
+  } else { hits.style.display = 'none'; hits.innerHTML = ''; }
+  if (raw) {
+    const exact = rows.some(c => _pidNorm(c.caseNo || c.patientId) === q);
+    nl.textContent = exact ? `⚠️ 同じID「${raw}」で別の新規患者として作成` : `ID「${raw}」の新規患者として作成`;
+    nb.style.display = '';
+  } else nb.style.display = 'none';
+}
+function newCaseWithId() {
+  const raw = String((document.getElementById('ncsId') || {}).value || '').trim();
+  current = makeCase();
+  if (raw) { current.caseNo = raw; current.patientId = raw; }
+  cases.push(current);
+  saveStorage();
+  openForm();
+  if (raw) showToast(`🆕 ID ${raw} の新規症例を作成しました`);
+}
+// カルテID前方一致(ハイフン無視)の過去症例を、同一施設・患者ごと最新1件で返す
+function _pidCandidates(q, excludeId) {
+  const fac = (sheetsConfig && sheetsConfig.facility) || '';
+  let hits = cases.filter(c => {
+    if (excludeId && c.id === excludeId) return false;
+    if (fac && c.facility && c.facility !== fac) return false;
+    const cid = _pidNorm(c.caseNo || c.patientId);
+    return cid && cid.startsWith(q);
+  });
+  hits.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const seen = new Set(), rows = [];
+  hits.forEach(c => {
+    const k = `${_pidNorm(c.caseNo || c.patientId)}|${(c.patientName || c.ownerName || '').trim()}`;
+    if (seen.has(k)) return;
+    seen.add(k); rows.push(c);
+  });
+  return rows;
 }
 function closeNewCaseSheet() { document.getElementById('newCaseModal').classList.remove('on'); }
 function showNcsPick() {
@@ -6335,21 +6405,8 @@ function renderPidSuggest() {
   const raw = String(inp.value || '').trim();
   const q = _pidNorm(raw);
   if (q.length < 2) { hidePidSuggest(); return; }
-  const fac = (sheetsConfig && sheetsConfig.facility) || '';
   const curName = String(current.patientName || '').trim();
-  let hits = cases.filter(c => {
-    if (c.id === current.id) return false;
-    if (fac && c.facility && c.facility !== fac) return false;
-    const cid = _pidNorm(c.caseNo || c.patientId);
-    return cid && cid.startsWith(q);
-  });
-  hits.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  const seen = new Set(), rows = [];
-  hits.forEach(c => {
-    const k = `${_pidNorm(c.caseNo || c.patientId)}|${(c.patientName || c.ownerName || '').trim()}`;
-    if (seen.has(k)) return;
-    seen.add(k); rows.push(c);
-  });
+  const rows = _pidCandidates(q, current.id);
   // 既にその患者の情報が入っている(同じID・同じ名前)なら出さない
   const filtered = rows.filter(c => !(_pidNorm(c.caseNo || c.patientId) === q && (c.patientName || '').trim() === curName && curName));
   if (!filtered.length) { hidePidSuggest(); return; }
