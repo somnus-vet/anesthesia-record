@@ -7927,21 +7927,27 @@ function renderReviewReport() {
     return `<tr class="${first ? 'rv-gfirst' : ''}"><td class="rv-grp">${first ? esc(r.grp) : ''}</td><td>${esc(r.name)}</td><td>${esc(r.dose)}</td><td>${esc(r.route)}</td><td>${pin(r.pkey, r.opts)}</td></tr>`;
   }).join('');
   // 局所麻酔
-  const laRows = [];
+  const laRows = [], laMix = [];
   ['localMixture', 'localMixture2'].forEach((mk, i) => {
     const mix = c[mk] || { drugs: [], totalVolume: '' };
     const bf = i === 0 ? 'localBlocks' : 'localBlocks2';
     const blocks = c[bf] || {};
     const totalVol = parseFloat(mix.totalVolume) || 0;
-    const mixDrugs = (mix.drugs || []).filter(d => d.name).map(d => { const conc = parseFloat(d.conc) || 0, ml = parseFloat(d.stockMl) || 0; const mg = conc * 10 * ml; return { name: d.name, mgPerMl: totalVol > 0 ? mg / totalVol : 0 }; });
+    const mixDrugs = (mix.drugs || []).filter(d => d.name).map(d => { const conc = parseFloat(d.conc) || 0, ml = parseFloat(d.stockMl) || 0; const mg = conc * 10 * ml; return { name: d.name, conc, ml, mg, mgPerMl: totalVol > 0 ? mg / totalVol : 0 }; });
+    // 使用薬剤（原液濃度・混合後の濃度）
+    const drugTxt = mixDrugs.map(dr => `${dr.name} ${dr.conc}%${dr.ml ? ' ' + dr.ml + 'mL' : ''}`).join(' + ') + (totalVol && mixDrugs.length ? `（計${totalVol}mL → ${mixDrugs.map(dr => `${dr.name} ${dr.mgPerMl.toFixed(1)}mg/mL`).join('・')}）` : '');
+    let anyBlock = false;
     LOCAL_BLOCKS.forEach(b => {
       const d = blocks[b.key]; if (!d || !d.use) return;
+      anyBlock = true;
       const v = parseFloat(d.volume) || 0, s = parseFloat(d.sites) || 0, tMl = v * s;
-      const mg = mixDrugs.map(dr => `${dr.name} ${w ? (tMl * dr.mgPerMl / w).toFixed(2) + 'mg/kg' : (tMl * dr.mgPerMl).toFixed(1) + 'mg'}`).join(' / ');
-      laRows.push([b.label + (d.side ? `(${d.side})` : ''), `${tMl.toFixed(2)}mL${s > 1 ? ` (${v}mL/site×${s})` : ''}${w ? ` = ${(tMl / w).toFixed(2)}mL/kg` : ''}`, mg || (mixDrugs.length ? '' : '薬液未設定'), `la:${bf}:${b.key}`, d.note || '']);
+      const mg = mixDrugs.map(dr => `${dr.name} ${(tMl * dr.mgPerMl).toFixed(1)}mg${w ? ` (${(tMl * dr.mgPerMl / w).toFixed(2)}mg/kg)` : ''}`).join(' / ');
+      const drugs = mixDrugs.map(dr => `${dr.name} ${dr.conc}%`).join(' + ') || '薬液未設定';
+      laRows.push([b.label + (d.side ? `(${d.side})` : ''), drugs, `${tMl.toFixed(2)}mL${s > 1 ? ` (${v}mL/site×${s})` : ''}${w ? ` = ${(tMl / w).toFixed(2)}mL/kg` : ''}`, mg, `la:${bf}:${b.key}`, d.note || '']);
     });
+    if (anyBlock && mixDrugs.length) laMix.push(`薬液${i === 0 ? '①' : '②'}: ${drugTxt}`);
   });
-  [c.localCustom1, c.localCustom2].filter(Boolean).forEach((t, i) => laRows.push([t, '', '', `la:custom${i + 1}`, '']));
+  [c.localCustom1, c.localCustom2].filter(Boolean).forEach((t, i) => laRows.push([t, '', '', '', `la:custom${i + 1}`, '']));
   const fluidRateH = (c.fluidRate && w) ? `= ${(parseFloat(c.fluidRate) * w).toFixed(0)} mL/h` : '';
 
   // --- 薬剤ログ集計（実投与）
@@ -8057,7 +8063,8 @@ function renderReviewReport() {
       ${drugTbl || '<tr><td colspan="5" class="rv-missnote">プランに薬剤の選択なし（症例画面「麻酔PL」タブで選択）</td></tr>'}
     </tbody></table>
     <h4>局所麻酔法（目的の欄に実施方法を記載 例: 超音波ガイド）</h4>
-    ${laRows.length ? `<table class="rv-table"><thead><tr><th>ブロック</th><th>投与量</th><th>薬剤量</th><th style="width:34%">実施方法（記入）</th></tr></thead><tbody>${laRows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${pin(r[3], RV_LA_OPTS)}</td></tr>`).join('')}</tbody></table>` : '<div class="rv-note">局所麻酔なし</div>'}
+    ${laMix.length ? `<div class="rv-block" style="margin:0 0 4px">${laMix.map(esc).join('<br>')}</div>` : ''}
+    ${laRows.length ? `<table class="rv-table"><thead><tr><th>ブロック</th><th>使用薬剤</th><th>投与量</th><th>薬剤量</th><th style="width:30%">実施方法（記入）</th></tr></thead><tbody>${laRows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${pin(r[4], RV_LA_OPTS)}</td></tr>`).join('')}</tbody></table>` : '<div class="rv-note">局所麻酔なし</div>'}
     <h4>術中輸液剤</h4>
     <div class="rv-kv">${fi('種類', 'fluidType', '', { w: 150, ph: '乳酸リンゲル 等' })} ${fi('投与速度初期設定', 'fluidRate', 'mL/kg/h', { num: 1, w: 56 })} <span class="rv-v">${fluidRateH}</span></div>
     ${logRows ? `<h4>実投与（薬剤ログ集計・参考）</h4><table class="rv-table"><thead><tr><th>薬剤</th><th>回数</th><th>各回 /kg</th><th>総量</th><th>時刻</th></tr></thead><tbody>${logRows}</tbody></table>` : ''}
