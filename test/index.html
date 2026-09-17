@@ -462,6 +462,12 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .rv-chip.tog.on{background:#eef6fc;border-color:#2e86c1;color:var(--text);font-weight:700}
 .rv-table.rv-drugs tr.rv-gfirst td{border-top:2px solid #c9d3df;padding-top:9px}
 .rv-table.rv-drugs td{padding-top:5px;padding-bottom:5px}
+.rv-quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.rv-qbtn{border:1.5px solid var(--border);background:#f8fafc;border-radius:8px;padding:5px 11px;font-size:12.5px;font-family:inherit;cursor:pointer;min-height:34px;color:var(--text)}
+.rv-qbtn.on{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.rv-pcell{display:flex;flex-wrap:wrap;gap:4px;align-items:center;border:1.5px solid transparent;border-radius:8px;padding:2px}
+.rv-pcell .rv-pin{flex:1;min-width:80px;font-size:12px;min-height:28px;padding:3px 6px}
+.rv-pcell.rv-miss{background:#fff1f0!important;border-color:#e74c3c!important}
 .rv-auto{display:inline-block;background:#e8f4fd;color:var(--blue);border:1px solid #bcd7ee;border-radius:8px;padding:0 6px;font-size:10.5px;margin-left:5px;vertical-align:1px;font-weight:700}
 @media print{
   body.rv-print #printView{display:none!important}
@@ -482,6 +488,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   body.rv-print .rv-missbtn{display:none}
   body.rv-print .rv-chip.tog:not(.on){display:none}
   body.rv-print .rv-seg button:not(.on){opacity:.35}
+  body.rv-print .rv-quick{display:none!important}
+  body.rv-print .rv-pcell .rv-chip.tog:not(.on){display:none}
+  body.rv-print .rv-pcell .rv-pin:placeholder-shown{display:none}
   body.rv-print .rv-vin{min-height:0;padding:1px 4px;font-size:8.5pt;width:52px}
   body.rv-print .rv-chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body.rv-print .rv-noprint{display:none!important}
@@ -7756,6 +7765,106 @@ function rvSetPurpose(k, v) {
   const p = Object.assign({}, current.rvPurpose || {}); p[k] = v;
   rvSet('rvPurpose', p);
 }
+// 「特記なし」などのワンタップ入力（同じ文言ならもう一度押すと消す）
+function rvQuick(key, text, el) {
+  if (!current) return;
+  const now = String(current[key] || '').trim();
+  const v = now === text ? '' : text;
+  rvSet(key, v);
+  const wrap = el.parentNode, ta = wrap.previousElementSibling;
+  if (ta && ta.tagName === 'TEXTAREA') { ta.value = v; rvGrow(ta); if (ta.classList.contains('rv-req')) rvMissUpd(ta); }
+  wrap.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.textContent === v));
+  rvMissCount();
+}
+// 目的チップ: タップで「鎮静・鎮痛」のように「・」区切りで追加/削除。自由記載は同じ欄に追記できる
+function rvPurposeChip(pkey, label, el) {
+  if (!current) return;
+  const cell = el.closest('.rv-pcell');
+  const cur = String((current.rvPurpose || {})[pkey] || '').split('・').map(x => x.trim()).filter(Boolean);
+  const i = cur.indexOf(label);
+  if (i >= 0) cur.splice(i, 1); else cur.push(label);
+  const v = cur.join('・');
+  rvSetPurpose(pkey, v);
+  el.classList.toggle('on', i < 0);
+  const inp = cell.querySelector('input'); if (inp) inp.value = v;
+  cell.classList.toggle('rv-miss', rvIsEmpty(v));
+  rvMissCount();
+}
+function rvPurposeInput(pkey, el) {
+  rvSetPurpose(pkey, el.value);
+  const cell = el.closest('.rv-pcell');
+  const parts = el.value.split('・').map(x => x.trim());
+  cell.querySelectorAll('.rv-chip.tog').forEach(ch => ch.classList.toggle('on', parts.includes(ch.textContent)));
+  cell.classList.toggle('rv-miss', rvIsEmpty(el.value));
+  rvMissCount();
+}
+// 薬剤ごとの目的候補（タップで選ぶ用。無い薬は共通候補）
+const RV_PURPOSE_OPTS = {
+  medetomidine: ['鎮静', '鎮痛', 'MAC減少'], midazolam: ['鎮静', '筋弛緩', '抗痙攣'], butorphanol: ['鎮静', '鎮痛'], atropine_p: ['徐脈予防', '分泌抑制'],
+  nicardipine: ['降圧'], alfaxalone_p: ['鎮静'], fentanyl_p: ['鎮痛'], buprenorphine_p: ['鎮痛'], morphine: ['鎮痛'],
+  propofol: ['導入'], alfaxalone_i: ['導入'], cefazolin: ['周術期感染予防'], ampicillin: ['周術期感染予防'], cefovecin: ['感染予防'],
+  fentanyl_c: ['術中鎮痛', 'MAC減少'], remifentanil: ['術中鎮痛', 'MAC減少'], medetomidine_c: ['術中鎮痛', '鎮静'], lidocaine_c: ['術中鎮痛', '抗不整脈'],
+  ketamine_c: ['術中鎮痛', 'MAC減少'], tramadol_c: ['術中鎮痛'], noradrenaline_c: ['昇圧'], adrenaline_c: ['昇圧', '強心'], phenylephrine_c: ['昇圧'],
+  dopamine_c: ['昇圧', '強心'], dobutamine_c: ['強心'], rocuronium_c: ['筋弛緩'], atropine_v: ['徐脈治療'], ephedrine: ['昇圧'], phenylephrine: ['昇圧'],
+  noradrenaline: ['昇圧'], adrenaline: ['心停止', 'アナフィラキシー'], dopamine: ['昇圧', '強心'], dobutamine: ['強心'],
+  atipamezole: ['α2拮抗(覚醒)'], sugammadex: ['筋弛緩拮抗'], flumazenil: ['BZD拮抗'], naloxone: ['オピオイド拮抗'],
+  meloxicam: ['術後鎮痛', '抗炎症'], robenacoxib: ['術後鎮痛', '抗炎症'], prednisolone: ['抗炎症', 'アナフィラキシー'], buprenorphine: ['術後鎮痛'], tramadol: ['術後鎮痛'], acetaminophen: ['術後鎮痛'],
+  rocuronium: ['筋弛緩'], maropitant: ['制吐'], diphenhydramine: ['抗ヒスタミン', 'アナフィラキシー'], famotidine: ['胃酸抑制'], methylprednisolone_acetate: ['抗炎症'], lipid20: ['LAST対応'],
+  maint: ['麻酔維持'],
+};
+const RV_PURPOSE_COMMON = ['鎮静', '鎮痛', '昇圧', '徐脈治療', '拮抗', '感染予防'];
+const RV_LA_OPTS = ['超音波ガイド', '神経刺激装置', 'ランドマーク法', '浸潤', '術者施行'];
+// 選択理由の下書き（プラン＋目的チップから組み立て。空欄のときだけ入れる）
+function rvDraftRationale() {
+  const c = current; if (!c) return;
+  const ta = document.getElementById('rvTaRationale'); if (!ta) return;
+  if (!rvIsEmpty(c.rvRationale) && !confirm('選択理由に記載があります。末尾に下書きを追記しますか？')) return;
+  const P = c.rvPurpose || {};
+  const sp = c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : c.species === 'rabbit' ? 'うさぎ' : '';
+  const pain = { light: '軽度', moderate: '中等度', heavy: '重度', max: '最大' }[c.expectedPain] || '';
+  const lines = [];
+  lines.push(`${c.ageY ? c.ageY + '歳' : ''}${c.sex ? c.sex : ''}${sp}、ASA-PS ${c.asaps || '?'}${c.asapsE ? 'E' : ''}${c.rvAsaReason ? '（' + c.rvAsaReason + '）' : ''}。${c.procedure || '手術'}で予想疼痛は${pain || '?'}。`);
+  const g = (keys) => keys.map(k => { const d = findDrugDef(k); const dd = (c.drugs || {})[k]; if (!d || !dd || !dd.use) return ''; return `${d.label}${P[k] ? '(' + P[k] + ')' : ''}`; }).filter(Boolean);
+  const pre = g(DRUG_GROUPS.premeds.map(d => d.key)); if (pre.length) lines.push(`前投薬は${pre.join('＋')}を選択。`);
+  const ind = g(DRUG_GROUPS.induction.map(d => d.key)); if (ind.length) lines.push(`導入は${ind.join('＋')}。`);
+  const mt = []; if (c.maintIsoflurane) mt.push('イソフルラン'); if (c.maintSevoflurane) mt.push('セボフルラン'); if (c.maintPropofol) mt.push('プロポフォールCRI');
+  if (mt.length) lines.push(`維持は${mt.join('/')}${c.maintConc ? ' ' + c.maintConc + '%' : ''}${P.maint ? '(' + P.maint + ')' : ''}。`);
+  const cri = g(DRUG_GROUPS.cri.map(d => d.key)); if (cri.length) lines.push(`術中は${cri.join('＋')}を併用。`);
+  const la = [];
+  ['localBlocks', 'localBlocks2'].forEach(bf => LOCAL_BLOCKS.forEach(b => { const d = (c[bf] || {})[b.key]; if (d && d.use) la.push(b.label + (d.side ? '(' + d.side + ')' : '') + (P['la:' + bf + ':' + b.key] ? '・' + P['la:' + bf + ':' + b.key] : '')); }));
+  if (la.length) lines.push(`局所麻酔として${la.join('、')}を実施し、全身麻酔薬・オピオイドの必要量を減らす方針とした。`);
+  const post = g(DRUG_GROUPS.postAnalg.map(d => d.key)); if (post.length) lines.push(`術後鎮痛は${post.join('＋')}。`);
+  const prep = g(DRUG_GROUPS.vasopressors.concat(DRUG_GROUPS.antagonists).map(d => d.key)); if (prep.length) lines.push(`事前準備薬として${prep.join('、')}を用意。`);
+  if (c.fluidType) lines.push(`輸液は${c.fluidType}${c.fluidRate ? ' ' + c.fluidRate + 'mL/kg/h' : ''}。`);
+  lines.push('【この患者で特に考慮した点】');
+  const draft = lines.join('\n');
+  const v = rvIsEmpty(c.rvRationale) ? draft : (c.rvRationale + '\n' + draft);
+  rvSet('rvRationale', v); ta.value = v; rvGrow(ta); rvMissUpd(ta);
+}
+// 合併症の詳細の下書き（記録から自動判定した項目を時刻つきで列挙）
+function rvDraftCompDetails() {
+  const c = current; if (!c) return;
+  const ta = document.getElementById('rvTaCompDetails'); if (!ta) return;
+  const rows = _rvVitals || []; const st = rows.length ? rvStats(rows, c) : null;
+  const L = [];
+  const lab = { compTachy: '頻脈', compBrady: '徐脈', compHtn: '高血圧', compHypotension: '低血圧', compHypoxemia: '低酸素血症', compHypocapnia: '低CO₂血症', compHypercapnia: '高CO₂血症', compHypothermia: '低体温', compHyperthermia: '高体温', compTachyBreath: '頻呼吸', compBradyBreath: '徐呼吸' };
+  const ext = { compTachy: ['HR', 'max', ''], compBrady: ['HR', 'min', ''], compHtn: ['MAP', 'max', ''], compHypotension: ['MAP', 'min', ''], compHypoxemia: ['SpO2', 'min', '%'], compHypocapnia: ['EtCO2', 'min', ''], compHypercapnia: ['EtCO2', 'max', ''], compHypothermia: ['TEMP', 'min', '℃'], compHyperthermia: ['TEMP', 'max', '℃'], compTachyBreath: ['RR', 'max', ''], compBradyBreath: ['RR', 'min', ''] };
+  Object.keys(lab).forEach(k => {
+    if (!c[k]) return;
+    let s = lab[k];
+    if (st && st.flags[k] && st.flags[k].any) {
+      const [ek, w, u] = ext[k]; const e = st.ext[ek] && st.ext[ek][w];
+      s += `: ${e ? `${w === 'max' ? '最高' : '最低'} ${e.v}${u}(${rvFmtTime(e.t)})` : ''} 最長${st.flags[k].longest}分/延べ${st.flags[k].total}分 → 対応: `;
+    } else s += ' → 対応: ';
+    L.push(s);
+  });
+  ['compVomiting', '嘔吐/逆流', 'compSeizure', '発作', 'compBleed', '大量出血', 'compArrhythmia', '不整脈', 'compApnea', '無呼吸', 'compCardiacArrest', '心停止'].forEach((k, i, a) => { if (i % 2 === 0 && c[k]) L.push(a[i + 1] + ' → 対応: '); });
+  if (!L.length) { showToast('チェックされた合併症がありません'); return; }
+  if (!rvIsEmpty(c.compDetails) && !confirm('詳細に記載があります。末尾に下書きを追記しますか？')) return;
+  const draft = L.join('\n');
+  const v = rvIsEmpty(c.compDetails) ? draft : (c.compDetails + '\n' + draft);
+  rvSet('compDetails', v); ta.value = v; rvGrow(ta); rvMissUpd(ta);
+}
 
 function renderReviewReport() {
   const c = current; if (!c) return;
@@ -7771,7 +7880,8 @@ function renderReviewReport() {
   const fi = (label, key, unit, o) => { o = o || {}; return `<span class="rv-f"><span class="rv-k">${label}</span><input class="rv-in rv-req${miss(c[key])}" type="text" ${o.num ? 'inputmode="decimal"' : ''} style="width:${o.w || 72}px" value="${rvAttr(c[key] || '')}" placeholder="${rvAttr(o.ph || '')}" oninput="rvSet('${key}', this.value);rvMissUpd(this)">${unit ? `<span class="rv-k">${unit}</span>` : ''}</span>`; };
   // 任意テキスト入力
   const fo = (label, key, unit, o) => { o = o || {}; return `<span class="rv-f"><span class="rv-k">${label}</span><input class="rv-in" type="text" ${o.num ? 'inputmode="decimal"' : ''} style="width:${o.w || 72}px" value="${rvAttr(c[key] || '')}" placeholder="${rvAttr(o.ph || '')}" oninput="rvSet('${key}', this.value)">${unit ? `<span class="rv-k">${unit}</span>` : ''}</span>`; };
-  const ta = (key, ph, req) => `<textarea class="rv-ta${req === false ? '' : ' rv-req' + miss(c[key])}" placeholder="${rvAttr(ph)}" oninput="rvSet('${key}', this.value);rvGrow(this)${req === false ? '' : ';rvMissUpd(this)'}">${esc(c[key] || '')}</textarea>`;
+  const ta = (key, ph, req, quick, id) => `<textarea class="rv-ta${req === false ? '' : ' rv-req' + miss(c[key])}" ${id ? `id="${id}"` : ''} placeholder="${rvAttr(ph)}" oninput="rvSet('${key}', this.value);rvGrow(this)${req === false ? '' : ';rvMissUpd(this)'}">${esc(c[key] || '')}</textarea>` +
+    (quick && quick.length ? `<div class="rv-quick">${quick.map(q => `<button type="button" class="rv-qbtn${String(c[key] || '').trim() === q ? ' on' : ''}" onclick="rvQuick('${key}','${q}',this)">${esc(q)}</button>`).join('')}</div>` : '');
   const seg = (key, opts) => `<div class="rv-seg rv-req${miss(c[key])}">${opts.map(([v, l]) => `<button type="button" class="${String(c[key]) === String(v) ? 'on' : ''}" onclick="rvSeg('${key}','${v}',this)">${l}</button>`).join('')}</div>`;
   const segBool = (key) => `<div class="rv-seg"><button type="button" class="${c[key] ? 'on' : ''}" onclick="rvSegBool('${key}',true,this)">有</button><button type="button" class="${!c[key] ? 'on' : ''}" onclick="rvSegBool('${key}',false,this)">無</button></div>`;
   const chipT = (key, label) => `<span class="rv-chip tog${c[key] ? ' on' : ''}" onclick="rvChipToggle('${key}',this)">${esc(label)}</span>`;
@@ -7797,20 +7907,24 @@ function renderReviewReport() {
   // --- 麻酔方法/薬剤 表（分類ごとに間隔、用量は /kg のみ、目的は本人記入）
   const drugRows = [];
   const pushDrug = (grp, d, dd) => {
-    drugRows.push({ grp, name: d.label + (d.dilution ? `（${d.dilution}）` : ''), dose: dd.dose ? `${dd.dose} ${d.unit}` : '', route: dd.route || d.def || '', pkey: d.key, ph: RV_PURPOSE[d.key] || '' });
+    drugRows.push({ grp, name: d.label + (d.dilution ? `（${d.dilution}）` : ''), dose: dd.dose ? `${dd.dose} ${d.unit}` : '', route: dd.route || d.def || '', pkey: d.key, opts: RV_PURPOSE_OPTS[d.key] || [] });
   };
   const grpOf = { premeds: '麻酔前投薬', induction: '麻酔導入薬', antibiotics: '抗菌薬', cri: '術中鎮痛/CRI', vasopressors: '事前準備(循環作動薬)', antagonists: '拮抗薬', postAnalg: '術後鎮痛薬', other: 'その他' };
   ['premeds', 'induction'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
   const maint = [];
   if (c.maintIsoflurane) maint.push('イソフルラン'); if (c.maintSevoflurane) maint.push('セボフルラン'); if (c.maintPropofol) maint.push('プロポフォール(CRI)');
-  if (maint.length) drugRows.push({ grp: '麻酔維持薬', name: maint.join(' / '), dose: c.maintConc ? `${c.maintConc}%` : '', route: maint.some(m => /フルラン/.test(m)) ? '吸入' : 'IV', pkey: 'maint', ph: '麻酔維持' + [c.maintO2 ? ` / O₂ ${c.maintO2}L/min` : '', c.maintAir ? ` Air ${c.maintAir}L/min` : ''].join('') });
+  if (maint.length) drugRows.push({ grp: '麻酔維持薬', name: maint.join(' / '), dose: c.maintConc ? `${c.maintConc}%` : '', route: maint.some(m => /フルラン/.test(m)) ? '吸入' : 'IV', pkey: 'maint', opts: ['麻酔維持'] });
   ['cri', 'antibiotics'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
   ['postAnalg', 'vasopressors', 'antagonists', 'other'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
-  const pin = (pkey, ph) => `<input class="rv-in rv-pin rv-req${miss(purpose[pkey])}" type="text" value="${rvAttr(purpose[pkey] || '')}" placeholder="${rvAttr(ph || '')}" oninput="rvSetPurpose('${pkey}', this.value);rvMissUpd(this)">`;
+  const pin = (pkey, opts) => {
+    const cur = String(purpose[pkey] || '').split('・').map(x => x.trim());
+    const list = (opts || []).concat(RV_PURPOSE_COMMON.filter(o => !(opts || []).includes(o)).slice(0, (opts || []).length ? 2 : 6));
+    return `<div class="rv-pcell${miss(purpose[pkey])}">${list.map(o => `<span class="rv-chip tog${cur.includes(o) ? ' on' : ''}" onclick="rvPurposeChip('${pkey}','${o}',this)">${esc(o)}</span>`).join('')}<input class="rv-in rv-pin" type="text" value="${rvAttr(purpose[pkey] || '')}" placeholder="他（自由記載）" oninput="rvPurposeInput('${pkey}', this)"></div>`;
+  };
   let prevGrp = null;
   const drugTbl = drugRows.map(r => {
     const first = r.grp !== prevGrp; prevGrp = r.grp;
-    return `<tr class="${first ? 'rv-gfirst' : ''}"><td class="rv-grp">${first ? esc(r.grp) : ''}</td><td>${esc(r.name)}</td><td>${esc(r.dose)}</td><td>${esc(r.route)}</td><td>${pin(r.pkey, r.ph)}</td></tr>`;
+    return `<tr class="${first ? 'rv-gfirst' : ''}"><td class="rv-grp">${first ? esc(r.grp) : ''}</td><td>${esc(r.name)}</td><td>${esc(r.dose)}</td><td>${esc(r.route)}</td><td>${pin(r.pkey, r.opts)}</td></tr>`;
   }).join('');
   // 局所麻酔
   const laRows = [];
@@ -7824,7 +7938,7 @@ function renderReviewReport() {
       const d = blocks[b.key]; if (!d || !d.use) return;
       const v = parseFloat(d.volume) || 0, s = parseFloat(d.sites) || 0, tMl = v * s;
       const mg = mixDrugs.map(dr => `${dr.name} ${w ? (tMl * dr.mgPerMl / w).toFixed(2) + 'mg/kg' : (tMl * dr.mgPerMl).toFixed(1) + 'mg'}`).join(' / ');
-      laRows.push([b.label + (d.side ? `(${d.side})` : ''), `${tMl.toFixed(2)}mL${s > 1 ? ` (${v}mL×${s})` : ''}`, mg || (mixDrugs.length ? '' : '薬液未設定'), `la:${bf}:${b.key}`, d.note || '']);
+      laRows.push([b.label + (d.side ? `(${d.side})` : ''), `${tMl.toFixed(2)}mL${s > 1 ? ` (${v}mL/site×${s})` : ''}${w ? ` = ${(tMl / w).toFixed(2)}mL/kg` : ''}`, mg || (mixDrugs.length ? '' : '薬液未設定'), `la:${bf}:${b.key}`, d.note || '']);
     });
   });
   [c.localCustom1, c.localCustom2].filter(Boolean).forEach((t, i) => laRows.push([t, '', '', `la:custom${i + 1}`, '']));
@@ -7899,12 +8013,12 @@ function renderReviewReport() {
     </div>
     <h4>麻酔当日</h4>
     <div class="rv-kv">${fi('体温', 'preTemp', '℃', { num: 1, w: 60 })} ${fi('心拍数', 'preHr', 'bpm', { num: 1, w: 56 })} ${fi('呼吸数', 'preRr', '/min', { num: 1, w: 56 })} ${fi('血圧', 'preBp', 'mmHg', { w: 90, ph: '120/80 (90)' })}</div>
-    <h4>既往歴</h4>${ta('rvHistory', '既往歴（なければ「特記なし」）')}
-    <h4>主訴</h4>${ta('chiefComplaint', '主訴')}
+    <h4>既往歴</h4>${ta('rvHistory', '既往歴', true, ['特記なし'])}
+    <h4>主訴</h4>${ta('chiefComplaint', '主訴', true, ['特記なし', c.procedure ? c.procedure + '目的' : ''].filter(Boolean))}
     <h4>異常所見（身体検査・血液検査・画像検査など）</h4>
-    ${ta('abnormalFindings', '異常所見（なければ「特記なし」）')}
+    ${ta('abnormalFindings', '異常所見', true, ['特記なし'])}
     ${tests.length ? `<div style="margin-top:3px"><span class="rv-k">実施検査:</span> ${tests.map(t => chip(t)).join('')}</div>` : ''}
-    <h4>事前投与中の薬剤</h4>${ta('preMeds', '薬剤名・用量（なければ「なし」）')}
+    <h4>事前投与中の薬剤</h4>${ta('preMeds', '薬剤名・用量', true, ['なし'])}
     <h4>手術内容</h4>
     <div class="rv-kv">${fo('診断', 'diagnosis', '', { w: 170 })} ${fi('術式', 'procedure', '', { w: 170 })} ${fo('術者', 'surgeon', '', { w: 90 })} ${fo('麻酔監視', 'anesthMonitor', '', { w: 90 })} ${fo('監視指導医', 'anesthSupervisor', '', { w: 90 })}</div>
     <div class="rv-kv" style="margin-top:6px">
@@ -7912,7 +8026,7 @@ function renderReviewReport() {
       <span class="rv-f"><span class="rv-k">ASA-PS</span>${seg('asaps', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']])}<span class="rv-chip tog${c.asapsE ? ' on' : ''}" onclick="rvChipToggle('asapsE',this)" style="margin-left:6px">E（緊急）</span></span>
     </div>
     <h4>ASA-PS の理由</h4>
-    ${ta('rvAsaReason', 'ASA分類の根拠（例: 高齢・心雑音・脱水 など）')}
+    ${ta('rvAsaReason', 'ASA分類の根拠（例: 高齢・心雑音・脱水 など）', true, ['健康な若齢動物', '高齢', '軽度の全身疾患'])}
   </div>
 
   <div class="rv-card">
@@ -7943,7 +8057,7 @@ function renderReviewReport() {
       ${drugTbl || '<tr><td colspan="5" class="rv-missnote">プランに薬剤の選択なし（症例画面「麻酔PL」タブで選択）</td></tr>'}
     </tbody></table>
     <h4>局所麻酔法（目的の欄に実施方法を記載 例: 超音波ガイド）</h4>
-    ${laRows.length ? `<table class="rv-table"><thead><tr><th>ブロック</th><th>投与量</th><th>薬剤量</th><th style="width:34%">実施方法（記入）</th></tr></thead><tbody>${laRows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${pin(r[3], r[4] || '超音波ガイド / ランドマーク法 など')}</td></tr>`).join('')}</tbody></table>` : '<div class="rv-note">局所麻酔なし</div>'}
+    ${laRows.length ? `<table class="rv-table"><thead><tr><th>ブロック</th><th>投与量</th><th>薬剤量</th><th style="width:34%">実施方法（記入）</th></tr></thead><tbody>${laRows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${pin(r[3], RV_LA_OPTS)}</td></tr>`).join('')}</tbody></table>` : '<div class="rv-note">局所麻酔なし</div>'}
     <h4>術中輸液剤</h4>
     <div class="rv-kv">${fi('種類', 'fluidType', '', { w: 150, ph: '乳酸リンゲル 等' })} ${fi('投与速度初期設定', 'fluidRate', 'mL/kg/h', { num: 1, w: 56 })} <span class="rv-v">${fluidRateH}</span></div>
     ${logRows ? `<h4>実投与（薬剤ログ集計・参考）</h4><table class="rv-table"><thead><tr><th>薬剤</th><th>回数</th><th>各回 /kg</th><th>総量</th><th>時刻</th></tr></thead><tbody>${logRows}</tbody></table>` : ''}
@@ -7951,7 +8065,8 @@ function renderReviewReport() {
 
   <div class="rv-card">
     <h3>5. 麻酔方法 / 薬剤の選択理由</h3>
-    ${ta('rvRationale', 'なぜこのプロトコルにしたか（患者の状態・術式・疼痛レベル・合併症リスクとの関係）')}
+    <div class="rv-quick rv-noprint" style="margin:0 0 6px"><button type="button" class="rv-qbtn" onclick="rvDraftRationale()">📝 プランと目的から下書きを作る</button></div>
+    ${ta('rvRationale', 'なぜこのプロトコルにしたか（患者の状態・術式・疼痛レベル・合併症リスクとの関係）', true, [], 'rvTaRationale')}
   </div>
 
   <div class="rv-card">
@@ -7997,12 +8112,13 @@ function renderReviewReport() {
   <div class="rv-card">
     <h3>7. 実際に生じた合併症の詳細とその対応</h3>
     ${phaseNotes.length ? `<div class="rv-note">経過メモ（症例画面）:</div><table class="rv-table"><tbody>${phaseNotes.map(([p, n, fl]) => `<tr><td style="width:44px">${fl ? '⚠️' : ''}${esc(p)}</td><td>${esc(n)}</td></tr>`).join('')}</tbody></table>` : ''}
-    ${ta('compDetails', '何が起きて、どう対応し、どうなったか（時刻を添えて）。合併症がなければ「特記なし」')}
+    <div class="rv-quick rv-noprint" style="margin:0 0 6px"><button type="button" class="rv-qbtn" onclick="rvDraftCompDetails()">📟 チェックした合併症から下書きを作る</button></div>
+    ${ta('compDetails', '何が起きて、どう対応し、どうなったか（時刻を添えて）', true, ['特記なし'], 'rvTaCompDetails')}
   </div>
 
   <div class="rv-card">
     <h3>8. 麻酔管理・対応の改善点</h3>
-    ${ta('notes', '次回同じ症例が来たらどうするか。プロトコル・モニタリング・準備・チーム連携の改善点')}
+    ${ta('notes', '次回同じ症例が来たらどうするか。プロトコル・モニタリング・準備・チーム連携の改善点', true, ['特になし'])}
   </div>
 
   <div class="rv-card">
