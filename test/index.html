@@ -7532,8 +7532,11 @@ function renderReviewTrend() {
       svg.push(`<line x1="${L}" y1="${y90.toFixed(1)}" x2="${L + plotW}" y2="${y90.toFixed(1)}" stroke="#1f77b4" stroke-dasharray="2 3" opacity=".35"/>`);
     }
     if (p.key === 'circ' && (show.MAP || show.ALINE)) {
-      const y60 = yOf(p, 60);
-      svg.push(`<line x1="${L}" y1="${y60.toFixed(1)}" x2="${L + plotW}" y2="${y60.toFixed(1)}" stroke="#2e8b57" stroke-dasharray="2 3" opacity=".4"/>`);
+      // MAP<70 の領域を薄い水色で塗って低血圧域をひと目で分かるように
+      const y70 = yOf(p, 70);
+      svg.push(`<rect x="${L}" y="${y70.toFixed(1)}" width="${plotW}" height="${(p.bottom - y70).toFixed(1)}" fill="#dff1fb" opacity=".75"/>`);
+      svg.push(`<line x1="${L}" y1="${y70.toFixed(1)}" x2="${L + plotW}" y2="${y70.toFixed(1)}" stroke="#5dade2" stroke-dasharray="3 3" opacity=".8"/>`);
+      svg.push(`<text x="${L + plotW - 4}" y="${(y70 - 3).toFixed(1)}" text-anchor="end" fill="#2e86c1" font-size="9.5">MAP 70</text>`);
     }
   });
 
