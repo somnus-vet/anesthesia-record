@@ -7573,6 +7573,8 @@ function renderReviewTrend() {
   }
   if (pg) { line(pg, 'ISOin', '#16a085', 1.2, '3 2'); line(pg, 'ISOex', '#16a085', 2); }
   if (pt) line(pt, 'TEMP', '#8d6e63', 2);
+  svg.push('</g>');
+  const clampX = (xx, wpx) => Math.max(L + wpx / 2, Math.min(L + plotW - wpx / 2, xx));
 
   // イベント縦線＋ラベル（1分以内に連続するイベントは「前投·導入·挿管」のように1ラベルに結合、近接時は3段にずらす）
   const bot = panels[panels.length - 1].bottom;
@@ -7589,8 +7591,9 @@ function renderReviewTrend() {
   });
   const evRows = [-Infinity, -Infinity, -Infinity];
   groups.forEach(g => {
-    const xx = x(g.t), lbl = g.lbls.join('·');
+    const lbl = g.lbls.join('·');
     const wpx = lbl.replace(/[^\x01-\x7e]/g, 'xx').length * 5.4 + 6;
+    const xx = clampX(x(g.t), wpx);
     let row = evRows.findIndex(e => e <= xx - wpx / 2 - 2);
     if (row < 0) { row = 0; for (let i = 1; i < 3; i++) if (evRows[i] < evRows[row]) row = i; }
     evRows[row] = xx + wpx / 2;
@@ -7607,17 +7610,16 @@ function renderReviewTrend() {
       else mgroups.push({ t: m.t, lbl: m.lbl, color: m.color, title: m.title || '' });
     });
     mgroups.forEach(m => {
-      const xx = x(m.t);
       const wpx = m.lbl.replace(/[^\x01-\x7e]/g, 'xx').length * 5.6 + 4;
+      const xx = clampX(x(m.t), wpx);
       let row = rowsEnd.findIndex(e => e <= xx - wpx / 2 - 1);
       if (row < 0) { row = 0; for (let i = 1; i < 4; i++) if (rowsEnd[i] < rowsEnd[row]) row = i; }
       rowsEnd[row] = xx + wpx / 2;
       const ly = bandTop + 10 + row * 12;
-      svg.push(`<line x1="${xx.toFixed(1)}" y1="${ly + 3}" x2="${xx.toFixed(1)}" y2="${panels[0].top + 6}" stroke="${m.color}" opacity=".55"/>`);
+      svg.push(`<line x1="${x(m.t).toFixed(1)}" y1="${ly + 3}" x2="${x(m.t).toFixed(1)}" y2="${panels[0].top + 6}" stroke="${m.color}" opacity=".55"/>`);
       svg.push(`<text x="${xx.toFixed(1)}" y="${ly}" text-anchor="middle" fill="${m.color}" font-size="9.5" font-weight="600"><title>${esc(m.title || '')}</title>${esc(m.lbl)}</text>`);
     });
   }
-  svg.push('</g>');
   svg.push('</svg>');
   box.innerHTML = svg.join('');
   rvAttachDrag(box.querySelector('svg'));
