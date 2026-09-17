@@ -8721,10 +8721,12 @@ function _tsClose() {
   }
   function seed() {
     if (typeof cases === 'undefined' || typeof makeCase !== 'function') return;
+    // 旧デモ(rec_ 無しのidで保存→loadStorageでid付け替え→バイタルキャッシュと不一致)は作り直す
+    if (cases.some(c => /^rec_demo_case_/.test(c.id))) { cases.length = 0; try { localStorage.removeItem(RV_CACHE_KEY); } catch (_) {} }
     if (cases.length) return;
     const c1 = makeCase();
     Object.assign(c1, {
-      id: 'demo_case_1', date: DATE, caseNo: '1234-5', patientId: '1234-5', staff: '山田', facility: 'DEMO', progress: '完了',
+      id: 'rec_demo_1', date: DATE, caseNo: '1234-5', patientId: '1234-5', staff: '山田', facility: 'DEMO', progress: '完了',
       patientName: 'ヤマダ ポチ', species: 'dog', breed: 'トイ・プードル', birthdate: '2014/03/10', ageY: '12', ageM: '5', sex: 'MC',
       weight: '4.7', bcs: '5', consciousness: '正常', preMeds: 'なし',
       preTemp: '38.2', preHr: '120', preRr: '24', preBp: '130/80 (95)', chiefComplaint: '歯石・口臭（歯周病）', abnormalFindings: '特記なし',
@@ -8769,7 +8771,7 @@ function _tsClose() {
     });
     const c2 = makeCase();
     Object.assign(c2, {
-      id: 'demo_case_2', date: DATE, caseNo: '2345-1', patientId: '2345-1', staff: '山田', facility: 'DEMO', progress: '完了',
+      id: 'rec_demo_2', date: DATE, caseNo: '2345-1', patientId: '2345-1', staff: '山田', facility: 'DEMO', progress: '完了',
       patientName: 'サトウ タマ', species: 'cat', breed: 'ミックス', birthdate: '2025/11/20', ageY: '0', ageM: '9', sex: 'F',
       weight: '2.8', bcs: '5', consciousness: '正常', preMeds: 'なし',
       preTemp: '38.6', preHr: '180', preRr: '32', preBp: '', chiefComplaint: '避妊手術希望', abnormalFindings: '特記なし',
@@ -8801,8 +8803,8 @@ function _tsClose() {
     cases.push(c1, c2);
     saveStorage();
     const cache = {};
-    cache['demo_case_1'] = { at: Date.now(), rows: makeVitals({ caseNo: '1234-5', start: '10:00', minutes: 120, hr0: 118, map0: 88, temp0: 38.1, hypoAt: 45 }) };
-    cache['demo_case_2'] = { at: Date.now(), rows: makeVitals({ caseNo: '2345-1', start: '13:40', minutes: 62, hr0: 165, map0: 92, temp0: 38.4, hypoAt: 30 }) };
+    cache['rec_demo_1'] = { at: Date.now(), rows: makeVitals({ caseNo: '1234-5', start: '10:00', minutes: 120, hr0: 118, map0: 88, temp0: 38.1, hypoAt: 45 }) };
+    cache['rec_demo_2'] = { at: Date.now(), rows: makeVitals({ caseNo: '2345-1', start: '13:40', minutes: 62, hr0: 165, map0: 92, temp0: 38.4, hypoAt: 30 }) };
     try { localStorage.setItem(RV_CACHE_KEY, JSON.stringify(cache)); } catch (_) {}
     try { facilityMap.DEMO = 'そむなす動物病院'; } catch (_) {}
     if (typeof renderCasesList === 'function') renderCasesList();
