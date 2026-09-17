@@ -7542,16 +7542,20 @@ function renderReviewTrend() {
 
   svg.push('<g clip-path="url(#rvclip)">');
   // 折れ線（5分以上のデータ欠落で線を切る）
-  function line(p, key, color, width, dash, yfn) {
-    let d = '', prev = null;
+  // 系列名の小ラベル（線の右端付近にグラフ内表示。凡例まで目を落とさなくて済むように）
+  const tags = [];
+  function line(p, key, color, width, dash, yfn, label) {
+    let d = '', prev = null, lastY = null;
     draw.forEach(r => {
       const v = r[key]; if (v === undefined) return;
       const xx = x(r.t), yy = yfn ? yfn(v) : yOf(p, v);
       if (yy < p.top - 2 || yy > p.bottom + 2) { prev = null; return; }
       d += (prev && r.t - prev <= 5 * 60000 ? 'L' : 'M') + xx.toFixed(1) + ' ' + yy.toFixed(1) + ' ';
       prev = r.t;
+      if (inView(r.t)) lastY = yy;
     });
     if (d) svg.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" ${dash ? `stroke-dasharray="${dash}"` : ''} stroke-linejoin="round" stroke-linecap="round"/>`);
+    if (d && label && lastY !== null) tags.push({ p, y: lastY, text: label, color });
   }
   function dots(p, key, color, shape) {
     draw.forEach(r => {
@@ -7564,19 +7568,28 @@ function renderReviewTrend() {
     });
   }
   if (pc) {
-    if (show.BP) { line(pc, 'SYS', '#8e44ad', 1, '3 3'); line(pc, 'DIA', '#8e44ad', 1, '3 3'); dots(pc, 'SYS', '#8e44ad', 'down'); dots(pc, 'DIA', '#8e44ad', 'up'); }
-    if (show.MAP) line(pc, 'MAP', '#2e8b57', 1.8);
-    if (show.ALINE && has('A1_SYS')) { line(pc, 'A1_SYS', '#8e44ad', 1.2, '1 2'); line(pc, 'A1_DIA', '#8e44ad', 1.2, '1 2'); line(pc, 'A1_MAP', '#2e8b57', 1.8, '4 2'); }
-    if (show.HR) line(pc, 'HR', '#e74c3c', 2.2);
+    if (show.BP) { line(pc, 'SYS', '#8e44ad', 1, '3 3', null, 'SYS'); line(pc, 'DIA', '#8e44ad', 1, '3 3', null, 'DIA'); dots(pc, 'SYS', '#8e44ad', 'down'); dots(pc, 'DIA', '#8e44ad', 'up'); }
+    if (show.MAP) line(pc, 'MAP', '#2e8b57', 1.8, '', null, 'MAP');
+    if (show.ALINE && has('A1_SYS')) { line(pc, 'A1_SYS', '#8e44ad', 1.2, '1 2', null, 'A-SYS'); line(pc, 'A1_DIA', '#8e44ad', 1.2, '1 2', null, 'A-DIA'); line(pc, 'A1_MAP', '#2e8b57', 1.8, '4 2', null, 'A-MAP'); }
+    if (show.HR) line(pc, 'HR', '#e74c3c', 2.2, '', null, 'HR');
   }
   if (pr) {
-    if (show.RR) line(pr, 'RR', '#7f8c8d', 1.4, '4 3');
-    if (show.EtCO2) line(pr, 'EtCO2', '#e67e22', 2);
-    if (show.SpO2) line(pr, 'SpO2', '#1f77b4', 2, '', v => pr.bottom - (Math.max(80, Math.min(100, v)) - 80) / 20 * pr.h);
+    if (show.RR) line(pr, 'RR', '#7f8c8d', 1.4, '4 3', null, 'RR');
+    if (show.EtCO2) line(pr, 'EtCO2', '#e67e22', 2, '', null, 'EtCO₂');
+    if (show.SpO2) line(pr, 'SpO2', '#1f77b4', 2, '', v => pr.bottom - (Math.max(80, Math.min(100, v)) - 80) / 20 * pr.h, 'SpO₂');
   }
-  if (pg) { line(pg, 'ISOin', '#16a085', 1.2, '3 2'); line(pg, 'ISOex', '#16a085', 2); }
-  if (pt) line(pt, 'TEMP', '#8d6e63', 2);
+  const gasName = (c.maintSevoflurane && !c.maintIsoflurane) ? 'Sev' : 'Iso';
+  if (pg) { line(pg, 'ISOin', '#16a085', 1.2, '3 2', null, gasName + ' in'); line(pg, 'ISOex', '#16a085', 2, '', null, gasName + ' ex'); }
+  if (pt) line(pt, 'TEMP', '#8d6e63', 2, '', null, '体温');
   svg.push('</g>');
+  // 系列ラベルをパネルごとに重ならないよう縦にずらして右端内側へ
+  panels.forEach(p => {
+    const ts = tags.filter(t => t.p === p).sort((a, b) => a.y - b.y);
+    const gapY = 11, top = p.top + 14, bottom = p.bottom - 3;
+    for (let i = 0; i < ts.length; i++) { ts[i].y = Math.max(top, ts[i].y); if (i > 0 && ts[i].y < ts[i - 1].y + gapY) ts[i].y = ts[i - 1].y + gapY; }
+    for (let i = ts.length - 1; i >= 0; i--) { ts[i].y = Math.min(bottom, ts[i].y); if (i < ts.length - 1 && ts[i].y > ts[i + 1].y - gapY) ts[i].y = ts[i + 1].y - gapY; }
+    ts.forEach(t => svg.push(`<text x="${L + plotW - 4}" y="${(t.y + 3.5).toFixed(1)}" text-anchor="end" fill="${t.color}" font-size="9.5" font-weight="700" paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">${esc(t.text)}</text>`));
+  });
   const clampX = (xx, wpx) => Math.max(L + wpx / 2, Math.min(L + plotW - wpx / 2, xx));
 
   // イベント縦線＋ラベル（1分以内に連続するイベントは「前投·導入·挿管」のように1ラベルに結合、近接時は3段にずらす）
