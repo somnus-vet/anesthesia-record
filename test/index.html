@@ -442,6 +442,14 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .rv-empty{padding:26px 10px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6}
 .rv-busy{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:var(--blue);border-radius:50%;animation:rvspin .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes rvspin{to{transform:rotate(360deg)}}
+.rv-tbar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:6px}
+.rv-tbar button{border:1.5px solid var(--border);background:#f8fafc;border-radius:7px;padding:5px 10px;font-size:12.5px;font-family:inherit;cursor:pointer;min-height:32px;color:var(--text)}
+.rv-tbar button:active{background:#eaf3fb}
+.rv-tsep{width:1px;height:20px;background:var(--border);margin:0 3px}
+.rv-legend span.rv-lg{cursor:pointer;padding:2px 6px;border-radius:8px;border:1px solid transparent;-webkit-user-select:none;user-select:none}
+.rv-legend span.rv-lg:active{background:#eaf3fb}
+.rv-legend span.rv-lg.off{opacity:.4;text-decoration:line-through}
+.rv-auto{display:inline-block;background:#e8f4fd;color:var(--blue);border:1px solid #bcd7ee;border-radius:8px;padding:0 6px;font-size:10.5px;margin-left:5px;vertical-align:1px;font-weight:700}
 @media print{
   body.rv-print #printView{display:none!important}
   body.rv-print #reviewScreen{display:block!important;position:static!important;transform:none!important;height:auto!important;overflow:visible!important;background:#fff!important;pointer-events:auto}
@@ -1316,7 +1324,19 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <div class="rv-left">
       <div class="rv-card">
         <h3>📈 バイタル推移（SomLog）</h3>
+        <div class="rv-tbar rv-noprint" id="rvTrendBar" style="display:none">
+          <button type="button" onclick="rvSetRange('all')">全体</button>
+          <button type="button" onclick="rvSetRange('anes')">麻酔中</button>
+          <button type="button" onclick="rvSetRange('surg')">手術中</button>
+          <span class="rv-tsep"></span>
+          <button type="button" onclick="rvZoom(0.5)" title="拡大">＋</button>
+          <button type="button" onclick="rvZoom(2)" title="縮小">−</button>
+          <button type="button" onclick="rvPan(-0.5)" title="前へ">‹</button>
+          <button type="button" onclick="rvPan(0.5)" title="次へ">›</button>
+          <span class="rv-note" id="rvRangeLbl"></span>
+        </div>
         <div class="rv-trend" id="rvTrend"><div class="rv-empty">読み込み中…</div></div>
+        <div class="rv-note rv-noprint" style="margin-top:4px">グラフ上を横にドラッグするとその範囲に拡大。凡例をタップで項目の表示/非表示。</div>
         <div id="rvTrendFoot"></div>
       </div>
     </div>
@@ -7075,7 +7095,7 @@ function openReview() {
   document.getElementById('rvBody').scrollTop = 0;
   const t = document.getElementById('rvTitle');
   t.innerHTML = `振り返りシート <small>${esc(current.date || '')} ｜ ${esc(current.patientName || '')} ｜ ${esc(current.procedure || '')}</small>`;
-  _rvVitals = null; _rvVitalsSrc = '';
+  _rvVitals = null; _rvVitalsSrc = ''; _rvRange = null; _rvFull = null;
   renderReviewReport();
   loadReviewVitals(false);
 }
@@ -7292,32 +7312,131 @@ function rvExtStr(e, unit, which) {
 }
 
 // ---------- トレンド描画（SVG） ----------
+// 表示項目の選択（端末に記憶）・表示範囲（ドラッグ/ボタン）・SYS▼ DIA▲
+const RV_SHOW_KEY = 'vet_rv_show';
+const RV_SERIES = [
+  ['HR', 'HR', '#e74c3c'], ['BP', 'SYS▼/DIA▲', '#8e44ad'], ['MAP', 'MAP', '#2e8b57'], ['ALINE', 'A-line(点線)', '#8e44ad'],
+  ['EtCO2', 'EtCO₂', '#e67e22'], ['RR', 'RR', '#7f8c8d'], ['SpO2', 'SpO₂(右軸)', '#1f77b4'],
+  ['GAS', 'Iso/Sev in(点線)/ex', '#16a085'], ['TEMP', '体温', '#8d6e63'],
+  ['EVT', 'イベント線', '#1e3a5f'], ['MARK', '薬剤/変更マーカー', '#c0392b'],
+];
+let _rvShow = null;
+let _rvRange = null;   // {t0,t1} 表示範囲（nullで全体）
+let _rvFull = null;    // {t0,t1} 全体範囲
+let _rvGeom = null;    // {L, plotW, t0, t1} ドラッグ→時刻変換用
+function rvShow() {
+  if (_rvShow) return _rvShow;
+  _rvShow = {}; RV_SERIES.forEach(([k]) => _rvShow[k] = true);
+  try { Object.assign(_rvShow, JSON.parse(localStorage.getItem(RV_SHOW_KEY) || '{}')); } catch (_) {}
+  return _rvShow;
+}
+function rvToggleShow(k) {
+  const s = rvShow(); s[k] = !s[k];
+  try { localStorage.setItem(RV_SHOW_KEY, JSON.stringify(s)); } catch (_) {}
+  renderReviewTrend();
+}
+function rvClampRange(t0, t1) {
+  if (!_rvFull) return null;
+  const minSpan = 5 * 60000;
+  if (t1 - t0 < minSpan) { const m = (t0 + t1) / 2; t0 = m - minSpan / 2; t1 = m + minSpan / 2; }
+  if (t0 < _rvFull.t0) { t1 += _rvFull.t0 - t0; t0 = _rvFull.t0; }
+  if (t1 > _rvFull.t1) { t0 -= t1 - _rvFull.t1; t1 = _rvFull.t1; }
+  t0 = Math.max(t0, _rvFull.t0); t1 = Math.min(t1, _rvFull.t1);
+  if (t0 <= _rvFull.t0 && t1 >= _rvFull.t1) return null;
+  return { t0, t1 };
+}
+function rvSetRange(mode) {
+  const c = current; if (!c || !_rvFull) return;
+  if (mode === 'all') _rvRange = null;
+  else if (mode === 'anes') {
+    const w = rvAnalysisWindow(c, _rvVitals || []);
+    if (w.s === null || w.e === null) { showToast('導入/抜管の時刻がありません'); return; }
+    _rvRange = rvClampRange(w.s - 2 * 60000, w.e + 2 * 60000);
+  } else if (mode === 'surg') {
+    const s = rvEventMs(c, c.surgStart), e = rvEventMs(c, c.surgEnd);
+    if (s === null || e === null) { showToast('手術開始/終了の時刻がありません'); return; }
+    _rvRange = rvClampRange(s - 2 * 60000, e + 2 * 60000);
+  }
+  renderReviewTrend();
+}
+function rvZoom(f) {
+  const r = _rvRange || _rvFull; if (!r) return;
+  const m = (r.t0 + r.t1) / 2, half = (r.t1 - r.t0) / 2 * f;
+  _rvRange = rvClampRange(m - half, m + half); renderReviewTrend();
+}
+function rvPan(f) {
+  const r = _rvRange; if (!r) return;
+  const d = (r.t1 - r.t0) * f;
+  _rvRange = rvClampRange(r.t0 + d, r.t1 + d); renderReviewTrend();
+}
+// グラフ上の横ドラッグで範囲選択（縦スクロールは pan-y で通す）
+function rvAttachDrag(svgEl) {
+  if (!svgEl || !_rvGeom) return;
+  let x0 = null, rect = null, dragging = false, pid = null;
+  const toX = ev => ev.clientX - svgEl.getBoundingClientRect().left;
+  svgEl.addEventListener('pointerdown', ev => {
+    if (ev.button !== 0 && ev.pointerType === 'mouse') return;
+    x0 = toX(ev); pid = ev.pointerId; dragging = false;
+  });
+  svgEl.addEventListener('pointermove', ev => {
+    if (x0 === null || ev.pointerId !== pid) return;
+    const xx = toX(ev);
+    if (!dragging) {
+      if (Math.abs(xx - x0) < 8) return;
+      dragging = true;
+      try { svgEl.setPointerCapture(pid); } catch (_) {}
+      rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('y', 0); rect.setAttribute('height', svgEl.getAttribute('height'));
+      rect.setAttribute('fill', '#2e86c1'); rect.setAttribute('opacity', '0.18');
+      svgEl.appendChild(rect);
+    }
+    const a = Math.max(_rvGeom.L, Math.min(x0, xx)), b = Math.min(_rvGeom.L + _rvGeom.plotW, Math.max(x0, xx));
+    rect.setAttribute('x', a); rect.setAttribute('width', Math.max(0, b - a));
+  });
+  const end = ev => {
+    if (x0 === null || ev.pointerId !== pid) return;
+    if (dragging && rect) {
+      const a = parseFloat(rect.getAttribute('x')), w = parseFloat(rect.getAttribute('width'));
+      rect.remove();
+      if (w >= 10) {
+        const g = _rvGeom, tOf = px => g.t0 + (px - g.L) / g.plotW * (g.t1 - g.t0);
+        _rvRange = rvClampRange(tOf(a), tOf(a + w));
+        renderReviewTrend();
+      }
+    }
+    x0 = null; rect = null; dragging = false; pid = null;
+  };
+  svgEl.addEventListener('pointerup', end);
+  svgEl.addEventListener('pointercancel', end);
+}
+
 function renderReviewTrend() {
   const box = document.getElementById('rvTrend');
   const foot = document.getElementById('rvTrendFoot');
+  const bar = document.getElementById('rvTrendBar');
   const c = current;
   if (!c) return;
   const rows = _rvVitals || [];
   if (!rows.length) {
     box.innerHTML = '<div class="rv-empty">この症例のバイタルはSheets「バイタル」に見つかりませんでした。<br><span class="rv-note">SomLogで記録した症例（カルテNo・日付が一致）のみ表示できます。</span></div>';
-    foot.innerHTML = '';
+    foot.innerHTML = ''; if (bar) bar.style.display = 'none';
     return;
   }
+  if (bar) bar.style.display = '';
+  const show = rvShow();
   const W = Math.max(320, box.clientWidth || 640);
   const L = 44, R = 46;
   const plotW = W - L - R;
-  const bandEvtH = 34, bandDrugH = 58, axisH = 22, gap = 8;
-  const panels = [
-    { key: 'circ', title: '循環', h: Math.round(W * 0.27), min: 0, max: 200 },
-    { key: 'resp', title: '呼吸', h: Math.round(W * 0.19), min: 0, max: 60 },
-    { key: 'gas',  title: '吸入麻酔薬', h: Math.round(W * 0.10), min: 0, max: 5 },
-    { key: 'temp', title: '体温', h: Math.round(W * 0.11), min: 34, max: 40 },
-  ];
+  const bandEvtH = show.EVT ? 34 : 6, bandDrugH = show.MARK ? 58 : 4, axisH = 22, gap = 8;
   const has = k => rows.some(r => r[k] !== undefined);
-  if (!has('ISOin') && !has('ISOex')) panels.splice(2, 1);
-  if (!has('TEMP')) { const i = panels.findIndex(p => p.key === 'temp'); if (i >= 0) panels.splice(i, 1); }
+  const panels = [];
+  if (show.HR || show.BP || show.MAP || show.ALINE) panels.push({ key: 'circ', title: '循環', h: Math.round(W * 0.27), min: 0, max: 200 });
+  if (show.EtCO2 || show.RR || show.SpO2) panels.push({ key: 'resp', title: '呼吸', h: Math.round(W * 0.19), min: 0, max: 60 });
+  if (show.GAS && (has('ISOin') || has('ISOex'))) panels.push({ key: 'gas', title: '吸入麻酔薬', h: Math.round(W * 0.10), min: 0, max: 5 });
+  if (show.TEMP && has('TEMP')) panels.push({ key: 'temp', title: '体温', h: Math.round(W * 0.11), min: 34, max: 40 });
+  if (!panels.length) panels.push({ key: 'circ', title: '循環', h: Math.round(W * 0.27), min: 0, max: 200 });
 
-  // 時間範囲: バイタル＋イベント＋薬剤
+  // 時間範囲: バイタル＋イベント＋薬剤（全体）→ 選択範囲があればそれで描く
   const evDefs = [['anesthStart', '前投'], ['inductionTime', '導入'], ['intubationTime', '挿管'], ['localAnesthTime', '局麻'],
                   ['surgStart', '手開'], ['sutureStart', '縫合'], ['surgEnd', '手終'], ['antagonistTime', '拮抗'], ['extubation', '抜管'], ['returnToWard', '帰舎']];
   const events = [];
@@ -7348,20 +7467,26 @@ function renderReviewTrend() {
     else lbl = (n.text || 'memo').slice(0, 6);
     if (lbl) marks.push({ t: ms, lbl, color, title: `${n.time} ${lbl}` });
   });
-  let t0 = rows[0].t, t1 = rows[rows.length - 1].t;
-  events.concat(marks).forEach(m => { if (m.t < t0) t0 = m.t; if (m.t > t1) t1 = m.t; });
-  t0 -= 60000; t1 += 60000;
-  if (t1 - t0 < 10 * 60000) t1 = t0 + 10 * 60000;
+  let ft0 = rows[0].t, ft1 = rows[rows.length - 1].t;
+  events.concat(marks).forEach(m => { if (m.t < ft0) ft0 = m.t; if (m.t > ft1) ft1 = m.t; });
+  ft0 -= 60000; ft1 += 60000;
+  if (ft1 - ft0 < 10 * 60000) ft1 = ft0 + 10 * 60000;
+  _rvFull = { t0: ft0, t1: ft1 };
+  if (_rvRange) _rvRange = rvClampRange(_rvRange.t0, _rvRange.t1);
+  const t0 = _rvRange ? _rvRange.t0 : ft0, t1 = _rvRange ? _rvRange.t1 : ft1;
   const span = t1 - t0;
   const x = t => L + (t - t0) / span * plotW;
+  _rvGeom = { L, plotW, t0, t1 };
+  const draw = rows.filter(r => r.t >= t0 - 3 * 60000 && r.t <= t1 + 3 * 60000);
+  const inView = t => t >= t0 && t <= t1;
 
-  // 自動レンジ
-  const maxOf = (ks, def) => Math.max(def, ...rows.map(r => Math.max(...ks.map(k => r[k] === undefined ? -Infinity : r[k]))).filter(v => isFinite(v)));
-  const minOf = (ks, def) => Math.min(def, ...rows.map(r => Math.min(...ks.map(k => r[k] === undefined ? Infinity : r[k]))).filter(v => isFinite(v)));
+  // 自動レンジ（表示範囲内のデータで決める）
+  const maxOf = (ks, def) => Math.max(def, ...draw.map(r => Math.max(...ks.map(k => r[k] === undefined ? -Infinity : r[k]))).filter(v => isFinite(v)));
+  const minOf = (ks, def) => Math.min(def, ...draw.map(r => Math.min(...ks.map(k => r[k] === undefined ? Infinity : r[k]))).filter(v => isFinite(v)));
   const pc = panels.find(p => p.key === 'circ');
-  pc.max = Math.ceil(maxOf(['HR', 'SYS', 'A1_SYS'], 180) / 20) * 20 + 20;
+  if (pc) { const ks = []; if (show.HR) ks.push('HR'); if (show.BP) ks.push('SYS'); if (show.ALINE) ks.push('A1_SYS'); if (show.MAP) ks.push('MAP'); pc.max = Math.ceil(maxOf(ks.length ? ks : ['HR'], 180) / 20) * 20 + 20; }
   const pr = panels.find(p => p.key === 'resp');
-  pr.max = Math.max(60, Math.ceil(maxOf(['EtCO2', 'RR'], 50) / 10) * 10 + 5);
+  if (pr) { const ks = []; if (show.EtCO2) ks.push('EtCO2'); if (show.RR) ks.push('RR'); pr.max = Math.max(60, Math.ceil(maxOf(ks.length ? ks : ['EtCO2'], 50) / 10) * 10 + 5); }
   const pt = panels.find(p => p.key === 'temp');
   if (pt) { pt.min = Math.max(30, Math.min(34, Math.floor(minOf(['TEMP'], 36)) - 1)); pt.max = Math.max(40, Math.ceil(maxOf(['TEMP'], 38)) + 1); }
   const pg = panels.find(p => p.key === 'gas');
@@ -7372,12 +7497,13 @@ function renderReviewTrend() {
   const H = y0 + axisH;
   const yOf = (p, v) => p.bottom - (v - p.min) / (p.max - p.min) * p.h;
   const svg = [];
-  svg.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10">`);
+  svg.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" style="touch-action:pan-y;cursor:crosshair;-webkit-user-select:none;user-select:none">`);
   svg.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`);
+  svg.push(`<defs><clipPath id="rvclip"><rect x="${L}" y="0" width="${plotW}" height="${H}"/></clipPath></defs>`);
 
   // 時間軸目盛り
   const spanMin = span / 60000;
-  const step = spanMin <= 40 ? 5 : spanMin <= 90 ? 10 : spanMin <= 180 ? 15 : spanMin <= 360 ? 30 : 60;
+  const step = spanMin <= 12 ? 1 : spanMin <= 25 ? 2 : spanMin <= 40 ? 5 : spanMin <= 90 ? 10 : spanMin <= 180 ? 15 : spanMin <= 360 ? 30 : 60;
   const d0 = new Date(t0); d0.setSeconds(0, 0); d0.setMinutes(Math.ceil(d0.getMinutes() / step) * step);
   for (let t = d0.getTime(); t <= t1; t += step * 60000) {
     const xx = x(t);
@@ -7397,8 +7523,7 @@ function renderReviewTrend() {
       svg.push(`<line x1="${L}" y1="${yy.toFixed(1)}" x2="${L + plotW}" y2="${yy.toFixed(1)}" stroke="#eef1f5"/>`);
       svg.push(`<text x="${L - 4}" y="${(yy + 3.5).toFixed(1)}" text-anchor="end" fill="#666">${v}</text>`);
     });
-    if (p.key === 'resp') {
-      // 右軸: SpO2 80-100
+    if (p.key === 'resp' && show.SpO2) {
       [80, 90, 100].forEach(v => {
         const yy = p.bottom - (v - 80) / 20 * p.h;
         svg.push(`<text x="${L + plotW + 4}" y="${(yy + 3.5).toFixed(1)}" fill="#1f77b4">${v}%</text>`);
@@ -7406,17 +7531,17 @@ function renderReviewTrend() {
       const y90 = p.bottom - (90 - 80) / 20 * p.h;
       svg.push(`<line x1="${L}" y1="${y90.toFixed(1)}" x2="${L + plotW}" y2="${y90.toFixed(1)}" stroke="#1f77b4" stroke-dasharray="2 3" opacity=".35"/>`);
     }
-    if (p.key === 'circ') {
-      // 参考線: MAP 60
+    if (p.key === 'circ' && (show.MAP || show.ALINE)) {
       const y60 = yOf(p, 60);
       svg.push(`<line x1="${L}" y1="${y60.toFixed(1)}" x2="${L + plotW}" y2="${y60.toFixed(1)}" stroke="#2e8b57" stroke-dasharray="2 3" opacity=".4"/>`);
     }
   });
 
+  svg.push('<g clip-path="url(#rvclip)">');
   // 折れ線（5分以上のデータ欠落で線を切る）
   function line(p, key, color, width, dash, yfn) {
     let d = '', prev = null;
-    rows.forEach(r => {
+    draw.forEach(r => {
       const v = r[key]; if (v === undefined) return;
       const xx = x(r.t), yy = yfn ? yfn(v) : yOf(p, v);
       if (yy < p.top - 2 || yy > p.bottom + 2) { prev = null; return; }
@@ -7426,7 +7551,7 @@ function renderReviewTrend() {
     if (d) svg.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" ${dash ? `stroke-dasharray="${dash}"` : ''} stroke-linejoin="round" stroke-linecap="round"/>`);
   }
   function dots(p, key, color, shape) {
-    rows.forEach(r => {
+    draw.forEach(r => {
       const v = r[key]; if (v === undefined) return;
       const xx = x(r.t), yy = yOf(p, v);
       if (yy < p.top || yy > p.bottom) return;
@@ -7435,27 +7560,29 @@ function renderReviewTrend() {
       else svg.push(`<circle cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="1.8" fill="${color}"/>`);
     });
   }
-  // 循環
-  line(pc, 'SYS', '#8e44ad', 1, '3 3'); line(pc, 'DIA', '#8e44ad', 1, '3 3');
-  dots(pc, 'SYS', '#8e44ad', 'up'); dots(pc, 'DIA', '#8e44ad', 'down');
-  line(pc, 'MAP', '#2e8b57', 1.8);
-  if (has('A1_SYS')) { line(pc, 'A1_SYS', '#8e44ad', 1.2, '1 2'); line(pc, 'A1_DIA', '#8e44ad', 1.2, '1 2'); line(pc, 'A1_MAP', '#2e8b57', 1.8, '4 2'); }
-  line(pc, 'HR', '#e74c3c', 2.2);
-  // 呼吸
-  line(pr, 'RR', '#7f8c8d', 1.4, '4 3');
-  line(pr, 'EtCO2', '#e67e22', 2);
-  line(pr, 'SpO2', '#1f77b4', 2, '', v => pr.bottom - (Math.max(80, Math.min(100, v)) - 80) / 20 * pr.h);
+  if (pc) {
+    if (show.BP) { line(pc, 'SYS', '#8e44ad', 1, '3 3'); line(pc, 'DIA', '#8e44ad', 1, '3 3'); dots(pc, 'SYS', '#8e44ad', 'down'); dots(pc, 'DIA', '#8e44ad', 'up'); }
+    if (show.MAP) line(pc, 'MAP', '#2e8b57', 1.8);
+    if (show.ALINE && has('A1_SYS')) { line(pc, 'A1_SYS', '#8e44ad', 1.2, '1 2'); line(pc, 'A1_DIA', '#8e44ad', 1.2, '1 2'); line(pc, 'A1_MAP', '#2e8b57', 1.8, '4 2'); }
+    if (show.HR) line(pc, 'HR', '#e74c3c', 2.2);
+  }
+  if (pr) {
+    if (show.RR) line(pr, 'RR', '#7f8c8d', 1.4, '4 3');
+    if (show.EtCO2) line(pr, 'EtCO2', '#e67e22', 2);
+    if (show.SpO2) line(pr, 'SpO2', '#1f77b4', 2, '', v => pr.bottom - (Math.max(80, Math.min(100, v)) - 80) / 20 * pr.h);
+  }
   if (pg) { line(pg, 'ISOin', '#16a085', 1.2, '3 2'); line(pg, 'ISOex', '#16a085', 2); }
   if (pt) line(pt, 'TEMP', '#8d6e63', 2);
 
   // イベント縦線＋ラベル（1分以内に連続するイベントは「前投·導入·挿管」のように1ラベルに結合、近接時は3段にずらす）
   const bot = panels[panels.length - 1].bottom;
-  events.sort((a, b) => a.t - b.t).forEach(ev => {
+  const evVis = show.EVT ? events.filter(e => inView(e.t)).sort((a, b) => a.t - b.t) : [];
+  evVis.forEach(ev => {
     const xx = x(ev.t);
     svg.push(`<line x1="${xx.toFixed(1)}" y1="${bandEvtH}" x2="${xx.toFixed(1)}" y2="${bot}" stroke="${ev.minor ? '#b8c2cc' : '#1e3a5f'}" stroke-dasharray="${ev.minor ? '2 3' : '4 3'}" opacity=".75"/>`);
   });
   const groups = [];
-  events.forEach(ev => {
+  evVis.forEach(ev => {
     const g = groups[groups.length - 1];
     if (g && x(ev.t) - x(g.t) < 12) { g.lbls.push(ev.lbl); g.minor = g.minor && ev.minor; }
     else groups.push({ t: ev.t, lbls: [ev.lbl], minor: !!ev.minor });
@@ -7469,36 +7596,40 @@ function renderReviewTrend() {
     evRows[row] = xx + wpx / 2;
     svg.push(`<text x="${xx.toFixed(1)}" y="${11 + row * 11}" text-anchor="middle" fill="${g.minor ? '#6b7c93' : '#1e3a5f'}" font-weight="700" font-size="${g.minor ? 9.5 : 10.5}">${esc(lbl)}</text>`);
   });
-  // 薬剤・変更マーカー（3段ずらし、帯内に短い縦線）
-  const rowsEnd = [-Infinity, -Infinity, -Infinity, -Infinity];
-  const bandTop = bandEvtH;
-  // ほぼ同時刻（10px以内）のマーカーは「PCV8·Iso1.5·輸液24」のように1ラベルに結合
-  const mgroups = [];
-  marks.sort((a, b) => a.t - b.t).forEach(m => {
-    const g = mgroups[mgroups.length - 1];
-    if (g && x(m.t) - x(g.t) < 10 && g.lbl.length < 22) { g.lbl += '·' + m.lbl; g.title += '\n' + m.title; if (g.color !== m.color) g.color = '#444'; }
-    else mgroups.push({ t: m.t, lbl: m.lbl, color: m.color, title: m.title || '' });
-  });
-  mgroups.forEach(m => {
-    const xx = x(m.t);
-    const wpx = m.lbl.replace(/[^\x01-\x7e]/g, 'xx').length * 5.6 + 4;
-    let row = rowsEnd.findIndex(e => e <= xx - wpx / 2 - 1);
-    if (row < 0) { row = 0; for (let i = 1; i < 4; i++) if (rowsEnd[i] < rowsEnd[row]) row = i; }
-    rowsEnd[row] = xx + wpx / 2;
-    const ly = bandTop + 10 + row * 12;
-    svg.push(`<line x1="${xx.toFixed(1)}" y1="${ly + 3}" x2="${xx.toFixed(1)}" y2="${panels[0].top + 6}" stroke="${m.color}" opacity=".55"/>`);
-    svg.push(`<text x="${xx.toFixed(1)}" y="${ly}" text-anchor="middle" fill="${m.color}" font-size="9.5" font-weight="600"><title>${esc(m.title || '')}</title>${esc(m.lbl)}</text>`);
-  });
+  // 薬剤・変更マーカー（4段ずらし、帯内に短い縦線。10px以内は「PCV8·Iso1.5·輸液24」のように結合）
+  if (show.MARK) {
+    const rowsEnd = [-Infinity, -Infinity, -Infinity, -Infinity];
+    const bandTop = bandEvtH;
+    const mgroups = [];
+    marks.filter(m => inView(m.t)).sort((a, b) => a.t - b.t).forEach(m => {
+      const g = mgroups[mgroups.length - 1];
+      if (g && x(m.t) - x(g.t) < 10 && g.lbl.length < 22) { g.lbl += '·' + m.lbl; g.title += '\n' + m.title; if (g.color !== m.color) g.color = '#444'; }
+      else mgroups.push({ t: m.t, lbl: m.lbl, color: m.color, title: m.title || '' });
+    });
+    mgroups.forEach(m => {
+      const xx = x(m.t);
+      const wpx = m.lbl.replace(/[^\x01-\x7e]/g, 'xx').length * 5.6 + 4;
+      let row = rowsEnd.findIndex(e => e <= xx - wpx / 2 - 1);
+      if (row < 0) { row = 0; for (let i = 1; i < 4; i++) if (rowsEnd[i] < rowsEnd[row]) row = i; }
+      rowsEnd[row] = xx + wpx / 2;
+      const ly = bandTop + 10 + row * 12;
+      svg.push(`<line x1="${xx.toFixed(1)}" y1="${ly + 3}" x2="${xx.toFixed(1)}" y2="${panels[0].top + 6}" stroke="${m.color}" opacity=".55"/>`);
+      svg.push(`<text x="${xx.toFixed(1)}" y="${ly}" text-anchor="middle" fill="${m.color}" font-size="9.5" font-weight="600"><title>${esc(m.title || '')}</title>${esc(m.lbl)}</text>`);
+    });
+  }
+  svg.push('</g>');
   svg.push('</svg>');
   box.innerHTML = svg.join('');
+  rvAttachDrag(box.querySelector('svg'));
 
-  // 凡例＋統計
+  // ツールバーの範囲表示
+  const rl = document.getElementById('rvRangeLbl');
+  if (rl) rl.textContent = _rvRange ? `${rvFmtTime(t0)}〜${rvFmtTime(t1)}（${Math.round(span / 60000)}分）` : `全体 ${rvFmtTime(ft0)}〜${rvFmtTime(ft1)}`;
+
+  // 凡例（タップで表示/非表示）＋統計
   const st = rvStats(rows, c);
   const legend = `<div class="rv-legend">
-    <span><i style="background:#e74c3c"></i>HR</span><span><i style="background:#8e44ad"></i>SYS▲/DIA▼</span><span><i style="background:#2e8b57"></i>MAP</span>
-    <span><i style="background:#e67e22"></i>EtCO₂</span><span><i style="background:#7f8c8d"></i>RR</span><span><i style="background:#1f77b4"></i>SpO₂(右軸)</span>
-    ${pg ? '<span><i style="background:#16a085"></i>Iso/Sev in(点線)/ex</span>' : ''}${pt ? '<span><i style="background:#8d6e63"></i>体温</span>' : ''}
-    <span style="color:#c0392b">赤字=薬剤</span><span style="color:#2e8b57">緑=吸入麻酔薬</span><span style="color:#8e44ad">紫=CRI</span>
+    ${RV_SERIES.map(([k, lbl, col]) => `<span class="rv-lg${show[k] ? '' : ' off'}" onclick="rvToggleShow('${k}')"><i style="background:${col}"></i>${lbl}</span>`).join('')}
   </div>`;
   const stat = `<div class="rv-stat">
     <div><b>HR</b><span>${st.ext.HR.min ? `${st.ext.HR.min.v}〜${st.ext.HR.max.v}` : '—'}</span></div>
@@ -7512,12 +7643,44 @@ function renderReviewTrend() {
   foot.innerHTML = legend + stat;
 }
 
+// モニター記録から分かる合併症（閾値超過が5分以上持続）は自動でチェック＋最高/最低値を入力。
+// 一度自動で入れた項目は rvAutoComp に記録し、ユーザーが外したものを再度入れない。
+function rvAutoFillComps(st) {
+  const c = current; if (!c || !st) return false;
+  const auto = Object.assign({}, c.rvAutoComp || {});
+  let changed = false;
+  const fill = (key, valKey, val) => {
+    const fl = st.flags[key]; if (!fl || !fl.any || fl.longest < 5) return;
+    if (auto[key]) return;
+    auto[key] = true; changed = true;
+    if (!c[key]) c[key] = true;
+    if (valKey && !String(c[valKey] || '').trim() && val !== '' && val !== null && val !== undefined) c[valKey] = String(val);
+  };
+  const e = st.ext;
+  const v = (k, w) => (e[k] && e[k][w]) ? e[k][w].v : null;
+  fill('compTachy', 'compTachyMax', v('HR', 'max'));
+  fill('compBrady', 'compBradyMin', v('HR', 'min'));
+  fill('compHtn', 'compHtnMax', v('MAP', 'max') !== null && v('MAP', 'max') > 120 ? `MAP ${v('MAP', 'max')}` : (v('SYS', 'max') !== null ? `SAP ${v('SYS', 'max')}` : ''));
+  fill('compHypotension', 'compHypotensionMin', v('MAP', 'min') !== null && v('MAP', 'min') < 60 ? `MAP ${v('MAP', 'min')}` : (v('SYS', 'min') !== null ? `SAP ${v('SYS', 'min')}` : ''));
+  fill('compHypoxemia', 'compHypoxemiaMin', v('SpO2', 'min'));
+  fill('compHypocapnia', 'compHypocapniaMin', v('EtCO2', 'min'));
+  fill('compHypercapnia', 'compHypercapniaMax', v('EtCO2', 'max'));
+  fill('compHypothermia', 'compHypothermiaDeg', v('TEMP', 'min'));
+  fill('compHyperthermia', '', '');
+  fill('compTachyBreath', '', '');
+  fill('compBradyBreath', '', '');
+  if (changed) { c.rvAutoComp = auto; c.updated_at = nowIsoStr(); rvCommit(); }
+  return changed;
+}
+
 // ---------- レポート（右側） ----------
 function renderReviewReport() {
   const c = current; if (!c) return;
   const box = document.getElementById('rvReport');
   const rows = _rvVitals || [];
   const st = rows.length ? rvStats(rows, c) : null;
+  if (st) rvAutoFillComps(st);
+  const autoComp = c.rvAutoComp || {};
   const f = (label, val, unit) => `<span class="rv-f"><span class="rv-k">${label}</span><span class="rv-v">${val ? esc(String(val)) + (unit || '') : ''}</span></span>`;
   const chip = (t, warn) => `<span class="rv-chip${warn ? ' warn' : ''}">${esc(t)}</span>`;
   const ta = (key, ph) => `<textarea class="rv-ta" placeholder="${rvAttr(ph)}" oninput="rvSet('${key}', this.value);rvGrow(this)">${esc(c[key] || '')}</textarea>`;
@@ -7614,7 +7777,7 @@ function renderReviewReport() {
   const compRow = (key, label, sub, valKey, valUnit, meas) => `
     <div class="rv-chk${c[key] ? ' on' : ''}" onclick="if(event.target.tagName!=='INPUT')rvToggle('${key}',this)">
       <div class="rv-box"></div>
-      <div class="rv-lbl">${esc(label)}${sub ? `<br><small>${esc(sub)}</small>` : ''}</div>
+      <div class="rv-lbl">${esc(label)}${autoComp[key] && c[key] ? '<span class="rv-auto">記録から自動</span>' : ''}${sub ? `<br><small>${esc(sub)}</small>` : ''}</div>
       ${valKey ? `<input class="rv-vin" type="text" inputmode="decimal" placeholder="${rvAttr(valUnit)}" value="${rvAttr(c[valKey] || '')}" oninput="rvSet('${valKey}', this.value)" onclick="event.stopPropagation()">` : ''}
       ${meas || ''}
     </div>`;
@@ -7705,7 +7868,7 @@ function renderReviewReport() {
     <h4>麻酔導入時に生じた合併症</h4>
     ${indComps.map(([k, l]) => compRow(k, l)).join('')}
     <h4>麻酔中に生じた合併症（5分以上持続 or 治療を要したもの）</h4>
-    ${st ? `<div class="rv-note" style="margin-bottom:4px">右の「実測」はSomLogバイタル（${esc(st.win.label)}）からの自動判定。基準: 頻脈>${th.tachy} / 徐脈<${th.brady} / MAP 60〜120・SAP 80〜160 / SpO₂≥90 / EtCO₂ 20〜60 / 体温 36〜39℃ / RR 4〜50</div>` : '<div class="rv-note" style="margin-bottom:4px">SomLogバイタルがあれば実測値から自動判定を表示します</div>'}
+    ${st ? `<div class="rv-note" style="margin-bottom:4px">右の「実測」はSomLogバイタル（${esc(st.win.label)}）からの自動判定。<b>閾値超過が5分以上続いた項目は自動でチェックと最高/最低値を入れています</b>（外した項目は再度入れません）。基準: 頻脈>${th.tachy} / 徐脈<${th.brady} / MAP 60〜120・SAP 80〜160 / SpO₂≥90 / EtCO₂ 20〜60 / 体温 36〜39℃ / RR 4〜50</div>` : '<div class="rv-note" style="margin-bottom:4px">SomLogバイタルがあれば実測値から自動判定を表示します</div>'}
     ${compRow('compVomiting', '嘔吐/逆流')}
     ${compRow('compSeizure', '発作')}
     ${compRow('compHypothermia', '低体温（<36℃）', '', 'compHypothermiaDeg', '℃', measure('compHypothermia', 'TEMP', 'min', '℃'))}
