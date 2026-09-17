@@ -474,6 +474,16 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .rv-hbtn.rv-submit.arm{background:#c0392b;border-color:#c0392b;animation:rvblink .6s steps(2) infinite}
 .rv-hbtn:disabled{opacity:.6}
 @keyframes rvblink{50%{opacity:.7}}
+.case-cm-badge{display:inline-block;margin-left:6px;background:#eef6fc;color:var(--blue);border:1px solid #bcd7ee;border-radius:9px;padding:0 7px;font-size:11px;font-weight:700;vertical-align:1px}
+.case-cm-badge.new{background:var(--orange);color:#fff;border-color:var(--orange)}
+.rv-cm{border:1px solid var(--line, #e3e8ee);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#fbfcfe}
+.rv-cm.new{border-color:#e67e22;background:#fff8f0}
+.rv-cm-h{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.rv-cm-h b{color:var(--navy);font-size:13px}
+.rv-cm-del{margin-left:auto;background:none;border:none;color:#bbb;cursor:pointer;font-size:14px;padding:0 4px}
+.rv-cm-b{font-size:13.5px;white-space:pre-wrap;line-height:1.5;margin-top:3px}
+.rv-cm-form{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;margin-top:8px}
+.rv-cm-form .rv-ta{flex:1;min-width:180px}
 .rv-auto{display:inline-block;background:#e8f4fd;color:var(--blue);border:1px solid #bcd7ee;border-radius:8px;padding:0 6px;font-size:10.5px;margin-left:5px;vertical-align:1px;font-weight:700}
 @media print{
   body.rv-print #printView{display:none!important}
@@ -3859,7 +3869,7 @@ function renderCasesList() {
     return `<div class="case-card${isToday ? ' case-today' : ''}" onclick="openCase('${c.id}')">
       <div class="case-icon">${sp}</div>
       <div class="case-info">
-        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${progressBadge}</div>
+        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${progressBadge}${rvCommentBadge(c)}</div>
         <div class="case-meta">${esc(c.date)} ${c.caseNo ? '| No.'+esc(c.caseNo) : ''} | ${esc(diag)}</div>
       </div>
       <button class="case-del" onclick="event.stopPropagation();deleteCase('${c.id}')" title="削除">🗑</button>
@@ -7242,12 +7252,14 @@ function openReview() {
   renderReviewReport();
   loadReviewVitals(false);
   _rvSubmitArmed = null; rvUpdateSubmitBtn();
+  try { rvMarkCommentsSeen(current); } catch (_) {}
 }
 
 function closeReview() {
   rvCommit();
   document.getElementById('reviewScreen').classList.add('hidden');
   document.getElementById('formScreen').classList.remove('hidden');
+  try { renderCasesList(); } catch (_) {}
   // レビュー側で編集した合併症/覚醒/詳細/改善点を症例画面へ反映
   try { populateForm(); } catch (_) {}
   try { updateAccUI(); } catch (_) {}
@@ -8120,6 +8132,7 @@ function renderReviewReport() {
     <div class="rv-missbar" id="rvMissBar"></div>
     <div class="rv-note" style="margin-top:6px">※ 動物麻酔技能認定医の課題レポート様式を参考に、症例データを自動で流し込んでいます。赤枠は様式上の必須項目で未記載のもの。ここで入力すると症例にも保存・同期されます。</div>
   </div>
+  ${rvCommentsHtml(c)}
 
   <div class="rv-card">
     <h3>1. 症例情報</h3>
@@ -8255,6 +8268,85 @@ function renderReviewReport() {
   rvMissCount();
 }
 
+// ---------- ディープリンク（通知メールの「アプリで開く」→ その症例の振り返りへ） ----------
+function rvDeepLink(c) {
+  return `${location.origin}${location.pathname}?case=${encodeURIComponent(c.id)}&view=review`;
+}
+function rvHandleDeepLink() {
+  let id = '', view = '';
+  try { const p = new URLSearchParams(location.search); id = p.get('case') || ''; view = p.get('view') || ''; } catch (_) { return; }
+  if (!id) return;
+  try { history.replaceState(null, '', location.pathname); } catch (_) {}
+  let tries = 0;
+  const attempt = () => {
+    const c = cases.find(x => x.id === id);
+    if (c) {
+      openCase(id);
+      if (view === 'review') setTimeout(() => { try { openReview(); } catch (_) {} }, 150);
+      return;
+    }
+    if (++tries === 1) showToast('症例をSheetsから取得しています…');
+    if (tries < 25) setTimeout(attempt, 2000);
+    else showToast('症例が見つかりません（同期設定・施設・合言葉を確認してください）');
+  };
+  attempt();
+}
+document.addEventListener('DOMContentLoaded', () => { try { rvHandleDeepLink(); } catch (e) { console.warn('deeplink', e); } });
+
+// ---------- 添削・コメント（運営者⇄病院の往復。症例JSON rvComments に保存＝Sheets同期） ----------
+const RV_CSEEN_KEY = 'vet_rv_cseen';
+const RV_CNAME_KEY = 'vet_rv_commenter';
+function rvComments(c) { return Array.isArray(c && c.rvComments) ? c.rvComments.filter(x => x && !x.deleted) : []; }
+function rvLatestCommentTs(c) { return rvComments(c).reduce((m, x) => (x.ts > m ? x.ts : m), ''); }
+function rvCommentSeen(c) { try { return (JSON.parse(localStorage.getItem(RV_CSEEN_KEY) || '{}') || {})[c.id] || ''; } catch (_) { return ''; } }
+function rvMarkCommentsSeen(c) {
+  try { const m = JSON.parse(localStorage.getItem(RV_CSEEN_KEY) || '{}') || {}; m[c.id] = rvLatestCommentTs(c) || new Date().toISOString(); localStorage.setItem(RV_CSEEN_KEY, JSON.stringify(m)); } catch (_) {}
+}
+// 一覧カード用バッジ（コメントあり／未読）
+function rvCommentBadge(c) {
+  const n = rvComments(c).length; if (!n) return '';
+  const unread = rvLatestCommentTs(c) > rvCommentSeen(c);
+  return `<span class="case-cm-badge${unread ? ' new' : ''}">💬${n}${unread ? ' 新着' : ''}</span>`;
+}
+function rvFmtTs(ts) { const d = new Date(ts); return isNaN(d) ? String(ts || '') : `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
+function rvCommentsHtml(c) {
+  const list = rvComments(c);
+  const mine = (() => { try { return localStorage.getItem(RV_CNAME_KEY) || ''; } catch (_) { return ''; } })();
+  const seen = rvCommentSeen(c);
+  const items = list.map(x => `<div class="rv-cm${x.ts > seen ? ' new' : ''}"><div class="rv-cm-h"><b>${esc(x.by || '（名前なし）')}</b><span>${esc(rvFmtTs(x.ts))}</span>${x.by && x.by === mine ? `<button type="button" class="rv-cm-del" onclick="rvDeleteComment('${x.id}')" title="削除">✕</button>` : ''}</div><div class="rv-cm-b">${esc(x.text || '')}</div></div>`).join('');
+  return `
+  <div class="rv-card" id="rvCommentsCard">
+    <h3>💬 添削・コメント${list.length ? `（${list.length}）` : ''}</h3>
+    <div id="rvCmList">${items || '<div class="rv-note">まだコメントはありません。提出後、ソムナスからの添削コメントがここに届きます。病院側からの質問もここに書けます。</div>'}</div>
+    <div class="rv-cm-form rv-noprint">
+      <input class="rv-in" id="rvCmName" type="text" placeholder="名前" value="${rvAttr(mine)}" style="width:110px" oninput="try{localStorage.setItem(RV_CNAME_KEY,this.value)}catch(_){}">
+      <textarea class="rv-ta" id="rvCmText" placeholder="コメント・質問・添削内容（例: 「選択理由」に術後疼痛の根拠も書いてください）" style="min-height:56px;background:#fff" oninput="rvGrow(this)"></textarea>
+      <button type="button" class="rv-qbtn on" onclick="rvAddComment()">送信</button>
+    </div>
+  </div>`;
+}
+function rvAddComment() {
+  const c = current; if (!c) return;
+  const name = (document.getElementById('rvCmName') || {}).value || '';
+  const ta = document.getElementById('rvCmText'); const text = (ta && ta.value || '').trim();
+  if (!text) { showToast('コメントを入力してください'); return; }
+  const list = Array.isArray(c.rvComments) ? c.rvComments.slice() : [];
+  list.push({ id: 'cm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), ts: new Date().toISOString(), by: name.trim(), text });
+  rvSet('rvComments', list); rvCommit(); rvMarkCommentsSeen(c);
+  if (sheetsConfig.enabled && (c.caseNo || c.patientId) && c.date) { c.updated_at = nowIsoStr(); pushToSheets(c, { skipFollowupSync: true }); showToast('コメントを送信しました（相手のアプリに同期されます）'); }
+  else showToast('コメントを保存しました（同期OFFのため相手には届きません）');
+  const card = document.getElementById('rvCommentsCard'); if (card) card.outerHTML = rvCommentsHtml(c);
+  try { renderCasesList(); } catch (_) {}
+}
+function rvDeleteComment(id) {
+  const c = current; if (!c) return;
+  const list = (Array.isArray(c.rvComments) ? c.rvComments : []).map(x => (x && x.id === id) ? Object.assign({}, x, { deleted: true }) : x);
+  rvSet('rvComments', list); rvCommit();
+  if (sheetsConfig.enabled && (c.caseNo || c.patientId) && c.date) { c.updated_at = nowIsoStr(); pushToSheets(c, { skipFollowupSync: true }); }
+  const card = document.getElementById('rvCommentsCard'); if (card) card.outerHTML = rvCommentsHtml(c);
+  try { renderCasesList(); } catch (_) {}
+}
+
 // ---------- 提出（運営者へ通知メール） ----------
 // 2段階タップ（OS標準のconfirmはiOSホーム画面アプリで出ないことがあるため使わない）
 let _rvSubmitArmed = null;
@@ -8317,6 +8409,7 @@ async function submitReview() {
     action: 'submitReview', token: sheetsConfig.token,
     case_no: (c.caseNo || c.patientId), date: c.date, patient: c.patientName || '', procedure: c.procedure || '',
     submitter: c.staff || '', facility_name: (facilityMap && facilityMap[c.facility]) || c.facility || '', missing: n,
+    internal_id: c.id, link: rvDeepLink(c),
     summary: rvSummaryText(c),
   };
   try {
