@@ -7918,7 +7918,7 @@ function renderReviewReport() {
   ['postAnalg', 'vasopressors', 'antagonists', 'other'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
   const pin = (pkey, opts) => {
     const cur = String(purpose[pkey] || '').split('・').map(x => x.trim());
-    const list = (opts || []).concat(RV_PURPOSE_COMMON.filter(o => !(opts || []).includes(o)).slice(0, (opts || []).length ? 2 : 6));
+    const list = (opts || []).length ? opts : RV_PURPOSE_COMMON; // 薬剤ごとの候補だけ出す（無関係な候補で迷わせない）
     return `<div class="rv-pcell${miss(purpose[pkey])}">${list.map(o => `<span class="rv-chip tog${cur.includes(o) ? ' on' : ''}" onclick="rvPurposeChip('${pkey}','${o}',this)">${esc(o)}</span>`).join('')}<input class="rv-in rv-pin" type="text" value="${rvAttr(purpose[pkey] || '')}" placeholder="他（自由記載）" oninput="rvPurposeInput('${pkey}', this)"></div>`;
   };
   let prevGrp = null;
