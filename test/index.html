@@ -7536,7 +7536,7 @@ function renderReviewTrend() {
       const y70 = yOf(p, 70);
       svg.push(`<rect x="${L}" y="${y70.toFixed(1)}" width="${plotW}" height="${(p.bottom - y70).toFixed(1)}" fill="#dff1fb" opacity=".75"/>`);
       svg.push(`<line x1="${L}" y1="${y70.toFixed(1)}" x2="${L + plotW}" y2="${y70.toFixed(1)}" stroke="#5dade2" stroke-dasharray="3 3" opacity=".8"/>`);
-      svg.push(`<text x="${L + plotW - 4}" y="${(y70 - 3).toFixed(1)}" text-anchor="end" fill="#2e86c1" font-size="9.5">MAP 70</text>`);
+      svg.push(`<text x="${L + 4}" y="${(y70 + 10).toFixed(1)}" fill="#2e86c1" font-size="9.5">MAP 70</text>`);
     }
   });
 
