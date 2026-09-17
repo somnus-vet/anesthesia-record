@@ -470,6 +470,10 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .rv-pcell{display:flex;flex-wrap:wrap;gap:4px;align-items:center;border:1.5px solid transparent;border-radius:8px;padding:2px}
 .rv-pcell .rv-pin{flex:1;min-width:80px;font-size:12px;min-height:28px;padding:3px 6px}
 .rv-pcell.rv-miss{background:#fff1f0!important;border-color:#e74c3c!important}
+.rv-hbtn.rv-submit{background:#e67e22;border-color:#e67e22}
+.rv-hbtn.rv-submit.arm{background:#c0392b;border-color:#c0392b;animation:rvblink .6s steps(2) infinite}
+.rv-hbtn:disabled{opacity:.6}
+@keyframes rvblink{50%{opacity:.7}}
 .rv-auto{display:inline-block;background:#e8f4fd;color:var(--blue);border:1px solid #bcd7ee;border-radius:8px;padding:0 6px;font-size:10.5px;margin-left:5px;vertical-align:1px;font-weight:700}
 @media print{
   body.rv-print #printView{display:none!important}
@@ -1355,6 +1359,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <div class="rv-title" id="rvTitle">振り返りシート</div>
     <button class="rv-hbtn" onclick="loadReviewVitals(true)" title="SomLogのバイタルを再取得">🔄</button>
     <button class="rv-hbtn" onclick="printReview()">🖨️ 印刷</button>
+    <button class="rv-hbtn rv-submit" id="rvSubmitBtn" onclick="submitReview()">📤 提出</button>
   </div>
   <div class="rv-body" id="rvBody">
     <div class="rv-left">
@@ -7236,6 +7241,7 @@ function openReview() {
   _rvVitals = null; _rvVitalsSrc = ''; _rvRange = null; _rvFull = null;
   renderReviewReport();
   loadReviewVitals(false);
+  _rvSubmitArmed = null; rvUpdateSubmitBtn();
 }
 
 function closeReview() {
@@ -7929,7 +7935,7 @@ const RV_LA_OPTS = ['超音波ガイド', '神経刺激装置', 'ランドマー
 function rvDraftRationale() {
   const c = current; if (!c) return;
   const ta = document.getElementById('rvTaRationale'); if (!ta) return;
-  if (!rvIsEmpty(c.rvRationale) && !confirm('選択理由に記載があります。末尾に下書きを追記しますか？')) return;
+  const _append = !rvIsEmpty(c.rvRationale);
   const P = c.rvPurpose || {};
   const sp = c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : c.species === 'rabbit' ? 'うさぎ' : '';
   const pain = { light: '軽度', moderate: '中等度', heavy: '重度', max: '最大' }[c.expectedPain] || '';
@@ -7951,6 +7957,7 @@ function rvDraftRationale() {
   const draft = lines.join('\n');
   const v = rvIsEmpty(c.rvRationale) ? draft : (c.rvRationale + '\n' + draft);
   rvSet('rvRationale', v); ta.value = v; rvGrow(ta); rvMissUpd(ta);
+  showToast(_append ? '末尾に下書きを追記しました' : '下書きを入れました。「特に考慮した点」を追記してください');
 }
 // 合併症の詳細の下書き（記録から自動判定した項目を時刻つきで列挙）
 function rvDraftCompDetails() {
@@ -7971,10 +7978,11 @@ function rvDraftCompDetails() {
   });
   ['compVomiting', '嘔吐/逆流', 'compSeizure', '発作', 'compBleed', '大量出血', 'compArrhythmia', '不整脈', 'compApnea', '無呼吸', 'compCardiacArrest', '心停止'].forEach((k, i, a) => { if (i % 2 === 0 && c[k]) L.push(a[i + 1] + ' → 対応: '); });
   if (!L.length) { showToast('チェックされた合併症がありません'); return; }
-  if (!rvIsEmpty(c.compDetails) && !confirm('詳細に記載があります。末尾に下書きを追記しますか？')) return;
+  const _append2 = !rvIsEmpty(c.compDetails);
   const draft = L.join('\n');
   const v = rvIsEmpty(c.compDetails) ? draft : (c.compDetails + '\n' + draft);
   rvSet('compDetails', v); ta.value = v; rvGrow(ta); rvMissUpd(ta);
+  showToast(_append2 ? '末尾に下書きを追記しました' : '下書きを入れました。各行の「対応」を追記してください');
 }
 
 function renderReviewReport() {
@@ -8245,6 +8253,84 @@ function renderReviewReport() {
   </div>`;
   rvGrowAll();
   rvMissCount();
+}
+
+// ---------- 提出（運営者へ通知メール） ----------
+// 2段階タップ（OS標準のconfirmはiOSホーム画面アプリで出ないことがあるため使わない）
+let _rvSubmitArmed = null;
+function rvSummaryText(c) {
+  const st = (_rvVitals || []).length ? rvStats(_rvVitals, c) : null;
+  const P = c.rvPurpose || {};
+  const L = [];
+  const sp = c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : c.species === 'rabbit' ? 'うさぎ' : (c.species || '');
+  L.push(`■症例: ${sp} ${c.breed || ''} ${c.ageY || '?'}歳${c.ageM ? c.ageM + 'ヶ月' : ''} ${c.sex || ''} ${c.weight || '?'}kg BCS${c.bcs || '?'} ASA${c.asaps || '?'}${c.asapsE ? 'E' : ''}`);
+  if (c.rvAsaReason) L.push(`ASA理由: ${c.rvAsaReason}`);
+  L.push(`術式: ${c.procedure || ''}${c.diagnosis ? '（' + c.diagnosis + '）' : ''}`);
+  L.push(`当日: T${c.preTemp || '-'} HR${c.preHr || '-'} RR${c.preRr || '-'} BP${c.preBp || '-'}`);
+  if (c.rvHistory) L.push(`既往歴: ${c.rvHistory}`);
+  if (c.chiefComplaint) L.push(`主訴: ${c.chiefComplaint}`);
+  if (c.abnormalFindings) L.push(`異常所見: ${c.abnormalFindings}`);
+  if (c.preMeds) L.push(`事前投与薬: ${c.preMeds}`);
+  const drugs = [];
+  Object.values(DRUG_GROUPS).forEach(arr => arr.forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) drugs.push(`${d.label} ${dd.dose || ''}${d.unit} ${dd.route || d.def || ''}${P[d.key] ? '（' + P[d.key] + '）' : ''}`); }));
+  if (drugs.length) L.push('■薬剤:\n' + drugs.join('\n'));
+  const mt = []; if (c.maintIsoflurane) mt.push('イソフルラン'); if (c.maintSevoflurane) mt.push('セボフルラン'); if (c.maintPropofol) mt.push('プロポフォールCRI');
+  if (mt.length) L.push(`維持: ${mt.join('/')} ${c.maintConc || ''}%`);
+  const la = [];
+  ['localBlocks', 'localBlocks2'].forEach(bf => LOCAL_BLOCKS.forEach(b => { const d = (c[bf] || {})[b.key]; if (d && d.use) la.push(b.label + (d.side ? '(' + d.side + ')' : '') + (P['la:' + bf + ':' + b.key] ? '・' + P['la:' + bf + ':' + b.key] : '')); }));
+  if (la.length) L.push(`局所麻酔: ${la.join('、')}`);
+  if (c.fluidType) L.push(`輸液: ${c.fluidType} ${c.fluidRate || ''}mL/kg/h`);
+  if (c.rvRationale) L.push('■選択理由:\n' + c.rvRationale);
+  const indStart = c.inductionTime || c.intubationTime || c.anesthStart;
+  const a = calcMinutesBetween(indStart, c.extubation), sm = calcMinutesBetween(c.surgStart, c.surgEnd);
+  L.push(`■管理: 麻酔${a !== null ? a + '分' : '-'} 手術${sm !== null ? sm + '分' : '-'} 覚醒:${c.recQuality || '-'} 覚醒時T${c.recTemp || '-'} HR${c.recHr || '-'} RR${c.recRr || '-'} 疼痛${c.painScore || '-'}(${c.painMethod || '-'})`);
+  if (st) L.push(`記録: HR ${st.ext.HR.min ? st.ext.HR.min.v + '〜' + st.ext.HR.max.v : '-'} / MAP ${st.ext.MAP.min ? st.ext.MAP.min.v + '〜' + st.ext.MAP.max.v : '-'} / SpO2最低 ${st.ext.SpO2.min ? st.ext.SpO2.min.v : '-'} / EtCO2 ${st.ext.EtCO2.min ? st.ext.EtCO2.min.v + '〜' + st.ext.EtCO2.max.v : '-'} / T ${st.ext.TEMP.min ? st.ext.TEMP.min.v + '〜' + st.ext.TEMP.max.v : '-'}（${st.win.label}）`);
+  const comps = PP_COMP_LABELS.filter(([k]) => c[k]).map(([k, l]) => l + ({ compTachy: c.compTachyMax, compBrady: c.compBradyMin, compHtn: c.compHtnMax, compHypotension: c.compHypotensionMin, compHypoxemia: c.compHypoxemiaMin, compHypocapnia: c.compHypocapniaMin, compHypercapnia: c.compHypercapniaMax, compHypothermia: c.compHypothermiaDeg, compBleed: c.compBleedMax, compArrhythmia: c.compArrhythmiaType }[k] ? '(' + { compTachy: c.compTachyMax, compBrady: c.compBradyMin, compHtn: c.compHtnMax, compHypotension: c.compHypotensionMin, compHypoxemia: c.compHypoxemiaMin, compHypocapnia: c.compHypocapniaMin, compHypercapnia: c.compHypercapniaMax, compHypothermia: c.compHypothermiaDeg, compBleed: c.compBleedMax, compArrhythmia: c.compArrhythmiaType }[k] + ')' : ''));
+  L.push(`合併症: ${comps.length ? comps.join('、') : 'なし'}`);
+  if (c.compDetails) L.push('■合併症の詳細と対応:\n' + c.compDetails);
+  if (c.notes) L.push('■改善点:\n' + c.notes);
+  if (c.rvExtra) L.push('■追加記載:\n' + c.rvExtra);
+  return L.join('\n');
+}
+function rvUpdateSubmitBtn() {
+  const b = document.getElementById('rvSubmitBtn'); if (!b || !current) return;
+  b.disabled = false;
+  if (_rvSubmitArmed) { b.textContent = 'もう一度タップで提出'; b.classList.add('arm'); return; }
+  b.classList.remove('arm');
+  b.textContent = current.rvSubmittedAt ? `📤 提出済 ${String(current.rvSubmittedAt).slice(5, 16).replace('T', ' ')}` : '📤 提出';
+}
+async function submitReview() {
+  const c = current; if (!c) return;
+  rvCommit();
+  if (!sheetsConfig.enabled || !sheetsConfig.webappUrl || !sheetsConfig.token) { showToast('同期がOFFのため提出できません（設定で同期を有効にしてください）'); return; }
+  if (!(c.caseNo || c.patientId) || !c.date) { showToast('カルテIDと日付が必要です'); return; }
+  const n = rvMissCount();
+  if (!_rvSubmitArmed) {
+    _rvSubmitArmed = setTimeout(() => { _rvSubmitArmed = null; rvUpdateSubmitBtn(); }, 5000);
+    rvUpdateSubmitBtn();
+    showToast(n ? `未記載が ${n} 項目あります。このまま提出するならもう一度タップ` : 'もう一度タップで提出します');
+    return;
+  }
+  clearTimeout(_rvSubmitArmed); _rvSubmitArmed = null;
+  const b = document.getElementById('rvSubmitBtn'); if (b) { b.disabled = true; b.textContent = '送信中…'; }
+  const payload = {
+    action: 'submitReview', token: sheetsConfig.token,
+    case_no: (c.caseNo || c.patientId), date: c.date, patient: c.patientName || '', procedure: c.procedure || '',
+    submitter: c.staff || '', facility_name: (facilityMap && facilityMap[c.facility]) || c.facility || '', missing: n,
+    summary: rvSummaryText(c),
+  };
+  try {
+    const res = await fetch(sheetsConfig.webappUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    let j = {}; try { j = JSON.parse(await res.text()); } catch (_) { throw new Error('応答がJSONではない'); }
+    if (j.ok === false) throw new Error(j.error || '不明エラー');
+    rvSet('rvSubmittedAt', nowIsoStr()); rvSet('rvSubmittedBy', c.staff || ''); rvCommit();
+    showToast('提出しました（通知メールを送信）');
+    if (sheetsConfig.enabled) { c.updated_at = nowIsoStr(); pushToSheets(c, { skipFollowupSync: true }); }
+  } catch (e) {
+    console.warn('submitReview failed', e);
+    showToast('提出に失敗しました: ' + (e.message || e) + '（GASが未更新の可能性）');
+  } finally { rvUpdateSubmitBtn(); }
 }
 
 function printReview() {

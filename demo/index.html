@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>麻酔症例管理</title>
+<title>麻酔症例管理（デモ）</title>
 <style>
 :root {
   --navy:#1e3a5f; --navy2:#2a4f7a; --blue:#2e86c1; --blue-bg:#e8f4fd;
@@ -2376,7 +2376,7 @@ async function loadPresetsFromSheets() {
     });
     // Sheets未保存の拡張項目は localStorage キャッシュで補完（Sheets値が優先）
     try {
-      const cached = JSON.parse(localStorage.getItem('vet_presets') || '{}');
+      const cached = JSON.parse(localStorage.getItem('vet_demo_presets') || '{}');
       Object.keys(presets).forEach(k => {
         if (!cached[k]) return;
         EXTRA_PRESET_FIELDS.forEach(f => {
@@ -2425,7 +2425,7 @@ async function loadPresets() {
     // 2) localStorage フォールバック
     let fromLocal = null;
     try {
-      const stored = localStorage.getItem('vet_presets');
+      const stored = localStorage.getItem('vet_demo_presets');
       if (stored) fromLocal = JSON.parse(stored);
     } catch(e) {}
     if (fromLocal && Object.keys(fromLocal).length > 0) {
@@ -2445,7 +2445,7 @@ async function loadPresets() {
 }
 
 function savePresetsToStorage() {
-  try { localStorage.setItem('vet_presets', JSON.stringify(userPresets)); } catch(e){}
+  try { localStorage.setItem('vet_demo_presets', JSON.stringify(userPresets)); } catch(e){}
 }
 
 // プリセットバーを描画
@@ -2782,19 +2782,19 @@ document.addEventListener('focusout', e => {
 
 function loadSheetsConfig() {
   try {
-    const stored = localStorage.getItem('vet_sheets_config');
+    const stored = localStorage.getItem('vet_demo_sheets_config');
     if (stored) sheetsConfig = { ...SHEETS_DEFAULT, ...JSON.parse(stored) };
   } catch(e) {}
   try {
-    const q = localStorage.getItem('vet_push_queue');
+    const q = localStorage.getItem('vet_demo_push_queue');
     if (q) pushQueue = JSON.parse(q);
   } catch(e) { pushQueue = []; }
 }
 function saveSheetsConfig() {
-  try { localStorage.setItem('vet_sheets_config', JSON.stringify(sheetsConfig)); } catch(e){}
+  try { localStorage.setItem('vet_demo_sheets_config', JSON.stringify(sheetsConfig)); } catch(e){}
 }
 function savePushQueue() {
-  try { localStorage.setItem('vet_push_queue', JSON.stringify(pushQueue)); } catch(e){}
+  try { localStorage.setItem('vet_demo_push_queue', JSON.stringify(pushQueue)); } catch(e){}
 }
 
 function csvUrl(sheet) {
@@ -3693,7 +3693,7 @@ function makeCase() {
 // STORAGE
 // ─────────────────────────────────────────────────
 function loadStorage() {
-  try { cases = JSON.parse(localStorage.getItem('vet_cases') || '[]'); }
+  try { cases = JSON.parse(localStorage.getItem('vet_demo_cases') || '[]'); }
   catch(e) { cases = []; }
   // データのbackfill
   let migrated = false;
@@ -3721,13 +3721,13 @@ function loadStorage() {
   if (migrated) saveStorage();
 }
 function saveStorage() {
-  try { localStorage.setItem('vet_cases', JSON.stringify(cases)); } catch(e){}
+  try { localStorage.setItem('vet_demo_cases', JSON.stringify(cases)); } catch(e){}
 }
 
 // ── リロード復帰 & 離脱時の保存 ──────────────────────
 // iOS(Safari/ホーム画面起動)はメモリ不足でタブを破棄→再読み込みすることがあり、
 // その際に (a) 一覧へ戻ってしまう (b) 保存待ち(800ms)中の入力が消える、を防ぐ。
-const OPEN_CASE_KEY = 'vet_open_case';
+const OPEN_CASE_KEY = 'vet_demo_open_case';
 function markOpenCase(id) {
   try { id ? localStorage.setItem(OPEN_CASE_KEY, id) : localStorage.removeItem(OPEN_CASE_KEY); } catch(e){}
 }
@@ -3773,7 +3773,7 @@ function mergeCaseIntoC(mem, d) {
   mem.rev = Math.max(memRev, dRev);
 }
 window.addEventListener('storage', (e) => {
-  if (e.key !== 'vet_cases' || !e.newValue) return;
+  if (e.key !== 'vet_demo_cases' || !e.newValue) return;
   let disk = [];
   try { disk = JSON.parse(e.newValue); } catch (_) { return; }
   if (!Array.isArray(disk)) return;
@@ -4287,7 +4287,7 @@ const TEXT_FIELDS = [
   'compArrhythmiaType','compDetails','painMethod','postopPain',
   'recNotes','notes',
 ];
-const CASE_BACKUP_KEY = 'vet_case_backups';
+const CASE_BACKUP_KEY = 'vet_demo_case_backups';
 
 // 上書きで記載が「別内容に差し替わる」項目があればバックアップを取る
 function maybeBackupBeforeOverwrite(existing, detail) {
@@ -7098,7 +7098,7 @@ const RV_PURPOSE = {
   methylprednisolone_acetate:'抗炎症', lipid20:'局所麻酔中毒(LAST)対応',
 };
 const RV_VIT_KEYS = ['HR','SpO2','PR','VT','MV','EtCO2','SYS','DIA','MAP','TEMP','ISOin','ISOex','RR','A1_SYS','A1_DIA','A1_MAP','O2'];
-const RV_CACHE_KEY = 'vet_rv_vitals';
+const RV_CACHE_KEY = 'vet_demo_rv_vitals';
 const RV_CACHE_MAX = 15;
 let _rvVitals = null;      // 表示中症例の正規化バイタル [{t, HR, ...}]
 let _rvVitalsSrc = '';     // 'cache' | 'sheets' | ''
@@ -7346,7 +7346,7 @@ function rvExtStr(e, unit, which) {
 
 // ---------- トレンド描画（SVG） ----------
 // 表示項目の選択（端末に記憶）・表示範囲（ドラッグ/ボタン）・SYS▼ DIA▲
-const RV_SHOW_KEY = 'vet_rv_show';
+const RV_SHOW_KEY = 'vet_demo_rv_show';
 const RV_SERIES = [
   ['HR', 'HR', '#e74c3c'], ['BP', 'SYS▼/DIA▲', '#8e44ad'], ['MAP', 'MAP', '#2e8b57'], ['ALINE', 'A-line(点線)', '#8e44ad'],
   ['EtCO2', 'EtCO₂', '#e67e22'], ['RR', 'RR', '#7f8c8d'], ['SpO2', 'SpO₂(右軸)', '#1f77b4'],
@@ -8583,5 +8583,143 @@ function _tsClose() {
   document.getElementById('tsSheet').classList.remove('show');
 }
 </script>
+
+<!-- ===== デモ（架空データ）: 端末の保存領域は本番と分離（vet_demo_*）・Sheets同期なし ===== -->
+<style>
+.demo-banner{position:fixed;left:0;right:0;top:0;z-index:3000;background:#e67e22;color:#fff;font-size:12px;font-weight:700;text-align:center;padding:3px 8px calc(3px + env(safe-area-inset-top));pointer-events:none;letter-spacing:.3px}
+.screen{inset:22px 0 0 0!important}
+@media print{.demo-banner{display:none}}
+</style>
+<div class="demo-banner">デモ版 — 架空の症例データです。入力してもどこにも送信されません</div>
+<script>
+(function () {
+  const D = (h, m, s) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s || 0).padStart(2, '0')}`;
+  const uid = () => 'demo-' + Math.random().toString(36).slice(2, 10);
+  const DATE = '2026/09/02';
+  // --- 架空バイタル（60秒ごと）を作る ---
+  function makeVitals(spec) {
+    const rows = [];
+    const t0 = new Date(`2026-09-02T${spec.start}:00`).getTime();
+    const n = spec.minutes;
+    let temp = spec.temp0;
+    for (let i = 0; i <= n; i++) {
+      const t = new Date(t0 + i * 60000);
+      const ts = `2026-09-02 ${D(t.getHours(), t.getMinutes(), 47)}`;
+      const ph = i / n;
+      const wob = k => Math.sin(i * k) * 0.5 + Math.sin(i * k * 2.7) * 0.5;
+      let hr = spec.hr0 + wob(0.4) * 6 - ph * 12;
+      let map = spec.map0 + wob(0.33) * 6 - ph * 8;
+      let sys = map + 35 + wob(0.5) * 5, dia = map - 18 + wob(0.6) * 4;
+      let spo2 = 98 + (wob(0.2) > 0.6 ? 1 : 0), etco2 = 38 + wob(0.27) * 4 + ph * 4, rr = 12;
+      let iso = i < 3 ? 0 : i < 8 ? 1.5 : 1.3;
+      temp = Math.max(36.2, temp - 0.012 + (i > n * 0.7 ? 0.02 : 0));
+      // イベント: 導入直後の頻脈、途中の低血圧エピソード（8分）
+      if (i <= 3) hr = spec.hr0 + 50 - i * 12;
+      if (i >= spec.hypoAt && i < spec.hypoAt + 8) { map = 52 + (i - spec.hypoAt) * 1.2; sys = map + 28; dia = map - 14; }
+      if (i >= spec.hypoAt + 8 && i < spec.hypoAt + 14) { map = 64 + (i - spec.hypoAt - 8) * 3; sys = map + 30; dia = map - 16; }
+      const r = { '施設コード': 'DEMO', 'カルテNo': spec.caseNo, '日付': DATE, '時刻': ts, '部屋': '',
+        HR: String(Math.round(hr)), SpO2: String(spo2), PR: String(Math.round(hr)), VT: '', MV: '', EtCO2: String(Math.round(etco2)),
+        SYS: String(Math.round(sys)), DIA: String(Math.round(dia)), MAP: String(Math.round(map)), TEMP: temp.toFixed(1),
+        ISOin: iso ? String(iso) : '', ISOex: iso ? (iso - 0.2).toFixed(1) : '', RR: String(rr), A1_SYS: '', A1_DIA: '', A1_MAP: '', O2: '' };
+      if (i < 2) { r.HR = ''; r.SYS = ''; r.DIA = ''; r.MAP = ''; r.EtCO2 = ''; r.SpO2 = ''; }
+      rows.push(r);
+    }
+    return rows;
+  }
+  function seed() {
+    if (typeof cases === 'undefined' || typeof makeCase !== 'function') return;
+    if (cases.length) return;
+    const c1 = makeCase();
+    Object.assign(c1, {
+      id: 'demo_case_1', date: DATE, caseNo: '1234-5', patientId: '1234-5', staff: '山田', facility: 'DEMO', progress: '完了',
+      patientName: 'ヤマダ ポチ', species: 'dog', breed: 'トイ・プードル', birthdate: '2014/03/10', ageY: '12', ageM: '5', sex: 'MC',
+      weight: '4.7', bcs: '5', consciousness: '正常', preMeds: 'なし',
+      preTemp: '38.2', preHr: '120', preRr: '24', preBp: '130/80 (95)', chiefComplaint: '歯石・口臭（歯周病）', abnormalFindings: '特記なし',
+      testCBC: true, testBiochem: true, testXray: true, testECG: true,
+      diagnosis: '歯周病', procedure: '歯科処置', surgeon: '佐藤', anesthMonitor: '鈴木', asaps: '2', expectedPain: 'moderate',
+      hpot_miniFluid: true, hpot_ephedrine: true, hthm_warmAir: true, hvent_pcv: true, hvent_pcvPIP: '8', hvent_pcvRR: '12',
+      circuit: 'rebreath', tubeSize: '5.0', bagSize: '1', hvent_vcvVT: '60', ivLF: true,
+      drugs: { medetomidine: { use: true, dose: '5', route: 'IV' }, midazolam: { use: true, dose: '0.2', route: 'IV' }, butorphanol: { use: true, dose: '0.2', route: 'IV' },
+               atropine_p: { use: true, dose: '20', route: 'IV' }, propofol: { use: true, dose: '4', route: 'IV' }, cefazolin: { use: true, dose: '22', route: 'IV' },
+               robenacoxib: { use: true, dose: '2', route: 'SC' }, buprenorphine: { use: true, dose: '15', route: 'IV' },
+               atipamezole: { use: true, dose: '50', route: 'IM' }, ephedrine: { use: true, dose: '40', route: 'IV' }, atropine_v: { use: true, dose: '20', route: 'IV' } },
+      maintIsoflurane: true, maintConc: '1.5', maintO2: '1', fluidType: '乳酸リンゲル(LR)', fluidRate: '5',
+      localMixture: { drugs: [{ name: 'リドカイン', conc: '2', stockMl: '0.4' }], totalVolume: '0.4' },
+      localBlocks: { inferior_alveolar: { use: true, volume: '0.2', sites: '2', side: '両側', note: '' }, maxillary: { use: true, volume: '0.2', sites: '2', side: '両側', note: '' } },
+      anesthStart: D(10, 2, 13), inductionTime: D(10, 6, 40), intubationTime: D(10, 7, 22), surgStart: D(10, 14, 56), surgEnd: D(11, 40, 18), extubation: D(11, 52, 5), returnToWard: D(11, 58, 30),
+      drugLog: [
+        { drug: 'メデトミジン', dose: '5μg/kg = 23.50μg (0.02mL)', route: 'IV', time: D(10, 2, 13), uid: uid() },
+        { drug: 'ミダゾラム', dose: '0.2mg/kg = 0.94mg (0.19mL)', route: 'IV', time: D(10, 2, 20), uid: uid() },
+        { drug: 'ブトルファノール', dose: '0.2mg/kg = 0.94mg (0.19mL)', route: 'IV', time: D(10, 2, 26), uid: uid() },
+        { drug: 'プロポフォール', dose: '2mg/kg = 9.40mg (0.94mL)', route: 'IV', time: D(10, 6, 40), uid: uid() },
+        { drug: 'セファゾリン', dose: '22mg/kg = 103.40mg (1.03mL)', route: 'IV', time: D(10, 9, 5), uid: uid() },
+        { drug: 'エフェドリン', dose: '40μg/kg = 188.00μg (0.47mL)', route: 'IV', time: D(10, 52, 10), uid: uid() },
+        { drug: 'ロベナコキシブ', dose: '2mg/kg = 9.40mg (0.47mL)', route: 'SC', time: D(11, 35, 0), uid: uid() },
+        { drug: 'ブプレノルフィン', dose: '15μg/kg = 70.50μg (0.35mL)', route: 'IV', time: D(11, 36, 0), uid: uid() },
+        { drug: 'アチパメゾール', dose: '50μg/kg = 235.00μg (0.05mL)', route: 'IM', time: D(11, 45, 0), uid: uid() },
+      ],
+      freeNotes: [
+        { time: D(10, 7, 30), kind: 'flow', uid: uid(), o2: '1', air: '0' },
+        { time: D(10, 7, 40), kind: 'gas', uid: uid(), drugKey: 'iso', drugLabel: 'イソフルラン', unit: '%', from: '0', to: '1.5' },
+        { time: D(10, 8, 0), kind: 'vent', uid: uid(), mode: 'PCV', rr: '12', from: '0', to: '8' },
+        { time: D(10, 8, 10), kind: 'fluid', uid: uid(), from: '0', to: '24' },
+        { time: D(10, 12, 0), kind: 'gas', uid: uid(), drugKey: 'iso', drugLabel: 'イソフルラン', unit: '%', from: '1.5', to: '1.3' },
+        { time: D(10, 51, 0), kind: 'memo', uid: uid(), text: 'MAP低下→ミニフルイド' },
+        { time: D(11, 40, 30), kind: 'gas', uid: uid(), drugKey: 'iso', drugLabel: 'イソフルラン', unit: '%', from: '1.3', to: '0' },
+        { time: D(11, 44, 0), kind: 'vent', uid: uid(), mode: 'SPONT', from: '0', to: '' },
+      ],
+      procEvents: { pe_la_inferior_alveolar_bi: D(10, 10, 30), pe_la_maxillary_bi: D(10, 12, 15) },
+      recQuality: '良好', recTemp: '37.4', recHr: '96', recRr: '20', painScore: '2', painMethod: 'CMPS-SF',
+      rvPurpose: { medetomidine: '鎮静・鎮痛', midazolam: '鎮静・筋弛緩', butorphanol: '鎮静・鎮痛', atropine_p: '徐脈予防', propofol: '導入', maint: '麻酔維持',
+                   cefazolin: '周術期感染予防', 'la:localBlocks:inferior_alveolar': 'ランドマーク法', 'la:localBlocks:maxillary': 'ランドマーク法' },
+      rvHistory: '特記なし', rvAsaReason: '高齢（12歳）だが血液検査・胸部X線に異常なし',
+    });
+    const c2 = makeCase();
+    Object.assign(c2, {
+      id: 'demo_case_2', date: DATE, caseNo: '2345-1', patientId: '2345-1', staff: '山田', facility: 'DEMO', progress: '完了',
+      patientName: 'サトウ タマ', species: 'cat', breed: 'ミックス', birthdate: '2025/11/20', ageY: '0', ageM: '9', sex: 'F',
+      weight: '2.8', bcs: '5', consciousness: '正常', preMeds: 'なし',
+      preTemp: '38.6', preHr: '180', preRr: '32', preBp: '', chiefComplaint: '避妊手術希望', abnormalFindings: '特記なし',
+      testCBC: true, testBiochem: true, diagnosis: '', procedure: 'SPAY', surgeon: '佐藤', anesthMonitor: '鈴木', asaps: '1', expectedPain: 'moderate',
+      circuit: 'nonrebreath', tubeSize: '3.5', bagSize: '0.5', ivRF: true,
+      drugs: { medetomidine: { use: true, dose: '40', route: 'IM' }, butorphanol: { use: true, dose: '0.2', route: 'IM' }, alfaxalone_i: { use: true, dose: '2', route: 'IV' },
+               cefazolin: { use: true, dose: '22', route: 'IV' }, robenacoxib: { use: true, dose: '0.5', route: 'SC' }, buprenorphine: { use: true, dose: '15', route: 'IV' }, atipamezole: { use: true, dose: '100', route: 'IM' } },
+      maintIsoflurane: true, maintConc: '1.8', maintO2: '1.5', fluidType: '乳酸リンゲル(LR)', fluidRate: '3',
+      localMixture: { drugs: [{ name: 'ブピバカイン', conc: '0.5', stockMl: '0.5' }], totalVolume: '0.5' },
+      localBlocks: { incisional: { use: true, volume: '0.5', sites: '1', side: '', note: '' } },
+      anesthStart: D(13, 30, 5), inductionTime: D(13, 45, 12), intubationTime: D(13, 46, 0), surgStart: D(13, 58, 40), surgEnd: D(14, 25, 10), extubation: D(14, 33, 50), returnToWard: D(14, 40, 0),
+      drugLog: [
+        { drug: 'メデトミジン', dose: '40μg/kg = 112.00μg (0.11mL)', route: 'IM', time: D(13, 30, 5), uid: uid() },
+        { drug: 'ブトルファノール', dose: '0.2mg/kg = 0.56mg (0.11mL)', route: 'IM', time: D(13, 30, 10), uid: uid() },
+        { drug: 'アルファキサロン', dose: '2mg/kg = 5.60mg (0.56mL)', route: 'IV', time: D(13, 45, 12), uid: uid() },
+        { drug: 'セファゾリン', dose: '22mg/kg = 61.60mg (0.62mL)', route: 'IV', time: D(13, 50, 0), uid: uid() },
+        { drug: 'ロベナコキシブ', dose: '0.5mg/head', route: 'SC', time: D(14, 22, 0), uid: uid() },
+        { drug: 'ブプレノルフィン', dose: '15μg/kg = 42.00μg (0.21mL)', route: 'IV', time: D(14, 23, 0), uid: uid() },
+        { drug: 'アチパメゾール', dose: '100μg/kg = 280.00μg (0.06mL)', route: 'IM', time: D(14, 28, 0), uid: uid() },
+      ],
+      freeNotes: [
+        { time: D(13, 46, 30), kind: 'gas', uid: uid(), drugKey: 'iso', drugLabel: 'イソフルラン', unit: '%', from: '0', to: '1.8' },
+        { time: D(13, 47, 0), kind: 'fluid', uid: uid(), from: '0', to: '8' },
+        { time: D(14, 25, 30), kind: 'gas', uid: uid(), drugKey: 'iso', drugLabel: 'イソフルラン', unit: '%', from: '1.8', to: '0' },
+      ],
+      procEvents: { pe_spay_rovary: D(14, 5, 0), pe_spay_lovary: D(14, 9, 30), pe_spay_uterus: D(14, 14, 0), pe_la_incisional: D(13, 57, 0) },
+      recQuality: '良好', recTemp: '37.0', recHr: '150', recRr: '28', painScore: '1', painMethod: 'Feline Grimace Scale',
+    });
+    cases.push(c1, c2);
+    saveStorage();
+    const cache = {};
+    cache['demo_case_1'] = { at: Date.now(), rows: makeVitals({ caseNo: '1234-5', start: '10:00', minutes: 120, hr0: 118, map0: 88, temp0: 38.1, hypoAt: 45 }) };
+    cache['demo_case_2'] = { at: Date.now(), rows: makeVitals({ caseNo: '2345-1', start: '13:40', minutes: 62, hr0: 165, map0: 92, temp0: 38.4, hypoAt: 30 }) };
+    try { localStorage.setItem(RV_CACHE_KEY, JSON.stringify(cache)); } catch (_) {}
+    try { facilityMap.DEMO = 'そむなす動物病院'; } catch (_) {}
+    if (typeof renderCasesList === 'function') renderCasesList();
+  }
+  try { seed(); } catch (e) { console.warn('demo seed failed', e); }
+  try { facilityMap.DEMO = 'そむなす動物病院'; sheetsConfig.facility = 'DEMO'; sheetsConfig.enabled = false; if (typeof saveSheetsConfig === 'function') saveSheetsConfig(); updateFacilityBadge(); renderCasesList(); } catch (_) {}
+  // デモ版は同期をONにできない
+  try { window.toggleSyncEnabled = function () { showToast('デモ版では同期できません'); }; } catch (_) {}
+})();
+</script>
+
 </body>
 </html>
