@@ -390,6 +390,111 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .p-text{white-space:pre-wrap;font-size:8.7pt;display:block;margin-top:2px}
   .p-block{margin-top:2px}
 }
+
+/* ===== 振り返りシート（症例レビュー） ===== */
+#reviewScreen{background:#eef2f6}
+.rv-hdr{background:var(--navy);color:#fff;padding:max(10px,env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.rv-title{flex:1;min-width:0;font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-title small{display:block;font-weight:600;font-size:11.5px;opacity:.75}
+.rv-hbtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:700;cursor:pointer;min-height:38px;white-space:nowrap;font-family:inherit}
+.rv-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:12px;align-items:start}
+.rv-left{position:sticky;top:0;max-height:calc(100dvh - 72px);overflow:auto}
+@media (max-width:860px){.rv-body{grid-template-columns:1fr}.rv-left{position:static;max-height:none;overflow:visible}}
+.rv-card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:10px 12px;margin-bottom:12px}
+.rv-card h3{margin:-10px -12px 8px;background:var(--navy);color:#fff;font-size:13px;padding:6px 12px;border-radius:10px 10px 0 0;font-weight:700}
+.rv-card h4{margin:8px 0 4px;font-size:12.5px;color:var(--navy);border-left:3px solid var(--blue);padding-left:6px}
+.rv-kv{display:flex;flex-wrap:wrap;gap:3px 14px;font-size:13px;align-items:baseline}
+.rv-kv .rv-f{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap}
+.rv-k{color:var(--muted);font-size:11.5px}
+.rv-v{font-weight:600}
+.rv-v:empty::after{content:'—';color:#bbb;font-weight:400}
+.rv-block{font-size:13px;margin-top:4px;white-space:pre-wrap;line-height:1.5}
+.rv-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+.rv-table th,.rv-table td{border-bottom:1px solid #e3e8ee;padding:4px 5px;text-align:left;vertical-align:top}
+.rv-table th{background:#eaf0f7;font-weight:700;font-size:11.5px;white-space:nowrap}
+.rv-table td.rv-grp{color:var(--muted);font-size:11.5px;white-space:nowrap}
+.rv-ta{width:100%;min-height:72px;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;background:#fffdf3;resize:none;line-height:1.55;color:var(--text);display:block;overflow:hidden}
+.rv-ta:focus{outline:none;border-color:var(--blue);background:#fff}
+.rv-chk{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:13px;cursor:pointer;-webkit-user-select:none;border-bottom:1px dashed #eef2f6;min-height:36px}
+.rv-chk:last-child{border-bottom:none}
+.rv-box{width:22px;height:22px;border:2px solid var(--border);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;background:#fff}
+.rv-chk.on .rv-box{background:var(--blue);border-color:var(--blue)}
+.rv-chk.on .rv-box::after{content:'✓';font-weight:800}
+.rv-chk .rv-lbl{flex:1;min-width:0}
+.rv-chk .rv-lbl small{color:var(--muted);font-size:11px}
+.rv-meas{font-size:11.5px;color:#556;text-align:right;white-space:nowrap;line-height:1.35}
+.rv-meas.warn{color:#c0392b;font-weight:700}
+.rv-meas.ok{color:#2e8b57}
+.rv-vin{width:66px;font-size:13px;padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;background:#f8fafc;font-family:inherit;color:var(--text);min-height:32px}
+.rv-chip{display:inline-block;padding:1px 8px;margin:2px 3px 2px 0;background:#eef6fc;border:1px solid #bcd7ee;border-radius:10px;font-size:12px}
+.rv-chip.warn{background:#ffe1e1;border-color:#e74c3c;color:#a02020}
+.rv-seg{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.rv-seg button{border:1.5px solid var(--border);background:#f8fafc;border-radius:8px;padding:6px 11px;font-size:13px;font-family:inherit;cursor:pointer;min-height:36px;color:var(--text)}
+.rv-seg button.on{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.rv-note{font-size:11.5px;color:var(--muted);line-height:1.45}
+.rv-trend svg{width:100%;height:auto;display:block}
+.rv-legend{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:11.5px;color:#444;margin-top:6px}
+.rv-legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:4px;border-radius:2px}
+.rv-stat{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px;margin-top:6px}
+.rv-stat div{background:#f5f8fb;border-radius:8px;padding:6px 8px;font-size:12px}
+.rv-stat b{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.rv-stat span{white-space:nowrap}
+.rv-empty{padding:26px 10px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6}
+.rv-busy{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:var(--blue);border-radius:50%;animation:rvspin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes rvspin{to{transform:rotate(360deg)}}
+.rv-tbar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:6px}
+.rv-tbar button{border:1.5px solid var(--border);background:#f8fafc;border-radius:7px;padding:5px 10px;font-size:12.5px;font-family:inherit;cursor:pointer;min-height:32px;color:var(--text)}
+.rv-tbar button:active{background:#eaf3fb}
+.rv-tsep{width:1px;height:20px;background:var(--border);margin:0 3px}
+.rv-legend span.rv-lg{cursor:pointer;padding:2px 6px;border-radius:8px;border:1px solid transparent;-webkit-user-select:none;user-select:none}
+.rv-legend span.rv-lg:active{background:#eaf3fb}
+.rv-legend span.rv-lg.off{opacity:.4;text-decoration:line-through}
+.rv-in{font-size:13px;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;background:#f8fafc;font-family:inherit;color:var(--text);min-height:32px;vertical-align:middle}
+.rv-in:focus,.rv-ta:focus{outline:none;border-color:var(--blue);background:#fff}
+.rv-pin{width:100%;min-width:90px}
+.rv-miss{border-color:#e74c3c!important;background:#fff1f0!important}
+.rv-seg.rv-miss{border:1.5px solid #e74c3c;border-radius:9px;padding:3px;background:#fff1f0!important}
+.rv-missnote{color:#c0392b;font-size:12px;font-weight:700}
+.rv-missbar{margin-top:8px;background:#fff1f0;border:1px solid #f5b7b1;color:#c0392b;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rv-missbar.ok{background:#eafaf1;border-color:#a9dfbf;color:#1e8449}
+.rv-missbtn{margin-left:auto;border:1.5px solid #e74c3c;background:#fff;color:#c0392b;border-radius:7px;padding:4px 10px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;min-height:32px}
+.rv-chip.tog{cursor:pointer;background:#f3f5f8;border-color:#d5dce4;color:#8a96a3;-webkit-user-select:none;user-select:none;padding:3px 9px}
+.rv-chip.tog.on{background:#eef6fc;border-color:#2e86c1;color:var(--text);font-weight:700}
+.rv-table.rv-drugs tr.rv-gfirst td{border-top:2px solid #c9d3df;padding-top:9px}
+.rv-table.rv-drugs td{padding-top:5px;padding-bottom:5px}
+.rv-quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.rv-qbtn{border:1.5px solid var(--border);background:#f8fafc;border-radius:8px;padding:5px 11px;font-size:12.5px;font-family:inherit;cursor:pointer;min-height:34px;color:var(--text)}
+.rv-qbtn.on{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.rv-pcell{display:flex;flex-wrap:wrap;gap:4px;align-items:center;border:1.5px solid transparent;border-radius:8px;padding:2px}
+.rv-pcell .rv-pin{flex:1;min-width:80px;font-size:12px;min-height:28px;padding:3px 6px}
+.rv-pcell.rv-miss{background:#fff1f0!important;border-color:#e74c3c!important}
+.rv-auto{display:inline-block;background:#e8f4fd;color:var(--blue);border:1px solid #bcd7ee;border-radius:8px;padding:0 6px;font-size:10.5px;margin-left:5px;vertical-align:1px;font-weight:700}
+@media print{
+  body.rv-print #printView{display:none!important}
+  body.rv-print #reviewScreen{display:block!important;position:static!important;transform:none!important;height:auto!important;overflow:visible!important;background:#fff!important;pointer-events:auto}
+  body.rv-print .rv-hdr{display:none!important}
+  body.rv-print .rv-body{display:block!important;overflow:visible!important;height:auto!important;padding:0}
+  body.rv-print .rv-left{position:static!important;max-height:none!important;overflow:visible!important}
+  body.rv-print .rv-card{box-shadow:none;border:1px solid #999;border-radius:3px;padding:6px 8px;margin:0 0 5px;break-inside:avoid}
+  body.rv-print .rv-card h3{margin:-6px -8px 5px;border-radius:2px 2px 0 0;font-size:9.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.rv-print .rv-kv,body.rv-print .rv-block,body.rv-print .rv-table,body.rv-print .rv-chk{font-size:8.6pt}
+  body.rv-print .rv-table th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.rv-print .rv-ta{border:1px solid #999;background:#fff;font-size:9pt;min-height:40px;border-radius:3px}
+  body.rv-print .rv-chk{min-height:0;padding:2px 0}
+  body.rv-print .rv-box{width:12px;height:12px;font-size:9px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.rv-print .rv-seg button{padding:2px 7px;min-height:0;font-size:8.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.rv-print .rv-in{min-height:0;padding:1px 4px;font-size:8.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.rv-print .rv-missbar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.rv-print .rv-missbtn{display:none}
+  body.rv-print .rv-chip.tog:not(.on){display:none}
+  body.rv-print .rv-seg button:not(.on){opacity:.35}
+  body.rv-print .rv-quick{display:none!important}
+  body.rv-print .rv-pcell .rv-chip.tog:not(.on){display:none}
+  body.rv-print .rv-pcell .rv-pin:placeholder-shown{display:none}
+  body.rv-print .rv-vin{min-height:0;padding:1px 4px;font-size:8.5pt;width:52px}
+  body.rv-print .rv-chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.rv-print .rv-noprint{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -1231,12 +1336,46 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <button class="act-btn act-primary" onclick="saveCase()">💾 保存</button>
     <button class="act-btn act-secondary" id="restoreBtn" onclick="restoreCaseDetail()" style="display:none">🕘 記載復元</button>
     <button class="act-btn act-secondary" onclick="printCase()">🖨️ 印刷</button>
+    <button class="act-btn act-secondary" onclick="openReview()">📝 振り返り</button>
     <button class="act-btn act-secondary" onclick="exportCSV()">📊 CSV</button>
   </div>
 </div>
 
 <div id="toast" class="toast"></div>
 <div id="printView"></div>
+
+<!-- ========== REVIEW SCREEN（振り返りシート） ========== -->
+<div id="reviewScreen" class="screen hidden">
+  <div class="rv-hdr">
+    <button class="btn-back" onclick="closeReview()">‹ 症例へ</button>
+    <div class="rv-title" id="rvTitle">振り返りシート</div>
+    <button class="rv-hbtn" onclick="loadReviewVitals(true)" title="SomLogのバイタルを再取得">🔄</button>
+    <button class="rv-hbtn" onclick="printReview()">🖨️ 印刷</button>
+  </div>
+  <div class="rv-body" id="rvBody">
+    <div class="rv-left">
+      <div class="rv-card">
+        <h3>📈 バイタル推移（SomLog）</h3>
+        <div class="rv-tbar rv-noprint" id="rvTrendBar" style="display:none">
+          <button type="button" onclick="rvSetRange('all')">全体</button>
+          <button type="button" onclick="rvSetRange('anes')">麻酔中</button>
+          <button type="button" onclick="rvSetRange('surg')">手術中</button>
+          <span class="rv-tsep"></span>
+          <button type="button" onclick="rvZoom(0.5)" title="拡大">＋</button>
+          <button type="button" onclick="rvZoom(2)" title="縮小">−</button>
+          <button type="button" onclick="rvPan(-0.5)" title="前へ">‹</button>
+          <button type="button" onclick="rvPan(0.5)" title="次へ">›</button>
+          <span class="rv-note" id="rvRangeLbl"></span>
+        </div>
+        <div class="rv-trend" id="rvTrend"><div class="rv-empty">読み込み中…</div></div>
+        <div class="rv-note rv-noprint" style="margin-top:4px">グラフ上を横にドラッグするとその範囲に拡大。凡例をタップで項目の表示/非表示。</div>
+        <div id="rvTrendFoot"></div>
+      </div>
+    </div>
+    <div class="rv-right" id="rvReport"></div>
+  </div>
+</div>
+
 
 <!-- ========== PRESET EDITOR MODAL ========== -->
 <style>
@@ -4346,7 +4485,7 @@ function populateForm() {
   const fields = [
     'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
     'phaseNoteInd','phaseNoteMaint','phaseNoteWake','phaseNotePost',
-    'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
+    'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings','preMeds',
     'diagnosis','procedure','surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
     'otherComplications',
     'hpot_notes','hthm_notes',
@@ -4477,7 +4616,7 @@ function collectForm() {
   const fields = [
     'patientId','ownerName','patientName','breed','birthdate','ageY','ageM','weight','bcs',
     'phaseNoteInd','phaseNoteMaint','phaseNoteWake','phaseNotePost',
-    'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings',
+    'preTemp','preHr','preRr','preBp','chiefComplaint','abnormalFindings','preMeds',
     'diagnosis','procedure','surgeon','assistant','scrubNurse','anesthMonitor','anesthSupervisor',
     'otherComplications',
     'hpot_notes','hthm_notes',
@@ -6947,6 +7086,1115 @@ function generatePrintHTML(c) {
     </div>` : ''}
   `;
 }
+
+
+// ─────────────────────────────────────────────────
+// 振り返りシート（症例レビュー）
+//   左: SomLogがSheets「バイタル」に上げたトレンド＋イベント/薬剤マーカー
+//   右: 麻酔レポート様式（動物麻酔技能認定医の課題レポートを参考）に症例データを自動流し込み
+//   レビュー専用の自由記載(rvAsaReason/rvRationale/rvExtra)と既存の compDetails/notes/合併症/覚醒 を編集可
+// ─────────────────────────────────────────────────
+const RV_DRUG_ABBR = {
+  'メデトミジン':'Med','ミダゾラム':'Mid','ブトルファノール':'But','アトロピン':'Atr','ニカルジピン':'Nic',
+  'アルファキサロン':'Alf','フェンタニル':'Fen','ブプレノルフィン':'Bup','プロポフォール':'Prop',
+  'セファゾリン':'CEZ','アンピシリン':'ABPC','セフォベシン':'Cefo','レミフェンタニル':'Remi','リドカイン':'Lid',
+  'ケタミン':'Ket','ノルアドレナリン':'NA','フェニレフリン':'Phe','エフェドリン':'Eph','アドレナリン':'Adr',
+  'ドパミン':'DOA','ドブタミン':'DOB','アチパメゾール':'Atip','スガマデクス':'Sug','メロキシカム':'Mel',
+  'ロベナコキシブ':'Rob','プレドニゾロン':'Pred','トラマドール':'Tra','アセトアミノフェン':'AAP',
+  'イソフルラン':'Iso','セボフルラン':'Sev','デクスメデトミジン':'Dex','モルヒネ':'Mor','ブピバカイン':'Bupv',
+  'ロピバカイン':'Rop','メピバカイン':'Mep','マロピタント':'Mar','ファモチジン':'Fam','ロクロニウム':'Roc',
+  'フルマゼニル':'Flu','ナロキソン':'Nal','ジフェンヒドラミン':'DPH','メチルプレドニゾロン酢酸エステル':'mPSL',
+  '20%脂肪乳剤(イントラリポス)':'Lip','20%脂肪乳剤':'Lip','イントラリポス':'Lip',
+};
+// 薬剤の「目的」欄（レポート様式用の既定文言）
+const RV_PURPOSE = {
+  medetomidine:'鎮静・鎮痛', midazolam:'鎮静・筋弛緩', butorphanol:'鎮痛・鎮静', atropine_p:'徐脈予防',
+  nicardipine:'降圧', alfaxalone_p:'鎮静', fentanyl_p:'鎮痛', buprenorphine_p:'鎮痛', morphine:'鎮痛',
+  propofol:'導入', alfaxalone_i:'導入',
+  cefazolin:'周術期感染予防', ampicillin:'周術期感染予防', cefovecin:'感染予防',
+  fentanyl_c:'術中鎮痛', remifentanil:'術中鎮痛', medetomidine_c:'術中鎮痛・鎮静', lidocaine_c:'術中鎮痛',
+  ketamine_c:'術中鎮痛(NMDA)', tramadol_c:'術中鎮痛', noradrenaline_c:'昇圧', adrenaline_c:'昇圧・強心',
+  phenylephrine_c:'昇圧', dopamine_c:'昇圧・強心', dobutamine_c:'強心', rocuronium_c:'筋弛緩',
+  atropine_v:'徐脈治療', ephedrine:'昇圧', phenylephrine:'昇圧', noradrenaline:'昇圧', adrenaline:'心停止/アナフィラキシー',
+  dopamine:'昇圧・強心', dobutamine:'強心',
+  atipamezole:'α2拮抗', sugammadex:'筋弛緩拮抗', flumazenil:'BZD拮抗', naloxone:'オピオイド拮抗',
+  meloxicam:'術後鎮痛(NSAIDs)', robenacoxib:'術後鎮痛(NSAIDs)', prednisolone:'抗炎症', buprenorphine:'術後鎮痛',
+  tramadol:'術後鎮痛', acetaminophen:'術後鎮痛',
+  rocuronium:'筋弛緩', maropitant:'制吐', diphenhydramine:'抗ヒスタミン', famotidine:'胃酸分泌抑制',
+  methylprednisolone_acetate:'抗炎症', lipid20:'局所麻酔中毒(LAST)対応',
+};
+const RV_VIT_KEYS = ['HR','SpO2','PR','VT','MV','EtCO2','SYS','DIA','MAP','TEMP','ISOin','ISOex','RR','A1_SYS','A1_DIA','A1_MAP','O2'];
+const RV_CACHE_KEY = 'vet_rv_vitals';
+const RV_CACHE_MAX = 15;
+let _rvVitals = null;      // 表示中症例の正規化バイタル [{t, HR, ...}]
+let _rvVitalsSrc = '';     // 'cache' | 'sheets' | ''
+let _rvCaseId = null;
+let _rvTimer = null;
+let _rvResizeTimer = null;
+let _rvLoading = false;
+
+function rvAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
+function rvAbbr(name) {
+  const n = String(name || '').trim();
+  if (RV_DRUG_ABBR[n]) return RV_DRUG_ABBR[n];
+  for (const k of Object.keys(RV_DRUG_ABBR)) if (n.indexOf(k) === 0) return RV_DRUG_ABBR[k];
+  return n.length > 5 ? n.slice(0, 5) : n;
+}
+
+function openReview() {
+  if (!current) return;
+  collectForm();
+  const idx = cases.findIndex(c => c.id === current.id);
+  if (idx >= 0) cases[idx] = current;
+  saveStorage();
+  _rvCaseId = current.id;
+  document.getElementById('formScreen').classList.add('hidden');
+  document.getElementById('reviewScreen').classList.remove('hidden');
+  document.getElementById('rvBody').scrollTop = 0;
+  const t = document.getElementById('rvTitle');
+  t.innerHTML = `振り返りシート <small>${esc(current.date || '')} ｜ ${esc(current.patientName || '')} ｜ ${esc(current.procedure || '')}</small>`;
+  _rvVitals = null; _rvVitalsSrc = ''; _rvRange = null; _rvFull = null;
+  renderReviewReport();
+  loadReviewVitals(false);
+}
+
+function closeReview() {
+  rvCommit();
+  document.getElementById('reviewScreen').classList.add('hidden');
+  document.getElementById('formScreen').classList.remove('hidden');
+  // レビュー側で編集した合併症/覚醒/詳細/改善点を症例画面へ反映
+  try { populateForm(); } catch (_) {}
+  try { updateAccUI(); } catch (_) {}
+  if (current && sheetsConfig.enabled && current.caseNo && current.date) {
+    current.updated_at = nowIsoStr();
+    pushToSheets(current, { skipFollowupSync: true });
+  }
+}
+
+// レビュー画面での編集は current に直接書き、800ms後にディスク保存（autoSaveと同じ考え方）
+function rvSet(key, val) {
+  if (!current) return;
+  current[key] = val;
+  current.updated_at = nowIsoStr();
+  clearTimeout(_rvTimer);
+  _rvTimer = setTimeout(rvCommit, 800);
+}
+function rvCommit() {
+  clearTimeout(_rvTimer);
+  if (!current) return;
+  const idx = cases.findIndex(c => c.id === current.id);
+  if (idx >= 0) cases[idx] = current;
+  saveStorage();
+}
+function rvToggle(key, el) {
+  if (!current) return;
+  rvSet(key, !current[key]);
+  if (el) el.classList.toggle('on', !!current[key]);
+}
+function rvSetQuality(v, el) {
+  rvSet('recQuality', v);
+  const wrap = el && el.parentNode;
+  if (wrap) wrap.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === el));
+}
+// 入力中にバイタル到着で右側を描き直すとカーソルが飛ぶ → フォーカスが外れてから描き直す
+let _rvPendingRender = false;
+function rvRefreshReport() {
+  const ae = document.activeElement;
+  if (ae && ae.closest && ae.closest('#rvReport')) { _rvPendingRender = true; return; }
+  renderReviewReport();
+}
+document.addEventListener('focusout', e => {
+  if (!_rvPendingRender) return;
+  if (e.target && e.target.closest && e.target.closest('#rvReport')) {
+    _rvPendingRender = false;
+    setTimeout(() => { if (!document.getElementById('reviewScreen').classList.contains('hidden')) renderReviewReport(); }, 50);
+  }
+});
+function rvGrow(el) { if (el) { el.style.height = 'auto'; el.style.height = Math.max(72, el.scrollHeight + 2) + 'px'; } }
+function rvGrowAll() { document.querySelectorAll('#rvReport .rv-ta').forEach(rvGrow); }
+
+// ---------- バイタル取得（GAS doGet: sheet=バイタル&case_no&date） ----------
+function rvVitalsUrl(c) {
+  const cn = (c.caseNo || c.patientId || '').trim();
+  return `${sheetsConfig.webappUrl}?action=read&sheet=${encodeURIComponent('バイタル')}` +
+         `&case_no=${encodeURIComponent(cn)}&date=${encodeURIComponent(c.date || '')}` +
+         `&token=${encodeURIComponent(sheetsConfig.token || '')}&_=${Date.now()}`;
+}
+function rvReadCache() { try { return JSON.parse(localStorage.getItem(RV_CACHE_KEY) || '{}') || {}; } catch (_) { return {}; } }
+function rvWriteCache(id, rows) {
+  try {
+    const all = rvReadCache();
+    all[id] = { at: Date.now(), rows };
+    const ids = Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0));
+    ids.slice(RV_CACHE_MAX).forEach(k => delete all[k]);
+    localStorage.setItem(RV_CACHE_KEY, JSON.stringify(all));
+  } catch (_) {}
+}
+function rvParseTs(s, dateStr) {
+  s = String(s || '').trim();
+  let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)).getTime();
+  m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (m && dateStr) {
+    const d = String(dateStr).match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if (d) return new Date(+d[1], +d[2] - 1, +d[3], +m[1], +m[2], +(m[3] || 0)).getTime();
+  }
+  return null;
+}
+function rvNormalizeVitals(rawRows, c) {
+  const out = [];
+  const seen = {};
+  (rawRows || []).forEach(r => {
+    const t = rvParseTs(r['時刻'], c.date);
+    if (t === null) return;
+    const key = String(t);
+    let row = seen[key];
+    if (!row) { row = { t }; seen[key] = row; out.push(row); }
+    RV_VIT_KEYS.forEach(k => {
+      const v = r[k];
+      if (v === undefined || v === null || v === '' || v === '-') return;
+      const n = parseFloat(v);
+      if (!isNaN(n) && row[k] === undefined) row[k] = n;   // 同時刻に複数部屋 → 先勝ち
+    });
+  });
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
+async function loadReviewVitals(force) {
+  if (!current) return;
+  const c = current;
+  const box = document.getElementById('rvTrend');
+  const cache = rvReadCache()[c.id];
+  if (!force && cache && Array.isArray(cache.rows)) {
+    _rvVitals = rvNormalizeVitals(cache.rows, c); _rvVitalsSrc = 'cache';
+    renderReviewTrend(); renderReviewReport();
+    // 進行中の症例は毎回取り直す（完了ならキャッシュで足りる）
+    if (c.progress === '完了') return;
+  }
+  if (!sheetsConfig.enabled || !sheetsConfig.webappUrl) {
+    if (!_rvVitals) box.innerHTML = '<div class="rv-empty">Sheets同期がOFFのためSomLogのバイタルを取得できません。<br>設定から同期を有効にしてください。</div>';
+    return;
+  }
+  if (!(c.caseNo || c.patientId) || !c.date) {
+    box.innerHTML = '<div class="rv-empty">カルテIDと日付が無いためバイタルを検索できません。</div>';
+    return;
+  }
+  if (_rvLoading) return;
+  _rvLoading = true;
+  if (!_rvVitals) box.innerHTML = '<div class="rv-empty"><span class="rv-busy"></span>SomLogのバイタルを取得中…</div>';
+  try {
+    const res = await fetch(rvVitalsUrl(c), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if (/^unauthorized|^error/i.test(text.trim())) throw new Error(text.trim().slice(0, 60));
+    const rows = parseCSV(text.replace(/^﻿/, ''));
+    if (_rvCaseId !== c.id) return; // 取得中に別症例へ移った
+    rvWriteCache(c.id, rows);
+    _rvVitals = rvNormalizeVitals(rows, c); _rvVitalsSrc = 'sheets';
+    renderReviewTrend(); rvRefreshReport();
+  } catch (e) {
+    console.warn('review vitals fetch failed:', e);
+    if (!_rvVitals) box.innerHTML = `<div class="rv-empty">バイタルの取得に失敗しました。<br><span class="rv-note">${esc(String(e.message || e))}</span></div>`;
+    else showToast('バイタル再取得に失敗（表示は前回取得分）');
+  } finally { _rvLoading = false; }
+}
+
+// ---------- 統計（麻酔中の最高/最低・閾値超過の持続） ----------
+function rvEventMs(c, t) { return rvParseTs(t, c.date); }
+function rvAnalysisWindow(c, rows) {
+  // 解析範囲: 導入(無ければ挿管/前投薬)〜抜管(無ければ帰舎)。無ければ全期間。
+  const s = rvEventMs(c, c.inductionTime) ?? rvEventMs(c, c.intubationTime) ?? rvEventMs(c, c.anesthStart);
+  const e = rvEventMs(c, c.extubation) ?? rvEventMs(c, c.returnToWard) ?? rvEventMs(c, c.surgEnd);
+  const t0 = rows.length ? rows[0].t : null, t1 = rows.length ? rows[rows.length - 1].t : null;
+  return { s: s ?? t0, e: e ?? t1, label: (s !== null || e !== null)
+    ? `${s !== null ? (c.inductionTime ? '導入' : c.intubationTime ? '挿管' : '前投薬') : '記録開始'}〜${e !== null ? (c.extubation ? '抜管' : c.returnToWard ? '帰舎' : '手術終了') : '記録終了'}`
+    : '記録全体' };
+}
+function rvFmtTime(ms) { const d = new Date(ms); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
+function rvStats(rows, c) {
+  const win = rvAnalysisWindow(c, rows);
+  const inWin = rows.filter(r => (win.s === null || r.t >= win.s - 30000) && (win.e === null || r.t <= win.e + 30000));
+  // 生理的にあり得ない値（体温プローブ未装着の25℃、リード外れのHR17等）は統計から外す
+  const RV_SANE = { HR: [20, 400], SYS: [30, 300], DIA: [10, 200], MAP: [20, 250], A1_SYS: [30, 300], A1_MAP: [20, 250],
+                    SpO2: [50, 100], EtCO2: [0, 100], TEMP: [30, 43], RR: [0, 120] };
+  const use = (inWin.length ? inWin : rows).map(r => {
+    const o = { t: r.t };
+    Object.keys(r).forEach(k => { if (k === 't') return; const rg = RV_SANE[k]; if (!rg || (r[k] >= rg[0] && r[k] <= rg[1])) o[k] = r[k]; });
+    return o;
+  });
+  const species = c.species === 'cat' ? 'cat' : 'dog';
+  const th = species === 'cat' ? { tachy: 200, brady: 100 } : { tachy: 160, brady: 50 };
+  const ext = {};
+  ['HR', 'SYS', 'DIA', 'MAP', 'SpO2', 'EtCO2', 'TEMP', 'RR', 'A1_SYS', 'A1_MAP'].forEach(k => {
+    let mn = null, mx = null;
+    use.forEach(r => {
+      const v = r[k]; if (v === undefined) return;
+      if (!mn || v < mn.v) mn = { v, t: r.t };
+      if (!mx || v > mx.v) mx = { v, t: r.t };
+    });
+    ext[k] = { min: mn, max: mx, n: use.filter(r => r[k] !== undefined).length };
+  });
+  // 閾値超過の持続時間（連続する超過サンプルの先頭〜末尾＋1分。3分以上途切れたら別エピソード）
+  function runs(pred) {
+    let longest = 0, total = 0, cur = null;
+    use.forEach(r => {
+      if (pred(r)) {
+        if (cur && r.t - cur.last <= 3 * 60000) cur.last = r.t;
+        else { if (cur) { const d = (cur.last - cur.first) / 60000 + 1; longest = Math.max(longest, d); total += d; } cur = { first: r.t, last: r.t }; }
+      }
+    });
+    if (cur) { const d = (cur.last - cur.first) / 60000 + 1; longest = Math.max(longest, d); total += d; }
+    return { longest: Math.round(longest), total: Math.round(total), any: total > 0 };
+  }
+  const mapOr = r => (r.A1_MAP !== undefined ? r.A1_MAP : r.MAP);
+  const sysOr = r => (r.A1_SYS !== undefined ? r.A1_SYS : r.SYS);
+  const flags = {
+    compTachy:       runs(r => r.HR !== undefined && r.HR > th.tachy),
+    compBrady:       runs(r => r.HR !== undefined && r.HR < th.brady),
+    compHtn:         runs(r => (mapOr(r) !== undefined && mapOr(r) > 120) || (sysOr(r) !== undefined && sysOr(r) > 160)),
+    compHypotension: runs(r => (mapOr(r) !== undefined && mapOr(r) < 60) || (sysOr(r) !== undefined && sysOr(r) < 80)),
+    compHypoxemia:   runs(r => r.SpO2 !== undefined && r.SpO2 < 90),
+    compHypocapnia:  runs(r => r.EtCO2 !== undefined && r.EtCO2 < 20),
+    compHypercapnia: runs(r => r.EtCO2 !== undefined && r.EtCO2 > 60),
+    compHypothermia: runs(r => r.TEMP !== undefined && r.TEMP < 36),
+    compHyperthermia:runs(r => r.TEMP !== undefined && r.TEMP > 39),
+    compTachyBreath: runs(r => r.RR !== undefined && r.RR > 50),
+    compBradyBreath: runs(r => r.RR !== undefined && r.RR < 4),
+  };
+  return { win, n: use.length, nAll: rows.length, species, th, ext, flags };
+}
+function rvExtStr(e, unit, which) {
+  const x = e && e[which];
+  if (!x) return '';
+  return `${x.v}${unit || ''} (${rvFmtTime(x.t)})`;
+}
+
+// ---------- トレンド描画（SVG） ----------
+// 表示項目の選択（端末に記憶）・表示範囲（ドラッグ/ボタン）・SYS▼ DIA▲
+const RV_SHOW_KEY = 'vet_rv_show';
+const RV_SERIES = [
+  ['HR', 'HR', '#e74c3c'], ['BP', 'SYS▼/DIA▲', '#8e44ad'], ['MAP', 'MAP', '#2e8b57'], ['ALINE', 'A-line(点線)', '#8e44ad'],
+  ['EtCO2', 'EtCO₂', '#e67e22'], ['RR', 'RR', '#7f8c8d'], ['SpO2', 'SpO₂(右軸)', '#1f77b4'],
+  ['GAS', 'Iso/Sev in(点線)/ex', '#16a085'], ['TEMP', '体温', '#8d6e63'],
+  ['EVT', 'イベント線', '#1e3a5f'], ['MARK', '薬剤/変更マーカー', '#c0392b'],
+];
+let _rvShow = null;
+let _rvRange = null;   // {t0,t1} 表示範囲（nullで全体）
+let _rvFull = null;    // {t0,t1} 全体範囲
+let _rvGeom = null;    // {L, plotW, t0, t1} ドラッグ→時刻変換用
+function rvShow() {
+  if (_rvShow) return _rvShow;
+  _rvShow = {}; RV_SERIES.forEach(([k]) => _rvShow[k] = true);
+  try { Object.assign(_rvShow, JSON.parse(localStorage.getItem(RV_SHOW_KEY) || '{}')); } catch (_) {}
+  return _rvShow;
+}
+function rvToggleShow(k) {
+  const s = rvShow(); s[k] = !s[k];
+  try { localStorage.setItem(RV_SHOW_KEY, JSON.stringify(s)); } catch (_) {}
+  renderReviewTrend();
+}
+function rvClampRange(t0, t1) {
+  if (!_rvFull) return null;
+  const minSpan = 5 * 60000;
+  if (t1 - t0 < minSpan) { const m = (t0 + t1) / 2; t0 = m - minSpan / 2; t1 = m + minSpan / 2; }
+  if (t0 < _rvFull.t0) { t1 += _rvFull.t0 - t0; t0 = _rvFull.t0; }
+  if (t1 > _rvFull.t1) { t0 -= t1 - _rvFull.t1; t1 = _rvFull.t1; }
+  t0 = Math.max(t0, _rvFull.t0); t1 = Math.min(t1, _rvFull.t1);
+  if (t0 <= _rvFull.t0 && t1 >= _rvFull.t1) return null;
+  return { t0, t1 };
+}
+function rvSetRange(mode) {
+  const c = current; if (!c || !_rvFull) return;
+  if (mode === 'all') _rvRange = null;
+  else if (mode === 'anes') {
+    const w = rvAnalysisWindow(c, _rvVitals || []);
+    if (w.s === null || w.e === null) { showToast('導入/抜管の時刻がありません'); return; }
+    _rvRange = rvClampRange(w.s - 2 * 60000, w.e + 2 * 60000);
+  } else if (mode === 'surg') {
+    const s = rvEventMs(c, c.surgStart), e = rvEventMs(c, c.surgEnd);
+    if (s === null || e === null) { showToast('手術開始/終了の時刻がありません'); return; }
+    _rvRange = rvClampRange(s - 2 * 60000, e + 2 * 60000);
+  }
+  renderReviewTrend();
+}
+function rvZoom(f) {
+  const r = _rvRange || _rvFull; if (!r) return;
+  const m = (r.t0 + r.t1) / 2, half = (r.t1 - r.t0) / 2 * f;
+  _rvRange = rvClampRange(m - half, m + half); renderReviewTrend();
+}
+function rvPan(f) {
+  const r = _rvRange; if (!r) return;
+  const d = (r.t1 - r.t0) * f;
+  _rvRange = rvClampRange(r.t0 + d, r.t1 + d); renderReviewTrend();
+}
+// グラフ上の横ドラッグで範囲選択（縦スクロールは pan-y で通す）
+function rvAttachDrag(svgEl) {
+  if (!svgEl || !_rvGeom) return;
+  let x0 = null, rect = null, dragging = false, pid = null;
+  const toX = ev => ev.clientX - svgEl.getBoundingClientRect().left;
+  svgEl.addEventListener('pointerdown', ev => {
+    if (ev.button !== 0 && ev.pointerType === 'mouse') return;
+    x0 = toX(ev); pid = ev.pointerId; dragging = false;
+  });
+  svgEl.addEventListener('pointermove', ev => {
+    if (x0 === null || ev.pointerId !== pid) return;
+    const xx = toX(ev);
+    if (!dragging) {
+      if (Math.abs(xx - x0) < 8) return;
+      dragging = true;
+      try { svgEl.setPointerCapture(pid); } catch (_) {}
+      rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('y', 0); rect.setAttribute('height', svgEl.getAttribute('height'));
+      rect.setAttribute('fill', '#2e86c1'); rect.setAttribute('opacity', '0.18');
+      svgEl.appendChild(rect);
+    }
+    const a = Math.max(_rvGeom.L, Math.min(x0, xx)), b = Math.min(_rvGeom.L + _rvGeom.plotW, Math.max(x0, xx));
+    rect.setAttribute('x', a); rect.setAttribute('width', Math.max(0, b - a));
+  });
+  const end = ev => {
+    if (x0 === null || ev.pointerId !== pid) return;
+    if (dragging && rect) {
+      const a = parseFloat(rect.getAttribute('x')), w = parseFloat(rect.getAttribute('width'));
+      rect.remove();
+      if (w >= 10) {
+        const g = _rvGeom, tOf = px => g.t0 + (px - g.L) / g.plotW * (g.t1 - g.t0);
+        _rvRange = rvClampRange(tOf(a), tOf(a + w));
+        renderReviewTrend();
+      }
+    }
+    x0 = null; rect = null; dragging = false; pid = null;
+  };
+  svgEl.addEventListener('pointerup', end);
+  svgEl.addEventListener('pointercancel', end);
+}
+
+function renderReviewTrend() {
+  const box = document.getElementById('rvTrend');
+  const foot = document.getElementById('rvTrendFoot');
+  const bar = document.getElementById('rvTrendBar');
+  const c = current;
+  if (!c) return;
+  const rows = _rvVitals || [];
+  if (!rows.length) {
+    box.innerHTML = '<div class="rv-empty">この症例のバイタルはSheets「バイタル」に見つかりませんでした。<br><span class="rv-note">SomLogで記録した症例（カルテNo・日付が一致）のみ表示できます。</span></div>';
+    foot.innerHTML = ''; if (bar) bar.style.display = 'none';
+    return;
+  }
+  if (bar) bar.style.display = '';
+  const show = rvShow();
+  const W = Math.max(320, box.clientWidth || 640);
+  const L = 44, R = 46;
+  const plotW = W - L - R;
+  const bandEvtH = show.EVT ? 34 : 6, bandDrugH = show.MARK ? 58 : 4, axisH = 22, gap = 8;
+  const has = k => rows.some(r => r[k] !== undefined);
+  const panels = [];
+  if (show.HR || show.BP || show.MAP || show.ALINE) panels.push({ key: 'circ', title: '循環', h: Math.round(W * 0.27), min: 0, max: 200 });
+  if (show.EtCO2 || show.RR || show.SpO2) panels.push({ key: 'resp', title: '呼吸', h: Math.round(W * 0.19), min: 0, max: 60 });
+  if (show.GAS && (has('ISOin') || has('ISOex'))) panels.push({ key: 'gas', title: '吸入麻酔薬', h: Math.round(W * 0.10), min: 0, max: 5 });
+  if (show.TEMP && has('TEMP')) panels.push({ key: 'temp', title: '体温', h: Math.round(W * 0.11), min: 34, max: 40 });
+  if (!panels.length) panels.push({ key: 'circ', title: '循環', h: Math.round(W * 0.27), min: 0, max: 200 });
+
+  // 時間範囲: バイタル＋イベント＋薬剤（全体）→ 選択範囲があればそれで描く
+  const evDefs = [['anesthStart', '前投'], ['inductionTime', '導入'], ['intubationTime', '挿管'], ['localAnesthTime', '局麻'],
+                  ['surgStart', '手開'], ['sutureStart', '縫合'], ['surgEnd', '手終'], ['antagonistTime', '拮抗'], ['extubation', '抜管'], ['returnToWard', '帰舎']];
+  const events = [];
+  evDefs.forEach(([k, lbl]) => { const ms = rvEventMs(c, c[k]); if (ms !== null) events.push({ t: ms, lbl, key: k }); });
+  Object.entries(c.procEvents || {}).forEach(([k, t]) => {
+    const ms = rvEventMs(c, t); if (ms === null) return;
+    let lbl = evtLabel(k); lbl = lbl.replace(/\(.*?\)/g, '').slice(0, 4);
+    events.push({ t: ms, lbl, key: k, minor: true });
+  });
+  const marks = [];
+  (c.drugLog || []).forEach(d => {
+    if (!d || d.deleted) return; const ms = rvEventMs(c, d.time); if (ms === null) return;
+    marks.push({ t: ms, lbl: rvAbbr(d.drug), color: '#c0392b', title: `${d.time} ${d.drug} ${d.dose || ''} ${d.route || ''}` });
+  });
+  (c.freeNotes || []).forEach(n => {
+    if (!n || n.deleted) return; const ms = rvEventMs(c, n.time); if (ms === null) return;
+    const k = n.kind || 'memo'; let lbl = '', color = '#2e8b57';
+    if (k === 'gas') lbl = `${rvAbbr(n.drugLabel || '')}${n.to || '0'}`;
+    else if (k === 'vent') { const vm = (n.mode || '').toUpperCase(); lbl = vm === 'OFF' ? 'VentOFF' : vm === 'SPONT' ? '自発' : vm ? `${vm}${n.to || ''}` : '換気'; color = '#555'; }
+    else if (k === 'fluid') { lbl = `輸液${n.to || ''}`; color = '#1f77b4'; }
+    else if (k === 'cri') { lbl = `${rvAbbr(n.drugLabel || '')}CRI${n.to || ''}`; color = '#8e44ad'; }
+    else if (k === 'flow') { lbl = `O2:${n.o2 || 0}/Air:${n.air || 0}`; color = '#555'; }
+    else if (k === 'spont') { lbl = '自発'; color = '#555'; }
+    else if (k === 'ventOff') { lbl = 'VentOFF'; color = '#555'; }
+    else if (k === 'gloveChange') { lbl = '手袋'; color = '#999'; }
+    else if (k === 'tubeChange') { lbl = 'ET交換'; color = '#999'; }
+    else if (k === 'position') { lbl = '体位'; color = '#999'; }
+    else lbl = (n.text || 'memo').slice(0, 6);
+    if (lbl) marks.push({ t: ms, lbl, color, title: `${n.time} ${lbl}` });
+  });
+  let ft0 = rows[0].t, ft1 = rows[rows.length - 1].t;
+  events.concat(marks).forEach(m => { if (m.t < ft0) ft0 = m.t; if (m.t > ft1) ft1 = m.t; });
+  ft0 -= 60000; ft1 += 60000;
+  if (ft1 - ft0 < 10 * 60000) ft1 = ft0 + 10 * 60000;
+  _rvFull = { t0: ft0, t1: ft1 };
+  if (_rvRange) _rvRange = rvClampRange(_rvRange.t0, _rvRange.t1);
+  const t0 = _rvRange ? _rvRange.t0 : ft0, t1 = _rvRange ? _rvRange.t1 : ft1;
+  const span = t1 - t0;
+  const x = t => L + (t - t0) / span * plotW;
+  _rvGeom = { L, plotW, t0, t1 };
+  const draw = rows.filter(r => r.t >= t0 - 3 * 60000 && r.t <= t1 + 3 * 60000);
+  const inView = t => t >= t0 && t <= t1;
+
+  // 自動レンジ（表示範囲内のデータで決める）
+  const maxOf = (ks, def) => Math.max(def, ...draw.map(r => Math.max(...ks.map(k => r[k] === undefined ? -Infinity : r[k]))).filter(v => isFinite(v)));
+  const minOf = (ks, def) => Math.min(def, ...draw.map(r => Math.min(...ks.map(k => r[k] === undefined ? Infinity : r[k]))).filter(v => isFinite(v)));
+  const pc = panels.find(p => p.key === 'circ');
+  if (pc) { const ks = []; if (show.HR) ks.push('HR'); if (show.BP) ks.push('SYS'); if (show.ALINE) ks.push('A1_SYS'); if (show.MAP) ks.push('MAP'); pc.max = Math.ceil(maxOf(ks.length ? ks : ['HR'], 180) / 20) * 20 + 20; }
+  const pr = panels.find(p => p.key === 'resp');
+  if (pr) { const ks = []; if (show.EtCO2) ks.push('EtCO2'); if (show.RR) ks.push('RR'); pr.max = Math.max(60, Math.ceil(maxOf(ks.length ? ks : ['EtCO2'], 50) / 10) * 10 + 5); }
+  const pt = panels.find(p => p.key === 'temp');
+  if (pt) { pt.min = Math.max(30, Math.min(34, Math.floor(minOf(['TEMP'], 36)) - 1)); pt.max = Math.max(40, Math.ceil(maxOf(['TEMP'], 38)) + 1); }
+  const pg = panels.find(p => p.key === 'gas');
+  if (pg) pg.max = Math.max(4, Math.ceil(maxOf(['ISOin', 'ISOex'], 3)) + 1);
+
+  let y0 = bandEvtH + bandDrugH + 4;
+  panels.forEach(p => { p.top = y0; p.bottom = y0 + p.h; y0 = p.bottom + gap; });
+  const H = y0 + axisH;
+  const yOf = (p, v) => p.bottom - (v - p.min) / (p.max - p.min) * p.h;
+  const svg = [];
+  svg.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="10" style="touch-action:pan-y;cursor:crosshair;-webkit-user-select:none;user-select:none">`);
+  svg.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`);
+  svg.push(`<defs><clipPath id="rvclip"><rect x="${L}" y="0" width="${plotW}" height="${H}"/></clipPath></defs>`);
+
+  // 時間軸目盛り
+  const spanMin = span / 60000;
+  const step = spanMin <= 12 ? 1 : spanMin <= 25 ? 2 : spanMin <= 40 ? 5 : spanMin <= 90 ? 10 : spanMin <= 180 ? 15 : spanMin <= 360 ? 30 : 60;
+  const d0 = new Date(t0); d0.setSeconds(0, 0); d0.setMinutes(Math.ceil(d0.getMinutes() / step) * step);
+  for (let t = d0.getTime(); t <= t1; t += step * 60000) {
+    const xx = x(t);
+    panels.forEach(p => svg.push(`<line x1="${xx.toFixed(1)}" y1="${p.top}" x2="${xx.toFixed(1)}" y2="${p.bottom}" stroke="#eef1f5"/>`));
+    svg.push(`<text x="${xx.toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="#666">${rvFmtTime(t)}</text>`);
+  }
+  // パネル枠・Y目盛り
+  panels.forEach(p => {
+    svg.push(`<rect x="${L}" y="${p.top}" width="${plotW}" height="${p.h}" fill="none" stroke="#cfd6de"/>`);
+    svg.push(`<text x="${L + 4}" y="${p.top + 11}" fill="#1e3a5f" font-weight="700" font-size="10.5">${p.title}</text>`);
+    const ticks = p.key === 'circ' ? [0, 50, 100, 150, 200, 250, 300].filter(v => v >= p.min && v <= p.max)
+                : p.key === 'resp' ? [0, 20, 40, 60, 80].filter(v => v <= p.max)
+                : p.key === 'temp' ? Array.from({ length: p.max - p.min + 1 }, (_, i) => p.min + i).filter(v => v % 2 === 0)
+                : Array.from({ length: p.max + 1 }, (_, i) => i);
+    ticks.forEach(v => {
+      const yy = yOf(p, v);
+      svg.push(`<line x1="${L}" y1="${yy.toFixed(1)}" x2="${L + plotW}" y2="${yy.toFixed(1)}" stroke="#eef1f5"/>`);
+      svg.push(`<text x="${L - 4}" y="${(yy + 3.5).toFixed(1)}" text-anchor="end" fill="#666">${v}</text>`);
+    });
+    if (p.key === 'resp' && show.SpO2) {
+      [80, 90, 100].forEach(v => {
+        const yy = p.bottom - (v - 80) / 20 * p.h;
+        svg.push(`<text x="${L + plotW + 4}" y="${(yy + 3.5).toFixed(1)}" fill="#1f77b4">${v}%</text>`);
+      });
+      const y90 = p.bottom - (90 - 80) / 20 * p.h;
+      svg.push(`<line x1="${L}" y1="${y90.toFixed(1)}" x2="${L + plotW}" y2="${y90.toFixed(1)}" stroke="#1f77b4" stroke-dasharray="2 3" opacity=".35"/>`);
+    }
+    if (p.key === 'circ' && (show.MAP || show.ALINE)) {
+      // MAP<70 の領域を薄い水色で塗って低血圧域をひと目で分かるように
+      const y70 = yOf(p, 70);
+      svg.push(`<rect x="${L}" y="${y70.toFixed(1)}" width="${plotW}" height="${(p.bottom - y70).toFixed(1)}" fill="#dff1fb" opacity=".75"/>`);
+      svg.push(`<line x1="${L}" y1="${y70.toFixed(1)}" x2="${L + plotW}" y2="${y70.toFixed(1)}" stroke="#5dade2" stroke-dasharray="3 3" opacity=".8"/>`);
+      svg.push(`<text x="${L + 4}" y="${(y70 + 10).toFixed(1)}" fill="#2e86c1" font-size="9.5">MAP 70</text>`);
+    }
+  });
+
+  svg.push('<g clip-path="url(#rvclip)">');
+  // 折れ線（5分以上のデータ欠落で線を切る）
+  // 系列名の小ラベル（線の右端付近にグラフ内表示。凡例まで目を落とさなくて済むように）
+  const tags = [];
+  function line(p, key, color, width, dash, yfn, label) {
+    let d = '', prev = null, lastY = null;
+    draw.forEach(r => {
+      const v = r[key]; if (v === undefined) return;
+      const xx = x(r.t), yy = yfn ? yfn(v) : yOf(p, v);
+      if (yy < p.top - 2 || yy > p.bottom + 2) { prev = null; return; }
+      d += (prev && r.t - prev <= 5 * 60000 ? 'L' : 'M') + xx.toFixed(1) + ' ' + yy.toFixed(1) + ' ';
+      prev = r.t;
+      if (inView(r.t)) lastY = yy;
+    });
+    if (d) svg.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" ${dash ? `stroke-dasharray="${dash}"` : ''} stroke-linejoin="round" stroke-linecap="round"/>`);
+    if (d && label && lastY !== null) tags.push({ p, y: lastY, text: label, color });
+  }
+  function dots(p, key, color, shape) {
+    draw.forEach(r => {
+      const v = r[key]; if (v === undefined) return;
+      const xx = x(r.t), yy = yOf(p, v);
+      if (yy < p.top || yy > p.bottom) return;
+      if (shape === 'up') svg.push(`<path d="M${xx} ${yy - 3.2}l3 5.2h-6z" fill="${color}"/>`);
+      else if (shape === 'down') svg.push(`<path d="M${xx} ${yy + 3.2}l3 -5.2h-6z" fill="${color}"/>`);
+      else svg.push(`<circle cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="1.8" fill="${color}"/>`);
+    });
+  }
+  if (pc) {
+    if (show.BP) { line(pc, 'SYS', '#8e44ad', 1, '3 3', null, 'SYS'); line(pc, 'DIA', '#8e44ad', 1, '3 3', null, 'DIA'); dots(pc, 'SYS', '#8e44ad', 'down'); dots(pc, 'DIA', '#8e44ad', 'up'); }
+    if (show.MAP) line(pc, 'MAP', '#2e8b57', 1.8, '', null, 'MAP');
+    if (show.ALINE && has('A1_SYS')) { line(pc, 'A1_SYS', '#8e44ad', 1.2, '1 2', null, 'A-SYS'); line(pc, 'A1_DIA', '#8e44ad', 1.2, '1 2', null, 'A-DIA'); line(pc, 'A1_MAP', '#2e8b57', 1.8, '4 2', null, 'A-MAP'); }
+    if (show.HR) line(pc, 'HR', '#e74c3c', 2.2, '', null, 'HR');
+  }
+  if (pr) {
+    if (show.RR) line(pr, 'RR', '#7f8c8d', 1.4, '4 3', null, 'RR');
+    if (show.EtCO2) line(pr, 'EtCO2', '#e67e22', 2, '', null, 'EtCO₂');
+    if (show.SpO2) line(pr, 'SpO2', '#1f77b4', 2, '', v => pr.bottom - (Math.max(80, Math.min(100, v)) - 80) / 20 * pr.h, 'SpO₂');
+  }
+  const gasName = (c.maintSevoflurane && !c.maintIsoflurane) ? 'Sev' : 'Iso';
+  if (pg) { line(pg, 'ISOin', '#16a085', 1.2, '3 2', null, gasName + ' in'); line(pg, 'ISOex', '#16a085', 2, '', null, gasName + ' ex'); }
+  if (pt) line(pt, 'TEMP', '#8d6e63', 2, '', null, '体温');
+  svg.push('</g>');
+  // 系列ラベルをパネルごとに重ならないよう縦にずらして右端内側へ
+  panels.forEach(p => {
+    const ts = tags.filter(t => t.p === p).sort((a, b) => a.y - b.y);
+    const gapY = 11, top = p.top + 14, bottom = p.bottom - 3;
+    for (let i = 0; i < ts.length; i++) { ts[i].y = Math.max(top, ts[i].y); if (i > 0 && ts[i].y < ts[i - 1].y + gapY) ts[i].y = ts[i - 1].y + gapY; }
+    for (let i = ts.length - 1; i >= 0; i--) { ts[i].y = Math.min(bottom, ts[i].y); if (i < ts.length - 1 && ts[i].y > ts[i + 1].y - gapY) ts[i].y = ts[i + 1].y - gapY; }
+    ts.forEach(t => svg.push(`<text x="${L + plotW - 4}" y="${(t.y + 3.5).toFixed(1)}" text-anchor="end" fill="${t.color}" font-size="9.5" font-weight="700" paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">${esc(t.text)}</text>`));
+  });
+  const clampX = (xx, wpx) => Math.max(L + wpx / 2, Math.min(L + plotW - wpx / 2, xx));
+
+  // イベント縦線＋ラベル（1分以内に連続するイベントは「前投·導入·挿管」のように1ラベルに結合、近接時は3段にずらす）
+  const bot = panels[panels.length - 1].bottom;
+  const evVis = show.EVT ? events.filter(e => inView(e.t)).sort((a, b) => a.t - b.t) : [];
+  evVis.forEach(ev => {
+    const xx = x(ev.t);
+    svg.push(`<line x1="${xx.toFixed(1)}" y1="${bandEvtH}" x2="${xx.toFixed(1)}" y2="${bot}" stroke="${ev.minor ? '#b8c2cc' : '#1e3a5f'}" stroke-dasharray="${ev.minor ? '2 3' : '4 3'}" opacity=".75"/>`);
+  });
+  const groups = [];
+  evVis.forEach(ev => {
+    const g = groups[groups.length - 1];
+    if (g && x(ev.t) - x(g.t) < 12) { g.lbls.push(ev.lbl); g.minor = g.minor && ev.minor; }
+    else groups.push({ t: ev.t, lbls: [ev.lbl], minor: !!ev.minor });
+  });
+  const evRows = [-Infinity, -Infinity, -Infinity];
+  groups.forEach(g => {
+    const lbl = g.lbls.join('·');
+    const wpx = lbl.replace(/[^\x01-\x7e]/g, 'xx').length * 5.4 + 6;
+    const xx = clampX(x(g.t), wpx);
+    let row = evRows.findIndex(e => e <= xx - wpx / 2 - 2);
+    if (row < 0) { row = 0; for (let i = 1; i < 3; i++) if (evRows[i] < evRows[row]) row = i; }
+    evRows[row] = xx + wpx / 2;
+    svg.push(`<text x="${xx.toFixed(1)}" y="${11 + row * 11}" text-anchor="middle" fill="${g.minor ? '#6b7c93' : '#1e3a5f'}" font-weight="700" font-size="${g.minor ? 9.5 : 10.5}">${esc(lbl)}</text>`);
+  });
+  // 薬剤・変更マーカー（4段ずらし、帯内に短い縦線。10px以内は「PCV8·Iso1.5·輸液24」のように結合）
+  if (show.MARK) {
+    const rowsEnd = [-Infinity, -Infinity, -Infinity, -Infinity];
+    const bandTop = bandEvtH;
+    const mgroups = [];
+    marks.filter(m => inView(m.t)).sort((a, b) => a.t - b.t).forEach(m => {
+      const g = mgroups[mgroups.length - 1];
+      if (g && x(m.t) - x(g.t) < 10 && g.lbl.length < 22) { g.lbl += '·' + m.lbl; g.title += '\n' + m.title; if (g.color !== m.color) g.color = '#444'; }
+      else mgroups.push({ t: m.t, lbl: m.lbl, color: m.color, title: m.title || '' });
+    });
+    mgroups.forEach(m => {
+      const wpx = m.lbl.replace(/[^\x01-\x7e]/g, 'xx').length * 5.6 + 4;
+      const xx = clampX(x(m.t), wpx);
+      let row = rowsEnd.findIndex(e => e <= xx - wpx / 2 - 1);
+      if (row < 0) { row = 0; for (let i = 1; i < 4; i++) if (rowsEnd[i] < rowsEnd[row]) row = i; }
+      rowsEnd[row] = xx + wpx / 2;
+      const ly = bandTop + 10 + row * 12;
+      svg.push(`<line x1="${x(m.t).toFixed(1)}" y1="${ly + 3}" x2="${x(m.t).toFixed(1)}" y2="${panels[0].top + 6}" stroke="${m.color}" opacity=".55"/>`);
+      svg.push(`<text x="${xx.toFixed(1)}" y="${ly}" text-anchor="middle" fill="${m.color}" font-size="9.5" font-weight="600"><title>${esc(m.title || '')}</title>${esc(m.lbl)}</text>`);
+    });
+  }
+  svg.push('</svg>');
+  box.innerHTML = svg.join('');
+  rvAttachDrag(box.querySelector('svg'));
+
+  // ツールバーの範囲表示
+  const rl = document.getElementById('rvRangeLbl');
+  if (rl) rl.textContent = _rvRange ? `${rvFmtTime(t0)}〜${rvFmtTime(t1)}（${Math.round(span / 60000)}分）` : `全体 ${rvFmtTime(ft0)}〜${rvFmtTime(ft1)}`;
+
+  // 凡例（タップで表示/非表示）＋統計
+  const st = rvStats(rows, c);
+  const legend = `<div class="rv-legend">
+    ${RV_SERIES.map(([k, lbl, col]) => `<span class="rv-lg${show[k] ? '' : ' off'}" onclick="rvToggleShow('${k}')"><i style="background:${col}"></i>${lbl}</span>`).join('')}
+  </div>`;
+  const stat = `<div class="rv-stat">
+    <div><b>HR</b><span>${st.ext.HR.min ? `${st.ext.HR.min.v}〜${st.ext.HR.max.v}` : '—'}</span></div>
+    <div><b>MAP</b><span>${st.ext.MAP.min ? `${st.ext.MAP.min.v}〜${st.ext.MAP.max.v}` : '—'}</span></div>
+    <div><b>SYS</b><span>${st.ext.SYS.min ? `${st.ext.SYS.min.v}〜${st.ext.SYS.max.v}` : '—'}</span></div>
+    <div><b>SpO₂ 最低</b><span>${st.ext.SpO2.min ? `${st.ext.SpO2.min.v}% (${rvFmtTime(st.ext.SpO2.min.t)})` : '—'}</span></div>
+    <div><b>EtCO₂</b><span>${st.ext.EtCO2.min ? `${st.ext.EtCO2.min.v}〜${st.ext.EtCO2.max.v}` : '—'}</span></div>
+    <div><b>体温</b><span>${st.ext.TEMP.min ? `${st.ext.TEMP.min.v}〜${st.ext.TEMP.max.v}℃` : '—'}</span></div>
+  </div>
+  <div class="rv-note" style="margin-top:6px">解析範囲: ${esc(st.win.label)}（${st.n}点 / 記録全体 ${st.nAll}点・${_rvVitalsSrc === 'cache' ? '前回取得分' : 'Sheetsから取得'}）</div>`;
+  foot.innerHTML = legend + stat;
+}
+
+// モニター記録から分かる合併症（閾値超過が5分以上持続）は自動でチェック＋最高/最低値を入力。
+// 一度自動で入れた項目は rvAutoComp に記録し、ユーザーが外したものを再度入れない。
+function rvAutoFillComps(st) {
+  const c = current; if (!c || !st) return false;
+  const auto = Object.assign({}, c.rvAutoComp || {});
+  let changed = false;
+  const fill = (key, valKey, val) => {
+    const fl = st.flags[key]; if (!fl || !fl.any || fl.longest < 5) return;
+    if (auto[key]) return;
+    auto[key] = true; changed = true;
+    if (!c[key]) c[key] = true;
+    if (valKey && !String(c[valKey] || '').trim() && val !== '' && val !== null && val !== undefined) c[valKey] = String(val);
+  };
+  const e = st.ext;
+  const v = (k, w) => (e[k] && e[k][w]) ? e[k][w].v : null;
+  fill('compTachy', 'compTachyMax', v('HR', 'max'));
+  fill('compBrady', 'compBradyMin', v('HR', 'min'));
+  fill('compHtn', 'compHtnMax', v('MAP', 'max') !== null && v('MAP', 'max') > 120 ? `MAP ${v('MAP', 'max')}` : (v('SYS', 'max') !== null ? `SAP ${v('SYS', 'max')}` : ''));
+  fill('compHypotension', 'compHypotensionMin', v('MAP', 'min') !== null && v('MAP', 'min') < 60 ? `MAP ${v('MAP', 'min')}` : (v('SYS', 'min') !== null ? `SAP ${v('SYS', 'min')}` : ''));
+  fill('compHypoxemia', 'compHypoxemiaMin', v('SpO2', 'min'));
+  fill('compHypocapnia', 'compHypocapniaMin', v('EtCO2', 'min'));
+  fill('compHypercapnia', 'compHypercapniaMax', v('EtCO2', 'max'));
+  fill('compHypothermia', 'compHypothermiaDeg', v('TEMP', 'min'));
+  fill('compHyperthermia', '', '');
+  fill('compTachyBreath', '', '');
+  fill('compBradyBreath', '', '');
+  if (changed) { c.rvAutoComp = auto; c.updated_at = nowIsoStr(); rvCommit(); }
+  return changed;
+}
+
+// ---------- レポート（右側） ----------
+// 様式の項目は基本すべて必須扱い。未記載は赤枠(rv-miss)で示し、その場で入力できる。
+function rvIsEmpty(v) { return String(v === null || v === undefined ? '' : v).trim() === ''; }
+function rvMissUpd(el) {
+  if (!el) return;
+  el.classList.toggle('rv-miss', rvIsEmpty(el.value));
+  rvMissCount();
+}
+function rvMissCount() {
+  const n = document.querySelectorAll('#rvReport .rv-miss').length;
+  const bar = document.getElementById('rvMissBar');
+  if (!bar) return n;
+  if (n) bar.innerHTML = `⚠️ 未記載 <b>${n}</b> 項目（赤枠）<button type="button" class="rv-missbtn" onclick="rvNextMiss()">次の未記載へ ›</button>`;
+  else bar.innerHTML = `✅ 様式の必須項目はすべて記載済みです`;
+  bar.classList.toggle('ok', !n);
+  return n;
+}
+function rvNextMiss() {
+  const body = document.getElementById('rvBody');
+  const list = [...document.querySelectorAll('#rvReport .rv-miss')];
+  if (!list.length) return;
+  const bodyTop = body.getBoundingClientRect().top;
+  let target = list.find(el => el.getBoundingClientRect().top - bodyTop > 90) || list[0];
+  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') setTimeout(() => { try { target.focus({ preventScroll: true }); } catch (_) {} }, 350);
+}
+function rvSeg(key, val, el) {
+  rvSet(key, val);
+  const wrap = el && el.parentNode;
+  if (wrap) { wrap.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === el)); wrap.classList.remove('rv-miss'); }
+  rvMissCount();
+}
+function rvSegBool(key, val, el) {
+  rvSet(key, !!val);
+  const wrap = el && el.parentNode;
+  if (wrap) wrap.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === el));
+  if (key === 'allergies') { const d = document.getElementById('rvAllergyDetail'); if (d) d.style.display = val ? '' : 'none'; }
+  rvMissCount();
+}
+function rvChipToggle(key, el) {
+  rvToggle(key, el);
+}
+function rvSetPurpose(k, v) {
+  if (!current) return;
+  const p = Object.assign({}, current.rvPurpose || {}); p[k] = v;
+  rvSet('rvPurpose', p);
+}
+// 「特記なし」などのワンタップ入力（同じ文言ならもう一度押すと消す）
+function rvQuick(key, text, el) {
+  if (!current) return;
+  const now = String(current[key] || '').trim();
+  const v = now === text ? '' : text;
+  rvSet(key, v);
+  const wrap = el.parentNode, ta = wrap.previousElementSibling;
+  if (ta && ta.tagName === 'TEXTAREA') { ta.value = v; rvGrow(ta); if (ta.classList.contains('rv-req')) rvMissUpd(ta); }
+  wrap.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.textContent === v));
+  rvMissCount();
+}
+// 目的チップ: タップで「鎮静・鎮痛」のように「・」区切りで追加/削除。自由記載は同じ欄に追記できる
+function rvPurposeChip(pkey, label, el) {
+  if (!current) return;
+  const cell = el.closest('.rv-pcell');
+  const cur = String((current.rvPurpose || {})[pkey] || '').split('・').map(x => x.trim()).filter(Boolean);
+  const i = cur.indexOf(label);
+  if (i >= 0) cur.splice(i, 1); else cur.push(label);
+  const v = cur.join('・');
+  rvSetPurpose(pkey, v);
+  el.classList.toggle('on', i < 0);
+  const inp = cell.querySelector('input'); if (inp) inp.value = v;
+  cell.classList.toggle('rv-miss', rvIsEmpty(v));
+  rvMissCount();
+}
+function rvPurposeInput(pkey, el) {
+  rvSetPurpose(pkey, el.value);
+  const cell = el.closest('.rv-pcell');
+  const parts = el.value.split('・').map(x => x.trim());
+  cell.querySelectorAll('.rv-chip.tog').forEach(ch => ch.classList.toggle('on', parts.includes(ch.textContent)));
+  cell.classList.toggle('rv-miss', rvIsEmpty(el.value));
+  rvMissCount();
+}
+// 薬剤ごとの目的候補（タップで選ぶ用。無い薬は共通候補）
+const RV_PURPOSE_OPTS = {
+  medetomidine: ['鎮静', '鎮痛', 'MAC減少'], midazolam: ['鎮静', '筋弛緩', '抗痙攣'], butorphanol: ['鎮静', '鎮痛'], atropine_p: ['徐脈予防', '分泌抑制'],
+  nicardipine: ['降圧'], alfaxalone_p: ['鎮静'], fentanyl_p: ['鎮痛'], buprenorphine_p: ['鎮痛'], morphine: ['鎮痛'],
+  propofol: ['導入'], alfaxalone_i: ['導入'], cefazolin: ['周術期感染予防'], ampicillin: ['周術期感染予防'], cefovecin: ['感染予防'],
+  fentanyl_c: ['術中鎮痛', 'MAC減少'], remifentanil: ['術中鎮痛', 'MAC減少'], medetomidine_c: ['術中鎮痛', '鎮静'], lidocaine_c: ['術中鎮痛', '抗不整脈'],
+  ketamine_c: ['術中鎮痛', 'MAC減少'], tramadol_c: ['術中鎮痛'], noradrenaline_c: ['昇圧'], adrenaline_c: ['昇圧', '強心'], phenylephrine_c: ['昇圧'],
+  dopamine_c: ['昇圧', '強心'], dobutamine_c: ['強心'], rocuronium_c: ['筋弛緩'], atropine_v: ['徐脈治療'], ephedrine: ['昇圧'], phenylephrine: ['昇圧'],
+  noradrenaline: ['昇圧'], adrenaline: ['心停止', 'アナフィラキシー'], dopamine: ['昇圧', '強心'], dobutamine: ['強心'],
+  atipamezole: ['α2拮抗(覚醒)'], sugammadex: ['筋弛緩拮抗'], flumazenil: ['BZD拮抗'], naloxone: ['オピオイド拮抗'],
+  meloxicam: ['術後鎮痛', '抗炎症'], robenacoxib: ['術後鎮痛', '抗炎症'], prednisolone: ['抗炎症', 'アナフィラキシー'], buprenorphine: ['術後鎮痛'], tramadol: ['術後鎮痛'], acetaminophen: ['術後鎮痛'],
+  rocuronium: ['筋弛緩'], maropitant: ['制吐'], diphenhydramine: ['抗ヒスタミン', 'アナフィラキシー'], famotidine: ['胃酸抑制'], methylprednisolone_acetate: ['抗炎症'], lipid20: ['LAST対応'],
+  maint: ['麻酔維持'],
+};
+const RV_PURPOSE_COMMON = ['鎮静', '鎮痛', '昇圧', '徐脈治療', '拮抗', '感染予防'];
+const RV_LA_OPTS = ['超音波ガイド', '神経刺激装置', 'ランドマーク法', '浸潤', '術者施行'];
+// 選択理由の下書き（プラン＋目的チップから組み立て。空欄のときだけ入れる）
+function rvDraftRationale() {
+  const c = current; if (!c) return;
+  const ta = document.getElementById('rvTaRationale'); if (!ta) return;
+  if (!rvIsEmpty(c.rvRationale) && !confirm('選択理由に記載があります。末尾に下書きを追記しますか？')) return;
+  const P = c.rvPurpose || {};
+  const sp = c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : c.species === 'rabbit' ? 'うさぎ' : '';
+  const pain = { light: '軽度', moderate: '中等度', heavy: '重度', max: '最大' }[c.expectedPain] || '';
+  const lines = [];
+  lines.push(`${c.ageY ? c.ageY + '歳' : ''}${c.sex ? c.sex : ''}${sp}、ASA-PS ${c.asaps || '?'}${c.asapsE ? 'E' : ''}${c.rvAsaReason ? '（' + c.rvAsaReason + '）' : ''}。${c.procedure || '手術'}で予想疼痛は${pain || '?'}。`);
+  const g = (keys) => keys.map(k => { const d = findDrugDef(k); const dd = (c.drugs || {})[k]; if (!d || !dd || !dd.use) return ''; return `${d.label}${P[k] ? '(' + P[k] + ')' : ''}`; }).filter(Boolean);
+  const pre = g(DRUG_GROUPS.premeds.map(d => d.key)); if (pre.length) lines.push(`前投薬は${pre.join('＋')}を選択。`);
+  const ind = g(DRUG_GROUPS.induction.map(d => d.key)); if (ind.length) lines.push(`導入は${ind.join('＋')}。`);
+  const mt = []; if (c.maintIsoflurane) mt.push('イソフルラン'); if (c.maintSevoflurane) mt.push('セボフルラン'); if (c.maintPropofol) mt.push('プロポフォールCRI');
+  if (mt.length) lines.push(`維持は${mt.join('/')}${c.maintConc ? ' ' + c.maintConc + '%' : ''}${P.maint ? '(' + P.maint + ')' : ''}。`);
+  const cri = g(DRUG_GROUPS.cri.map(d => d.key)); if (cri.length) lines.push(`術中は${cri.join('＋')}を併用。`);
+  const la = [];
+  ['localBlocks', 'localBlocks2'].forEach(bf => LOCAL_BLOCKS.forEach(b => { const d = (c[bf] || {})[b.key]; if (d && d.use) la.push(b.label + (d.side ? '(' + d.side + ')' : '') + (P['la:' + bf + ':' + b.key] ? '・' + P['la:' + bf + ':' + b.key] : '')); }));
+  if (la.length) lines.push(`局所麻酔として${la.join('、')}を実施し、全身麻酔薬・オピオイドの必要量を減らす方針とした。`);
+  const post = g(DRUG_GROUPS.postAnalg.map(d => d.key)); if (post.length) lines.push(`術後鎮痛は${post.join('＋')}。`);
+  const prep = g(DRUG_GROUPS.vasopressors.concat(DRUG_GROUPS.antagonists).map(d => d.key)); if (prep.length) lines.push(`事前準備薬として${prep.join('、')}を用意。`);
+  if (c.fluidType) lines.push(`輸液は${c.fluidType}${c.fluidRate ? ' ' + c.fluidRate + 'mL/kg/h' : ''}。`);
+  lines.push('【この患者で特に考慮した点】');
+  const draft = lines.join('\n');
+  const v = rvIsEmpty(c.rvRationale) ? draft : (c.rvRationale + '\n' + draft);
+  rvSet('rvRationale', v); ta.value = v; rvGrow(ta); rvMissUpd(ta);
+}
+// 合併症の詳細の下書き（記録から自動判定した項目を時刻つきで列挙）
+function rvDraftCompDetails() {
+  const c = current; if (!c) return;
+  const ta = document.getElementById('rvTaCompDetails'); if (!ta) return;
+  const rows = _rvVitals || []; const st = rows.length ? rvStats(rows, c) : null;
+  const L = [];
+  const lab = { compTachy: '頻脈', compBrady: '徐脈', compHtn: '高血圧', compHypotension: '低血圧', compHypoxemia: '低酸素血症', compHypocapnia: '低CO₂血症', compHypercapnia: '高CO₂血症', compHypothermia: '低体温', compHyperthermia: '高体温', compTachyBreath: '頻呼吸', compBradyBreath: '徐呼吸' };
+  const ext = { compTachy: ['HR', 'max', ''], compBrady: ['HR', 'min', ''], compHtn: ['MAP', 'max', ''], compHypotension: ['MAP', 'min', ''], compHypoxemia: ['SpO2', 'min', '%'], compHypocapnia: ['EtCO2', 'min', ''], compHypercapnia: ['EtCO2', 'max', ''], compHypothermia: ['TEMP', 'min', '℃'], compHyperthermia: ['TEMP', 'max', '℃'], compTachyBreath: ['RR', 'max', ''], compBradyBreath: ['RR', 'min', ''] };
+  Object.keys(lab).forEach(k => {
+    if (!c[k]) return;
+    let s = lab[k];
+    if (st && st.flags[k] && st.flags[k].any) {
+      const [ek, w, u] = ext[k]; const e = st.ext[ek] && st.ext[ek][w];
+      s += `: ${e ? `${w === 'max' ? '最高' : '最低'} ${e.v}${u}(${rvFmtTime(e.t)})` : ''} 最長${st.flags[k].longest}分/延べ${st.flags[k].total}分 → 対応: `;
+    } else s += ' → 対応: ';
+    L.push(s);
+  });
+  ['compVomiting', '嘔吐/逆流', 'compSeizure', '発作', 'compBleed', '大量出血', 'compArrhythmia', '不整脈', 'compApnea', '無呼吸', 'compCardiacArrest', '心停止'].forEach((k, i, a) => { if (i % 2 === 0 && c[k]) L.push(a[i + 1] + ' → 対応: '); });
+  if (!L.length) { showToast('チェックされた合併症がありません'); return; }
+  if (!rvIsEmpty(c.compDetails) && !confirm('詳細に記載があります。末尾に下書きを追記しますか？')) return;
+  const draft = L.join('\n');
+  const v = rvIsEmpty(c.compDetails) ? draft : (c.compDetails + '\n' + draft);
+  rvSet('compDetails', v); ta.value = v; rvGrow(ta); rvMissUpd(ta);
+}
+
+function renderReviewReport() {
+  const c = current; if (!c) return;
+  const box = document.getElementById('rvReport');
+  const rows = _rvVitals || [];
+  const st = rows.length ? rvStats(rows, c) : null;
+  if (st) rvAutoFillComps(st);
+  const autoComp = c.rvAutoComp || {};
+  const purpose = c.rvPurpose || {};
+  const miss = v => rvIsEmpty(v) ? ' rv-miss' : '';
+  const f = (label, val, unit) => `<span class="rv-f"><span class="rv-k">${label}</span><span class="rv-v">${!rvIsEmpty(val) ? esc(String(val)) + (unit || '') : ''}</span></span>`;
+  // 必須テキスト入力（空なら赤枠）
+  const fi = (label, key, unit, o) => { o = o || {}; return `<span class="rv-f"><span class="rv-k">${label}</span><input class="rv-in rv-req${miss(c[key])}" type="text" ${o.num ? 'inputmode="decimal"' : ''} style="width:${o.w || 72}px" value="${rvAttr(c[key] || '')}" placeholder="${rvAttr(o.ph || '')}" oninput="rvSet('${key}', this.value);rvMissUpd(this)">${unit ? `<span class="rv-k">${unit}</span>` : ''}</span>`; };
+  // 任意テキスト入力
+  const fo = (label, key, unit, o) => { o = o || {}; return `<span class="rv-f"><span class="rv-k">${label}</span><input class="rv-in" type="text" ${o.num ? 'inputmode="decimal"' : ''} style="width:${o.w || 72}px" value="${rvAttr(c[key] || '')}" placeholder="${rvAttr(o.ph || '')}" oninput="rvSet('${key}', this.value)">${unit ? `<span class="rv-k">${unit}</span>` : ''}</span>`; };
+  const ta = (key, ph, req, quick, id) => `<textarea class="rv-ta${req === false ? '' : ' rv-req' + miss(c[key])}" ${id ? `id="${id}"` : ''} placeholder="${rvAttr(ph)}" oninput="rvSet('${key}', this.value);rvGrow(this)${req === false ? '' : ';rvMissUpd(this)'}">${esc(c[key] || '')}</textarea>` +
+    (quick && quick.length ? `<div class="rv-quick">${quick.map(q => `<button type="button" class="rv-qbtn${String(c[key] || '').trim() === q ? ' on' : ''}" onclick="rvQuick('${key}','${q}',this)">${esc(q)}</button>`).join('')}</div>` : '');
+  const seg = (key, opts) => `<div class="rv-seg rv-req${miss(c[key])}">${opts.map(([v, l]) => `<button type="button" class="${String(c[key]) === String(v) ? 'on' : ''}" onclick="rvSeg('${key}','${v}',this)">${l}</button>`).join('')}</div>`;
+  const segBool = (key) => `<div class="rv-seg"><button type="button" class="${c[key] ? 'on' : ''}" onclick="rvSegBool('${key}',true,this)">有</button><button type="button" class="${!c[key] ? 'on' : ''}" onclick="rvSegBool('${key}',false,this)">無</button></div>`;
+  const chipT = (key, label) => `<span class="rv-chip tog${c[key] ? ' on' : ''}" onclick="rvChipToggle('${key}',this)">${esc(label)}</span>`;
+  const chip = (t, warn) => `<span class="rv-chip${warn ? ' warn' : ''}">${esc(t)}</span>`;
+  const speciesLabel = c.species === 'dog' ? '犬' : c.species === 'cat' ? '猫' : c.species === 'rabbit' ? 'うさぎ' : (c.species || '');
+  const w = parseFloat(c.weight) || 0;
+  const facName = (facilityMap && facilityMap[c.facility]) || c.facility || '';
+
+  // --- 予想合併症と対応（症例画面のプランから）
+  const plan = [];
+  if (c.expectedHypotension) plan.push(['低血圧', [c.hpot_miniFluid ? 'ミニフルイド5mL/kg×5min' : '', c.hpot_atropine ? 'アトロピン5-10μg/kg' : '', c.hpot_ephedrine ? 'エフェドリン100倍希釈0.1-0.2mL/kg' : '', c.hpot_norad ? 'ノルアド CRI' : '', c.hpot_notes].filter(Boolean).join(' / ')]);
+  if (c.expectedHypothermia) plan.push(['低体温', [c.hthm_warmAir ? '温風加温' : '', c.hthm_warmMat ? '保温マット' : '', c.hthm_warmWater ? '温水保温' : '', c.hthm_notes].filter(Boolean).join(' / ')]);
+  if (c.expectedHypovent) { const s = []; if (c.hvent_pcv) s.push(`PCV PIP${c.hvent_pcvPIP || '?'}cmH₂O RR${c.hvent_pcvRR || '?'}`); if (c.hvent_vcv) s.push(`VCV VT${c.hvent_vcvVT || '?'}mL RR${c.hvent_vcvRR || '?'}`); if (c.hvent_manual) s.push('用手換気'); if (c.hvent_notes) s.push(c.hvent_notes); plan.push(['低換気', s.join(' / ')]); }
+  if (c.expectedAnaphylaxis) plan.push(['アナフィラキシー/心停止', (w ? `アドレナリン ${(1 * w).toFixed(1)}μg(拍動時)/${(10 * w).toFixed(0)}μg(心停止) ・ ジフェンヒドラミン ${(1 * w).toFixed(1)}-${(2 * w).toFixed(1)}mg` : 'アドレナリン・ジフェンヒドラミン') + (c.anaphy_notes ? ' / ' + c.anaphy_notes : '')]);
+  if (c.expectedMH) plan.push(['悪性高熱', (w ? `ダントロレン ${(1 * w).toFixed(1)}-${(3 * w).toFixed(1)}mg` : 'ダントロレン 1-3mg/kg') + (c.mh_notes ? ' / ' + c.mh_notes : '')]);
+  if (c.expectedLAST) plan.push(['局所麻酔中毒', (w ? `20%脂肪乳剤 ${(1.5 * w).toFixed(1)}mL ボーラス→${(0.25 * w).toFixed(1)}mL/min` : '20%脂肪乳剤 1.5mL/kg→0.25mL/kg/min') + (c.last_notes ? ' / ' + c.last_notes : '')]);
+  if (c.expectedHypo) plan.push(['低血糖', (w ? `20%ブドウ糖 ${(1 * w).toFixed(1)}mL IV slow` : '20%ブドウ糖 1mL/kg') + (c.hypoTx ? ' / ' + c.hypoTx : '')]);
+
+  // --- 準備器材
+  const tvEst = w ? `${Math.round(10 * w)}〜${Math.round(15 * w)}` : '';
+  const tests = []; if (c.testCBC) tests.push('CBC'); if (c.testBiochem) tests.push('生化学'); if (c.testCoag) tests.push('凝固'); if (c.testXray) tests.push('X線'); if (c.testEcho) tests.push('エコー'); if (c.testECG) tests.push('ECG'); if (c.testUA) tests.push('尿検査'); if (c.testOther) tests.push('他');
+
+  // --- 麻酔方法/薬剤 表（分類ごとに間隔、用量は /kg のみ、目的は本人記入）
+  const drugRows = [];
+  const pushDrug = (grp, d, dd) => {
+    drugRows.push({ grp, name: d.label + (d.dilution ? `（${d.dilution}）` : ''), dose: dd.dose ? `${dd.dose} ${d.unit}` : '', route: dd.route || d.def || '', pkey: d.key, opts: RV_PURPOSE_OPTS[d.key] || [] });
+  };
+  const grpOf = { premeds: '麻酔前投薬', induction: '麻酔導入薬', antibiotics: '抗菌薬', cri: '術中鎮痛/CRI', vasopressors: '事前準備(循環作動薬)', antagonists: '拮抗薬', postAnalg: '術後鎮痛薬', other: 'その他' };
+  ['premeds', 'induction'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
+  const maint = [];
+  if (c.maintIsoflurane) maint.push('イソフルラン'); if (c.maintSevoflurane) maint.push('セボフルラン'); if (c.maintPropofol) maint.push('プロポフォール(CRI)');
+  if (maint.length) drugRows.push({ grp: '麻酔維持薬', name: maint.join(' / '), dose: c.maintConc ? `${c.maintConc}%` : '', route: maint.some(m => /フルラン/.test(m)) ? '吸入' : 'IV', pkey: 'maint', opts: ['麻酔維持'] });
+  ['cri', 'antibiotics'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
+  ['postAnalg', 'vasopressors', 'antagonists', 'other'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
+  const pin = (pkey, opts) => {
+    const cur = String(purpose[pkey] || '').split('・').map(x => x.trim());
+    const list = (opts || []).length ? opts : RV_PURPOSE_COMMON; // 薬剤ごとの候補だけ出す（無関係な候補で迷わせない）
+    return `<div class="rv-pcell${miss(purpose[pkey])}">${list.map(o => `<span class="rv-chip tog${cur.includes(o) ? ' on' : ''}" onclick="rvPurposeChip('${pkey}','${o}',this)">${esc(o)}</span>`).join('')}<input class="rv-in rv-pin" type="text" value="${rvAttr(purpose[pkey] || '')}" placeholder="他（自由記載）" oninput="rvPurposeInput('${pkey}', this)"></div>`;
+  };
+  let prevGrp = null;
+  const drugTbl = drugRows.map(r => {
+    const first = r.grp !== prevGrp; prevGrp = r.grp;
+    return `<tr class="${first ? 'rv-gfirst' : ''}"><td class="rv-grp">${first ? esc(r.grp) : ''}</td><td>${esc(r.name)}</td><td>${esc(r.dose)}</td><td>${esc(r.route)}</td><td>${pin(r.pkey, r.opts)}</td></tr>`;
+  }).join('');
+  // 局所麻酔
+  const laRows = [], laMix = [];
+  ['localMixture', 'localMixture2'].forEach((mk, i) => {
+    const mix = c[mk] || { drugs: [], totalVolume: '' };
+    const bf = i === 0 ? 'localBlocks' : 'localBlocks2';
+    const blocks = c[bf] || {};
+    const totalVol = parseFloat(mix.totalVolume) || 0;
+    const mixDrugs = (mix.drugs || []).filter(d => d.name).map(d => { const conc = parseFloat(d.conc) || 0, ml = parseFloat(d.stockMl) || 0; const mg = conc * 10 * ml; return { name: d.name, conc, ml, mg, mgPerMl: totalVol > 0 ? mg / totalVol : 0 }; });
+    // 使用薬剤（原液濃度・混合後の濃度）
+    const drugTxt = mixDrugs.map(dr => `${dr.name} ${dr.conc}%${dr.ml ? ' ' + dr.ml + 'mL' : ''}`).join(' + ') + (totalVol && mixDrugs.length ? `（計${totalVol}mL → ${mixDrugs.map(dr => `${dr.name} ${dr.mgPerMl.toFixed(1)}mg/mL`).join('・')}）` : '');
+    let anyBlock = false;
+    LOCAL_BLOCKS.forEach(b => {
+      const d = blocks[b.key]; if (!d || !d.use) return;
+      anyBlock = true;
+      const v = parseFloat(d.volume) || 0, s = parseFloat(d.sites) || 0, tMl = v * s;
+      const mg = mixDrugs.map(dr => `${dr.name} ${(tMl * dr.mgPerMl).toFixed(1)}mg${w ? ` (${(tMl * dr.mgPerMl / w).toFixed(2)}mg/kg)` : ''}`).join(' / ');
+      const drugs = mixDrugs.map(dr => `${dr.name} ${dr.conc}%`).join(' + ') || '薬液未設定';
+      laRows.push([b.label + (d.side ? `(${d.side})` : ''), drugs, `${tMl.toFixed(2)}mL${s > 1 ? ` (${v}mL/site×${s})` : ''}${w ? ` = ${(tMl / w).toFixed(2)}mL/kg` : ''}`, mg, `la:${bf}:${b.key}`, d.note || '']);
+    });
+    if (anyBlock && mixDrugs.length) laMix.push(`薬液${i === 0 ? '①' : '②'}: ${drugTxt}`);
+  });
+  [c.localCustom1, c.localCustom2].filter(Boolean).forEach((t, i) => laRows.push([t, '', '', '', `la:custom${i + 1}`, '']));
+  const fluidRateH = (c.fluidRate && w) ? `= ${(parseFloat(c.fluidRate) * w).toFixed(0)} mL/h` : '';
+
+  // --- 薬剤ログ集計（実投与）
+  const logAgg = {};
+  (c.drugLog || []).forEach(r => {
+    if (!r || r.deleted || !r.drug) return;
+    const a = logAgg[r.drug] || (logAgg[r.drug] = { n: 0, perkg: [], total: 0, unit: '', first: '', last: '' });
+    a.n++;
+    const ds = String(r.dose || '');
+    const m1 = ds.match(/^([\d.]+)\s*([^\s=]+)/); if (m1) { a.perkg.push(m1[1]); if (!a.pkUnit) a.pkUnit = m1[2]; }
+    const m2 = ds.match(/=\s*([\d.]+)\s*(mg|μg|µg|mL|IU)/); if (m2) { a.total += parseFloat(m2[1]); a.unit = m2[2]; }
+    if (!a.first || r.time < a.first) a.first = r.time; if (!a.last || r.time > a.last) a.last = r.time;
+  });
+  const logRows = Object.entries(logAgg).map(([name, a]) => {
+    const perkg = a.perkg.length ? `${a.perkg.join('+')} ${a.pkUnit || ''}` : '';
+    return `<tr><td>${esc(name)}</td><td>${a.n}回</td><td>${esc(perkg)}</td><td>${a.total ? `${(+a.total.toFixed(2))} ${esc(a.unit)}${w && /mg|g/.test(a.unit) ? ` (${(a.total / w).toFixed(2)}${esc(a.unit)}/kg)` : ''}` : ''}</td><td>${esc(a.first)}${a.n > 1 ? '〜' + esc(a.last) : ''}</td></tr>`;
+  }).join('');
+
+  // --- 実際の管理状況
+  const indStart = c.inductionTime || c.intubationTime || c.anesthStart;
+  const anesthIE = calcMinutesBetween(indStart, c.extubation);
+  const anesthAll = calcMinutesBetween(c.anesthStart, c.returnToWard);
+  const surgMin = calcMinutesBetween(c.surgStart, c.surgEnd);
+  const missNote = t => `<span class="rv-missnote">${esc(t)}</span>`;
+  const qualities = ['良好', '興奮', '遊泳', '遅延'];
+  const indComps = [['compInductApnea', '無呼吸'], ['compInductUpperAirway', '上部気道閉塞'], ['compInductLaryngospasm', '喉頭痙攣'], ['compInductCyanosis', 'チアノーゼ'], ['compInductVomiting', '嘔吐/逆流'], ['compInductExcitement', '不整脈'], ['compInductBreathing', '呼吸異常']];
+  const th = st ? st.th : (c.species === 'cat' ? { tachy: 200, brady: 100 } : { tachy: 160, brady: 50 });
+  const measure = (flagKey, extKey, which, unit) => {
+    if (!st) return '';
+    const fl = st.flags[flagKey]; const e = st.ext[extKey]; if (!e || !e[which]) return '<span class="rv-meas">実測なし</span>';
+    const base = `実測 ${which === 'max' ? '最高' : '最低'} ${e[which].v}${unit} (${rvFmtTime(e[which].t)})`;
+    if (fl && fl.any) return `<span class="rv-meas warn">${base}<br>超過 最長${fl.longest}分 / 延べ${fl.total}分</span>`;
+    return `<span class="rv-meas ok">${base}<br>閾値内</span>`;
+  };
+  const compRow = (key, label, sub, valKey, valUnit, meas) => `
+    <div class="rv-chk${c[key] ? ' on' : ''}" onclick="if(event.target.tagName!=='INPUT')rvToggle('${key}',this)">
+      <div class="rv-box"></div>
+      <div class="rv-lbl">${esc(label)}${autoComp[key] && c[key] ? '<span class="rv-auto">記録から自動</span>' : ''}${sub ? `<br><small>${esc(sub)}</small>` : ''}</div>
+      ${valKey ? `<input class="rv-vin" type="text" inputmode="decimal" placeholder="${rvAttr(valUnit)}" value="${rvAttr(c[valKey] || '')}" oninput="rvSet('${valKey}', this.value)" onclick="event.stopPropagation()">` : ''}
+      ${meas || ''}
+    </div>`;
+  const phaseNotes = [['導入', c.phaseNoteInd, c.phaseFlagInd], ['維持', c.phaseNoteMaint, c.phaseFlagMaint], ['覚醒', c.phaseNoteWake, c.phaseFlagWake], ['術後', c.phaseNotePost, c.phaseFlagPost]].filter(([, n]) => (n || '').trim());
+
+  box.innerHTML = `
+  <div class="rv-card">
+    <h3>📝 麻酔症例 振り返りシート</h3>
+    <div class="rv-kv">
+      ${fi('提出者(担当)', 'staff', '', { w: 110 })} ${f('麻酔実施日', c.date)} ${f('施設', facName)}
+      ${f('患者', [c.caseNo || c.patientId, c.patientName].filter(Boolean).join(' '))} ${f('進捗', c.progress)}
+    </div>
+    <div class="rv-missbar" id="rvMissBar"></div>
+    <div class="rv-note" style="margin-top:6px">※ 動物麻酔技能認定医の課題レポート様式を参考に、症例データを自動で流し込んでいます。赤枠は様式上の必須項目で未記載のもの。ここで入力すると症例にも保存・同期されます。</div>
+  </div>
+
+  <div class="rv-card">
+    <h3>1. 症例情報</h3>
+    <div class="rv-kv">
+      <span class="rv-f"><span class="rv-k">動物種</span>${seg('species', [['dog', '犬'], ['cat', '猫'], ['rabbit', 'うさぎ'], ['other', '他']])}</span>
+      ${fi('品種', 'breed', '', { w: 130 })}
+      <span class="rv-f"><span class="rv-k">年齢</span><input class="rv-in rv-req${miss(c.ageY) && miss(c.ageM)}" type="text" inputmode="numeric" style="width:44px" value="${rvAttr(c.ageY || '')}" oninput="rvSet('ageY', this.value);rvMissUpd(this)"><span class="rv-k">歳</span><input class="rv-in" type="text" inputmode="numeric" style="width:44px" value="${rvAttr(c.ageM || '')}" oninput="rvSet('ageM', this.value)"><span class="rv-k">ヶ月</span></span>
+      <span class="rv-f"><span class="rv-k">性別</span>${seg('sex', [['M', 'M'], ['MC', 'MC'], ['F', 'F'], ['FS', 'FS']])}</span>
+      ${fi('体重', 'weight', 'kg', { w: 60, num: 1 })} ${fi('BCS', 'bcs', '/9', { w: 46, num: 1 })}
+    </div>
+    <div class="rv-kv" style="margin-top:6px">
+      <span class="rv-f"><span class="rv-k">意識レベル/性格</span>${seg('consciousness', [['正常', '正常'], ['傾眠', '傾眠'], ['攻撃的', '攻撃的']])}</span>
+      <span class="rv-f"><span class="rv-k">発作歴</span>${segBool('seizures')}</span>
+      <span class="rv-f"><span class="rv-k">アレルギー</span>${segBool('allergies')}</span>
+      <span class="rv-f" id="rvAllergyDetail" style="${c.allergies ? '' : 'display:none'}">${fo('内容', 'allergyDetail', '', { w: 150, ph: '薬剤・食物など' })}</span>
+    </div>
+    <h4>麻酔当日</h4>
+    <div class="rv-kv">${fi('体温', 'preTemp', '℃', { num: 1, w: 60 })} ${fi('心拍数', 'preHr', 'bpm', { num: 1, w: 56 })} ${fi('呼吸数', 'preRr', '/min', { num: 1, w: 56 })} ${fi('血圧', 'preBp', 'mmHg', { w: 90, ph: '120/80 (90)' })}</div>
+    <h4>既往歴</h4>${ta('rvHistory', '既往歴', true, ['特記なし'])}
+    <h4>主訴</h4>${ta('chiefComplaint', '主訴', true, ['特記なし', c.procedure ? c.procedure + '目的' : ''].filter(Boolean))}
+    <h4>異常所見（身体検査・血液検査・画像検査など）</h4>
+    ${ta('abnormalFindings', '異常所見', true, ['特記なし'])}
+    ${tests.length ? `<div style="margin-top:3px"><span class="rv-k">実施検査:</span> ${tests.map(t => chip(t)).join('')}</div>` : ''}
+    <h4>事前投与中の薬剤</h4>${ta('preMeds', '薬剤名・用量', true, ['なし'])}
+    <h4>手術内容</h4>
+    <div class="rv-kv">${fo('診断', 'diagnosis', '', { w: 170 })} ${fi('術式', 'procedure', '', { w: 170 })} ${fo('術者', 'surgeon', '', { w: 90 })} ${fo('麻酔監視', 'anesthMonitor', '', { w: 90 })} ${fo('監視指導医', 'anesthSupervisor', '', { w: 90 })}</div>
+    <div class="rv-kv" style="margin-top:6px">
+      <span class="rv-f"><span class="rv-k">予想された術後疼痛レベル</span>${seg('expectedPain', [['light', '軽度'], ['moderate', '中等度'], ['heavy', '重度'], ['max', '最大']])}</span>
+      <span class="rv-f"><span class="rv-k">ASA-PS</span>${seg('asaps', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']])}<span class="rv-chip tog${c.asapsE ? ' on' : ''}" onclick="rvChipToggle('asapsE',this)" style="margin-left:6px">E（緊急）</span></span>
+    </div>
+    <h4>ASA-PS の理由</h4>
+    ${ta('rvAsaReason', 'ASA分類の根拠（例: 高齢・心雑音・脱水 など）', true, ['健康な若齢動物', '高齢', '軽度の全身疾患'])}
+  </div>
+
+  <div class="rv-card">
+    <h3>2. 予想された合併症とその対応</h3>
+    ${plan.length ? `<table class="rv-table"><thead><tr><th style="width:110px">想定</th><th>対応</th></tr></thead><tbody>${plan.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v || '—')}</td></tr>`).join('')}</tbody></table>` : `<div class="rv-missnote">プランに記載なし（症例画面「手術/器材」タブで入力）</div>`}
+    ${c.otherComplications ? `<div class="rv-block"><b>その他:</b> ${esc(c.otherComplications)}</div>` : ''}
+    <h4>補足（この症例に特有の懸念・準備）</h4>${ta('rvPlanNote', '例: 短頭種のため抜管後の気道閉塞に備え再挿管セットを準備 など', false)}
+  </div>
+
+  <div class="rv-card">
+    <h3>3. 準備器材</h3>
+    <div><span class="rv-k">モニタ項目（タップで切替）:</span>
+      ${chipT('equipTemp', '体温')}${chipT('equipHR', '心拍数')}${chipT('equipRR', '呼吸数')}${chipT('equipEtCO2', 'EtCO₂')}${chipT('equipSpO2', 'SpO₂')}${chipT('equipECG', 'ECG')}
+      ${chipT('equipOscillo', '血圧(オシロ)')}${chipT('equipDoppler', '血圧(ドップラー)')}${chipT('equipArterial', '血圧(観血)')}${chipT('equipGas', '麻酔ガス濃度')}
+    </div>
+    <div class="rv-kv" style="margin-top:8px">
+      <span class="rv-f"><span class="rv-k">呼吸回路</span>${seg('circuit', [['rebreath', '再呼吸回路'], ['nonrebreath', '非再呼吸回路']])}</span>
+      ${fi('想定一回換気量', 'hvent_vcvVT', 'mL', { num: 1, w: 64, ph: tvEst })}<span class="rv-note">(10〜15mL/kg${tvEst ? ' = ' + tvEst : ''})</span>
+      ${fi('再呼吸バッグ', 'bagSize', 'L', { w: 50, ph: '1' })}
+      ${fo('ETチューブ', 'tubeSize', 'mm', { num: 1, w: 50 })}
+      ${c.intubationDifficult ? chip('挿管困難', 1) : ''}
+    </div>
+  </div>
+
+  <div class="rv-card">
+    <h3>4. 麻酔方法 / 薬剤</h3>
+    <table class="rv-table rv-drugs"><thead><tr><th>分類</th><th>薬剤名</th><th>用量</th><th>経路</th><th style="width:34%">目的（記入）</th></tr></thead><tbody>
+      ${drugTbl || '<tr><td colspan="5" class="rv-missnote">プランに薬剤の選択なし（症例画面「麻酔PL」タブで選択）</td></tr>'}
+    </tbody></table>
+    <h4>局所麻酔法（目的の欄に実施方法を記載 例: 超音波ガイド）</h4>
+    ${laMix.length ? `<div class="rv-block" style="margin:0 0 4px">${laMix.map(esc).join('<br>')}</div>` : ''}
+    ${laRows.length ? `<table class="rv-table"><thead><tr><th>ブロック</th><th>使用薬剤</th><th>投与量</th><th>薬剤量</th><th style="width:30%">実施方法（記入）</th></tr></thead><tbody>${laRows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${pin(r[4], RV_LA_OPTS)}</td></tr>`).join('')}</tbody></table>` : '<div class="rv-note">局所麻酔なし</div>'}
+    <h4>術中輸液剤</h4>
+    <div class="rv-kv">${fi('種類', 'fluidType', '', { w: 150, ph: '乳酸リンゲル 等' })} ${fi('投与速度初期設定', 'fluidRate', 'mL/kg/h', { num: 1, w: 56 })} <span class="rv-v">${fluidRateH}</span></div>
+    ${logRows ? `<h4>実投与（薬剤ログ集計・参考）</h4><table class="rv-table"><thead><tr><th>薬剤</th><th>回数</th><th>各回 /kg</th><th>総量</th><th>時刻</th></tr></thead><tbody>${logRows}</tbody></table>` : ''}
+  </div>
+
+  <div class="rv-card">
+    <h3>5. 麻酔方法 / 薬剤の選択理由</h3>
+    <div class="rv-quick rv-noprint" style="margin:0 0 6px"><button type="button" class="rv-qbtn" onclick="rvDraftRationale()">📝 プランと目的から下書きを作る</button></div>
+    ${ta('rvRationale', 'なぜこのプロトコルにしたか（患者の状態・術式・疼痛レベル・合併症リスクとの関係）', true, [], 'rvTaRationale')}
+  </div>
+
+  <div class="rv-card">
+    <h3>6. 実際の麻酔管理状況</h3>
+    <div class="rv-kv">
+      <span class="rv-f"><span class="rv-k">麻酔時間（導入〜抜管）</span>${anesthIE !== null ? `<span class="rv-v">${anesthIE} 分</span>` : missNote('未算出: 術中タブで導入/抜管の時刻を記録')}</span>
+      ${anesthAll !== null ? f('（前投薬〜帰舎）', anesthAll + ' 分') : ''}
+      <span class="rv-f"><span class="rv-k">手術時間</span>${surgMin !== null ? `<span class="rv-v">${surgMin} 分</span>` : missNote('未算出: 手術開始/終了の時刻を記録')}</span>
+    </div>
+    <div class="rv-kv" style="margin-top:4px">
+      ${f('前投薬', c.anesthStart)} ${f('導入', c.inductionTime)} ${f('挿管', c.intubationTime)} ${f('手術開始', c.surgStart)} ${f('手術終了', c.surgEnd)} ${f('抜管', c.extubation)} ${f('帰舎', c.returnToWard)}
+    </div>
+    <h4>覚醒時の様子</h4>
+    ${seg('recQuality', qualities.map(q => [q, q]))}
+    <div class="rv-note" style="margin-top:3px">遅延＝維持麻酔終了後〜抜管が30分以上</div>
+    <div class="rv-kv" style="margin-top:8px">${fi('覚醒時 体温', 'recTemp', '℃', { num: 1, w: 60 })} ${fi('心拍数', 'recHr', 'bpm', { num: 1, w: 56 })} ${fi('呼吸数', 'recRr', '/min', { num: 1, w: 56 })}</div>
+    <div class="rv-kv" style="margin-top:6px">${fi('疼痛評価値', 'painScore', '', { w: 56 })} ${fi('使用した評価法', 'painMethod', '', { w: 150, ph: 'CMPS-SF / Feline Grimace 等' })}</div>
+    ${c.recNotes ? `<div class="rv-block"><b>回復メモ:</b> ${esc(c.recNotes)}</div>` : ''}
+    <h4>麻酔導入時に生じた合併症</h4>
+    ${indComps.map(([k, l]) => compRow(k, l)).join('')}
+    <h4>麻酔中に生じた合併症（5分以上持続 or 治療を要したもの）</h4>
+    ${st ? `<div class="rv-note" style="margin-bottom:4px">右の「実測」はSomLogバイタル（${esc(st.win.label)}）からの自動判定。<b>閾値超過が5分以上続いた項目は自動でチェックと最高/最低値を入れています</b>（外した項目は再度入れません）。基準: 頻脈>${th.tachy} / 徐脈<${th.brady} / MAP 60〜120・SAP 80〜160 / SpO₂≥90 / EtCO₂ 20〜60 / 体温 36〜39℃ / RR 4〜50</div>` : '<div class="rv-note" style="margin-bottom:4px">SomLogバイタルがあれば実測値から自動判定を表示します</div>'}
+    ${compRow('compVomiting', '嘔吐/逆流')}
+    ${compRow('compSeizure', '発作')}
+    ${compRow('compHypothermia', '低体温（<36℃）', '', 'compHypothermiaDeg', '℃', measure('compHypothermia', 'TEMP', 'min', '℃'))}
+    ${compRow('compHyperthermia', '高体温（>39℃）', '', '', '', measure('compHyperthermia', 'TEMP', 'max', '℃'))}
+    ${compRow('compBleed', '大量出血', '', 'compBleedMax', 'mL')}
+    ${compRow('compCardiacArrest', '心停止')}
+    ${compRow('compDeath', '安楽死')}
+    ${compRow('compTachy', '頻脈', `目安: 犬>160, 猫>200 bpm`, 'compTachyMax', '最高', measure('compTachy', 'HR', 'max', ''))}
+    ${compRow('compBrady', '徐脈', `目安: 犬<50, 猫<100 bpm`, 'compBradyMin', '最低', measure('compBrady', 'HR', 'min', ''))}
+    ${compRow('compHtn', '高血圧', 'MAP>120 / SAP>160', 'compHtnMax', '最高', measure('compHtn', 'MAP', 'max', ''))}
+    ${compRow('compHypotension', '低血圧', 'MAP<60 / SAP<80', 'compHypotensionMin', '最低', measure('compHypotension', 'MAP', 'min', ''))}
+    ${compRow('compArrhythmia', '不整脈', '', 'compArrhythmiaType', '分類')}
+    ${compRow('compApnea', '無呼吸')}
+    ${compRow('compTachyBreath', '頻呼吸（>50）', '', '', '', measure('compTachyBreath', 'RR', 'max', ''))}
+    ${compRow('compBradyBreath', '徐呼吸（<4）', '', '', '', measure('compBradyBreath', 'RR', 'min', ''))}
+    ${compRow('compHypoxemia', '低酸素血症（SpO₂<90%）', '', 'compHypoxemiaMin', '最低', measure('compHypoxemia', 'SpO2', 'min', '%'))}
+    ${compRow('compHypocapnia', '重度低CO₂血症（EtCO₂<20）', '', 'compHypocapniaMin', '最低', measure('compHypocapnia', 'EtCO2', 'min', ''))}
+    ${compRow('compHypercapnia', '重度高CO₂血症（EtCO₂>60）', '', 'compHypercapniaMax', '最高', measure('compHypercapnia', 'EtCO2', 'max', ''))}
+  </div>
+
+  <div class="rv-card">
+    <h3>7. 実際に生じた合併症の詳細とその対応</h3>
+    ${phaseNotes.length ? `<div class="rv-note">経過メモ（症例画面）:</div><table class="rv-table"><tbody>${phaseNotes.map(([p, n, fl]) => `<tr><td style="width:44px">${fl ? '⚠️' : ''}${esc(p)}</td><td>${esc(n)}</td></tr>`).join('')}</tbody></table>` : ''}
+    <div class="rv-quick rv-noprint" style="margin:0 0 6px"><button type="button" class="rv-qbtn" onclick="rvDraftCompDetails()">📟 チェックした合併症から下書きを作る</button></div>
+    ${ta('compDetails', '何が起きて、どう対応し、どうなったか（時刻を添えて）', true, ['特記なし'], 'rvTaCompDetails')}
+  </div>
+
+  <div class="rv-card">
+    <h3>8. 麻酔管理・対応の改善点</h3>
+    ${ta('notes', '次回同じ症例が来たらどうするか。プロトコル・モニタリング・準備・チーム連携の改善点', true, ['特になし'])}
+  </div>
+
+  <div class="rv-card">
+    <h3>9. 追加記載（有れば）</h3>
+    ${ta('rvExtra', '記載欄に収まらない内容・参考文献・指導医コメントなど', false)}
+  </div>`;
+  rvGrowAll();
+  rvMissCount();
+}
+
+function printReview() {
+  if (!current) return;
+  rvCommit();
+  document.body.classList.add('rv-print');
+  const _origTitle = document.title;
+  const _fname = ['振り返り', String(current.patientId || current.caseNo || '').trim(), String(current.patientName || '').trim()].filter(Boolean).join(' ').replace(/[\/\\:*?"<>|]/g, '_');
+  document.title = _fname;
+  // 印刷幅(A4)に合わせてトレンドを描き直し、終わったら画面幅で戻す
+  const box = document.getElementById('rvTrend');
+  const savedW = box.clientWidth;
+  box.style.width = '720px';
+  try { renderReviewTrend(); } catch (_) {}
+  rvGrowAll();
+  const _restore = () => {
+    document.body.classList.remove('rv-print');
+    document.title = _origTitle;
+    box.style.width = '';
+    try { renderReviewTrend(); } catch (_) {}
+    window.removeEventListener('afterprint', _restore);
+  };
+  window.addEventListener('afterprint', _restore);
+  setTimeout(() => { window.print(); setTimeout(_restore, 60000); }, 120);
+}
+window.addEventListener('resize', () => {
+  if (document.getElementById('reviewScreen').classList.contains('hidden')) return;
+  clearTimeout(_rvResizeTimer);
+  _rvResizeTimer = setTimeout(() => { try { renderReviewTrend(); } catch (_) {} }, 250);
+});
 
 // ─────────────────────────────────────────────────
 // CSV EXPORT
