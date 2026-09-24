@@ -1552,7 +1552,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <div>最終送信 (Push): <span id="diagLastPush">—</span></div>
         <div>送信状態: <span id="diagPushStatus" style="font-weight:600;color:var(--text)">—</span></div>
         <div>未送信キュー: <span id="diagQueueSize">0</span> 件</div>
-        <div style="margin-top:4px;font-weight:700;color:var(--blue)">版: sync-v2 2026-07-13 <span id="diagDeviceId" style="font-weight:400;color:var(--muted)"></span></div>
+        <div style="margin-top:4px;font-weight:700;color:var(--blue)">版: sync-v2 2026-09-24 <span id="diagDeviceId" style="font-weight:400;color:var(--muted)"></span></div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px">
@@ -2893,6 +2893,13 @@ async function syncFromSheets() {
         throw new Error('合言葉が未入力か違います。⚙️設定画面で合言葉を確認してください');
       }
       throw new Error('CSV応答が不正（ヘッダ欠落）: 削除判定を中止');
+    }
+    // fetch待ちの間(旧端末/遅い回線では数秒〜十数秒)に入力が始まっていたら、
+    // ここで統合・再描画せず、入力欄を離れて2秒後に取り直す(冒頭のガードは開始時点しか見ていない)。
+    if (isUserTypingNow()) {
+      pendingSyncAfterBlur = true;
+      setSyncStatus('ok');
+      return;
     }
     const rows = parseCSV(csv);
     const reserved = rows.filter(r => r['施設コード'] === sheetsConfig.facility);
@@ -4389,7 +4396,34 @@ function pickStatusC(a, b) {
 }
 function hashDrugC(e) { return ['d', e && e.time, e && e.drug, e && e.dose, e && e.route].join('|'); }
 function hashFreeC(e) { return ['f', e && e.time, e && e.kind, e && e.text, e && e.from, e && e.to, e && e.mode, e && e.rr, e && e.o2, e && e.air, e && e.drugKey, e && e.drugLabel, e && e.size, e && e.sizeFr].join('|'); }
-function mergeEventPairC(x, y) { const o = Object.assign({}, x, y); if ((x && x.deleted) || (y && y.deleted)) o.deleted = true; return o; }
+// 同一uidのイベントが両側にある時の統合。
+// 旧実装 Object.assign({}, local, remote) は「リモートが常に勝つ」ため、
+// 追加薬剤/メモを作成→即push(空のまま)→用量やメモ文を入力→次の同期で
+// サーバーの空文字がローカルの入力を上書きし「入力が消える」不具合になっていた
+// (ワンタップ系イベントは作成後に内容が変わらないので無事だった)。
+// 新ルール: ① 項目単位の編集時刻 mts が新しい側を土台にする
+//           ② 空値('' / null / undefined)で非空の値を潰さない
+//           ③ deleted はどちらかに立っていれば維持(墓標)
+function mergeEventPairC(x, y) {
+  x = (x && typeof x === 'object') ? x : {};
+  y = (y && typeof y === 'object') ? y : {};
+  const xt = String(x.mts || ''), yt = String(y.mts || '');
+  const yWins = (xt || yt) ? (yt > xt) : true; // mts無し同士は従来通りリモート(y)優先
+  const base = yWins ? x : y, over = yWins ? y : x;
+  const o = Object.assign({}, base);
+  Object.keys(over).forEach(k => {
+    const v = over[k];
+    const vEmpty = (v === '' || v === null || v === undefined);
+    const bv = o[k];
+    const bHas = !(bv === '' || bv === null || bv === undefined);
+    if (vEmpty && bHas) return; // 空で非空を潰さない
+    o[k] = v;
+  });
+  if (x.deleted || y.deleted) o.deleted = true;
+  return o;
+}
+// 手入力で内容を変えたイベントに編集時刻を刻む(上の mergeEventPairC が参照)
+function touchEv(e) { if (e && typeof e === 'object') e.mts = nowIsoStr(); }
 function unionEventsC(a, b, keyFn) {
   a = Array.isArray(a) ? a : []; b = Array.isArray(b) ? b : [];
   const order = [], map = {};
@@ -5547,6 +5581,7 @@ function renderTimelineList() {
 function editDrugLog(idx, field, val) {
   if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
   current.drugLog[idx][field] = val;
+  touchEv(current.drugLog[idx]);
   if (field === 'drug') renderQuickDoseBar();
   autoSave();
 }
@@ -5582,6 +5617,7 @@ function editDrugLogDose(idx, perKgStr) {
     const u = (String(r.dose || '').match(/^\s*[\d.]*\s*([^\s=\d.][^\s=]*)/) || [, ''])[1];
     r.dose = (perKgStr || '') + (u || '');
   }
+  touchEv(r);
   autoSave();
 }
 
@@ -5606,6 +5642,7 @@ function setDrugOpt(idx, which, val) {
   } else {
     r.route = val;
   }
+  touchEv(r);
   _drugOptOpen = null;
   renderTimelineList();
   autoSave();
@@ -5616,6 +5653,7 @@ function setDrugOpt(idx, which, val) {
 function drugRowNow(idx) {
   if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
   current.drugLog[idx].time = nowTime();
+  touchEv(current.drugLog[idx]);
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
@@ -5749,6 +5787,7 @@ function setVentMode(idx, mode) {
     if (!n.to) n.to = (n.mode === 'PCV' ? (current.hvent_pcvPIP || '') : (current.hvent_vcvVT || '')) || '';
     if (!n.rr) n.rr = (n.mode === 'PCV' ? (current.hvent_pcvRR || '') : (current.hvent_vcvRR || '')) || '';
   }
+  touchEv(n);
   recomputeFreeNotesFroms();
   renderTimelineList();
   autoSave();
@@ -5764,6 +5803,7 @@ function setPosition(idx, which, pos) {
   if (which !== 'from' && which !== 'to') return;
   n[which] = (n[which] === pos) ? '' : pos;
   n.text = (n.from || n.to) ? `${n.from || ''}→${n.to || ''}` : '';
+  touchEv(n);
   renderTimelineList();
   autoSave();
   pushCurrentToSheets();
@@ -5773,6 +5813,7 @@ function setPosition(idx, which, pos) {
 function editFreeNote(idx, field, val) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
   current.freeNotes[idx][field] = val;
+  touchEv(current.freeNotes[idx]);
   autoSave();
 }
 
