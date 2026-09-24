@@ -3048,14 +3048,8 @@ function mergeReservations(rows, onUpdate) {
         // 項目ごとマージ: 空リモートで非空テキストのローカルを潰さない（触っていない欄で記載を消さない）。
         // 記載が別内容へ差し替わる場合は、上書き前に端末内バックアップ（後で「記載復元」で戻せる）。
         maybeBackupBeforeOverwrite(existing, detail);
-        Object.keys(detail).forEach(k => {
-          const rv = detail[k];
-          const lv = existing[k];
-          const remoteEmpty = (rv === '' || rv === null || rv === undefined);
-          const localHasText = (typeof lv === 'string' && lv.trim() !== '');
-          if (remoteEmpty && localHasText) return; // ローカルの記載を残す
-          existing[k] = rv;
-        });
+        // 項目ごとマージ(空リモートで非空を潰さない＋_ftsでローカルの新しい編集を残す)
+        mergeScalarsC(existing, detail);
         if (remoteId) existing.id = remoteId;
         existing.date = r['日付'];
         existing.caseNo = r['カルテNo'];
@@ -3209,14 +3203,7 @@ async function pushToSheets(caseObj, options = {}) {
       // あるものは残す（mergeReservationsと同じ保護）。これが無いと、2台がほぼ同時に
       // 別のタイムラインイベント(手術終了と抜管など)を記録したとき、rev負け側の
       // イベント時刻がサーバの空値で消され、そのまま再pushで全端末から消えていた。
-      Object.keys(sd).forEach(k => {
-        const rv = sd[k];
-        const lv = caseObj[k];
-        const remoteEmpty = (rv === '' || rv === null || rv === undefined);
-        const localHasText = (typeof lv === 'string' && lv.trim() !== '');
-        if (remoteEmpty && localHasText) return; // ローカルの記載を残す
-        caseObj[k] = rv;
-      });
+      mergeScalarsC(caseObj, sd);
       caseObj.drugLog   = unionEventsC(_ld, sd.drugLog, hashDrugC);
       caseObj.freeNotes = unionEventsC(_lf, sd.freeNotes, hashFreeC);
       const _pe = unionProcEventsC(_lp, sd.procEvents, _lpm, sd.procEventsMeta);
@@ -3227,6 +3214,8 @@ async function pushToSheets(caseObj, options = {}) {
       const _ci = cases.findIndex(c => c.id === caseObj.id);
       if (_ci >= 0) cases[_ci] = caseObj;
       saveStorage();
+      // 取り込んだ結果を画面へ(入力中でなければ)。これが無いと次の collectForm が古いDOM値で戻してしまう
+      try { if (caseObj === current && !document.getElementById('formScreen').classList.contains('hidden') && !isUserTypingNow()) populateForm(); } catch (_) {}
       lastPushStatus = '🔀 他端末の更新を取り込み再送';
       updateDiagnostics();
       try { showToast('🔀 他端末の更新を取り込みました（マージ済み）'); } catch (e) {}
@@ -3761,6 +3750,7 @@ function commitNow() {
   if (!current) return;
   const formOpen = !document.getElementById('formScreen').classList.contains('hidden');
   if (formOpen) collectForm(); // フォーム表示中のみDOMから取り込む（非表示時は触らない）
+  try { stampChangedFieldsC(current); } catch (_) {}
   current.updated_at = nowIsoStr();
   const idx = cases.findIndex(c => c.id === current.id);
   if (idx >= 0) cases[idx] = current;
@@ -3781,13 +3771,7 @@ function mergeCaseIntoC(mem, d) {
   const _ld = mem.drugLog, _lf = mem.freeNotes, _lp = mem.procEvents, _lpm = mem.procEventsMeta, _lprog = mem.progress;
   const dNewer = dRev > memRev || (dRev === memRev && String(d.updated_at || '') > String(mem.updated_at || ''));
   if (dNewer) {
-    Object.keys(d).forEach(k => {
-      const rv = d[k], lv = mem[k];
-      const remoteEmpty = (rv === '' || rv === null || rv === undefined);
-      const localHasText = (typeof lv === 'string' && lv.trim() !== '');
-      if (remoteEmpty && localHasText) return; // こちらの記載を残す
-      mem[k] = rv;
-    });
+    mergeScalarsC(mem, d);
   }
   mem.drugLog   = unionEventsC(_ld, d.drugLog, hashDrugC);
   mem.freeNotes = unionEventsC(_lf, d.freeNotes, hashFreeC);
@@ -4428,6 +4412,72 @@ function mergeEventPairC(x, y) {
 }
 // 手入力で内容を変えたイベントに編集時刻を刻む(上の mergeEventPairC が参照)
 function touchEv(e) { if (e && typeof e === 'object') e.mts = nowIsoStr(); }
+
+// ── スカラー項目の「項目ごと編集時刻」(_fts) ──────────────────────────
+// 体重/記載テキスト/プラン薬剤の用量(drugs.<key>)などは、他端末がpushして rev が
+// 上がるたびに「サーバー側が丸ごと勝つ」規則だったため、この端末で入力して
+// まだpushしていない値が同期で消えていた(イベントの mts と同じ構造の欠陥)。
+// 保存/統合の直前に「前回の基準から変わった項目」に時刻を刻み、統合では
+// ローカルの方が新しい項目を残す。基準(スナップショット)は編集中の症例(current)のみ。
+const FTS_SKIP = new Set(['id','facility','updated_at','rev','device_id','client_ts','_fts',
+  'drugLog','freeNotes','procEvents','procEventsMeta','progress']);
+let _ftsSnap = { obj: null, m: {} };
+function _ftsIsPlainObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+function _ftsKeyVals(c) {
+  const m = {};
+  Object.keys(c).forEach(k => {
+    if (FTS_SKIP.has(k)) return;
+    const v = c[k];
+    if (_ftsIsPlainObj(v)) Object.keys(v).forEach(sk => { m[k + '.' + sk] = JSON.stringify(v[sk]); });
+    else m[k] = JSON.stringify(v === undefined ? null : v);
+  });
+  return m;
+}
+function ftsSnapReset(c) { if (!c) return; _ftsSnap = { obj: c, m: _ftsKeyVals(c) }; }
+function stampChangedFieldsC(c) {
+  if (!c) return;
+  const m = _ftsKeyVals(c);
+  if (_ftsSnap.obj !== c) { _ftsSnap = { obj: c, m }; return; } // 初回は基準取りのみ
+  const ts = nowIsoStr();
+  if (!_ftsIsPlainObj(c._fts)) c._fts = {};
+  Object.keys(m).forEach(k => { if (m[k] !== _ftsSnap.m[k]) c._fts[k] = ts; });
+  _ftsSnap = { obj: c, m };
+}
+// リモート(detail)のスカラーを t に取り込む。規則:
+//  ① 空のリモートで非空のローカル文字列を潰さない(従来)
+//  ② _fts でローカルの方が新しい項目はローカルを残す(項目単位・plain objectは子キー単位)
+//  ③ _fts 自体は項目ごとに新しい方を残す
+// イベント配列(drugLog等)はここでも一旦コピーされるが、呼び出し側が直後に union で上書きする。
+function mergeScalarsC(t, r) {
+  if (!t || !_ftsIsPlainObj(r)) return;
+  if (t === current) stampChangedFieldsC(t);
+  const lf = _ftsIsPlainObj(t._fts) ? t._fts : {};
+  const rf = _ftsIsPlainObj(r._fts) ? r._fts : {};
+  const localNewer = k => { const lt = lf[k] || '', rt = rf[k] || ''; return !!lt && lt > rt; };
+  const isEmpty = v => (v === '' || v === null || v === undefined);
+  Object.keys(r).forEach(k => {
+    if (k === '_fts') return;
+    const rv = r[k], lv = t[k];
+    if (isEmpty(rv) && typeof lv === 'string' && lv.trim() !== '') return;
+    if (!FTS_SKIP.has(k) && _ftsIsPlainObj(rv) && _ftsIsPlainObj(lv)) {
+      const o = Object.assign({}, lv);
+      Object.keys(rv).forEach(sk => {
+        const kk = k + '.' + sk;
+        if (localNewer(kk)) return;
+        if (isEmpty(rv[sk]) && typeof lv[sk] === 'string' && lv[sk].trim() !== '') return;
+        o[sk] = rv[sk];
+      });
+      t[k] = o;
+      return;
+    }
+    if (!FTS_SKIP.has(k) && localNewer(k)) return;
+    t[k] = rv;
+  });
+  const merged = Object.assign({}, lf);
+  Object.keys(rf).forEach(k => { if (!merged[k] || String(rf[k]) > String(merged[k])) merged[k] = rf[k]; });
+  if (Object.keys(merged).length) t._fts = merged;
+  if (t === current) ftsSnapReset(t);
+}
 function unionEventsC(a, b, keyFn) {
   a = Array.isArray(a) ? a : []; b = Array.isArray(b) ? b : [];
   const order = [], map = {};
@@ -4647,6 +4697,7 @@ function populateForm() {
   updateHeaderMeta();
   try { updateAccUI(); } catch(_) {}
   try { updateRestoreBtn(); } catch(_) {}
+  try { stampChangedFieldsC(current); } catch(_) {} // 症例を開いた/取り込んだ時点を編集判定の基準にする
 }
 
 // ─────────────────────────────────────────────────
@@ -6598,6 +6649,7 @@ function autoSave() {
   // 反映の遅れた（=記録直後のイベントがまだ載っていない）Sheetsデータで
   // current が丸ごと上書きされ、押したばかりのイベント/薬剤が消える。
   if (current) current.updated_at = nowIsoStr();
+  try { stampChangedFieldsC(current); } catch (_) {}
   updateHeaderMeta(); // 患者名・術式の入力をヘッダーへ即時反映
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -6605,6 +6657,7 @@ function autoSave() {
     collectForm();
     const idx = cases.findIndex(c => c.id === current.id);
     if (idx >= 0) cases[idx] = current;
+    try { stampChangedFieldsC(current); } catch (_) {}
     saveStorage();
     // 注意: 通常フィールドの入力途中で Sheets push されると未確定データが
     // クラウドに送られて混乱するため、autoSave は localStorage 保存だけにする。
