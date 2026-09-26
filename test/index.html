@@ -1775,7 +1775,7 @@ const DRUG_GROUPS = {
     { key:'famotidine',      label:'ファモチジン',         unit:'mg/kg', dog:'0.5〜1', cat:'0.5〜1', routes:['IV'],      def:'IV', conc:10 },
     { key:'methylprednisolone_acetate', label:'メチルプレドニゾロン酢酸エステル', unit:'mg/kg', dog:'1', cat:'1', routes:['SC'], def:'SC', conc:20 },
     { key:'lipid20',         label:'20%脂肪乳剤(イントラリポス)', unit:'mL/kg', dog:'1.5', cat:'1.5', routes:['IV'], def:'IV', dilutionNote:'リピッドレスキュー: 1.5mL/kg を1分でボーラス → 0.25mL/kg/min 持続' },
-    { key:'dantrolene',      label:'ダントロレン',         unit:'mg/kg', dog:'1〜3',  cat:'1〜3',  routes:['IV'], def:'IV', conc:0.333, dilutionNote:'1バイアル(20mg)を注射用水60mLで溶解 → 0.33mg/mL' },
+    { key:'dantrolene',      label:'ダントロレン',         unit:'mg/kg', dog:'1〜3',  cat:'1〜3',  routes:['IV'], def:'IV', conc:0.333, dilutionNote:'1バイアル(20mg)を注射用水60mLに溶解 → 0.33mg/mL。溶けにくいのでよく振る' },
     { key:'dexamethasone',   label:'デキサメタゾン',       unit:'mg/kg', dog:'0.1〜0.2', cat:'0.1〜0.2', routes:['IV'], def:'IV', conc:4 },
     // 緊急薬(早見表と同じ2用量)。ラベルは同じ「アドレナリン」で、sub で心拍動時/心停止時を区別する
     { key:'adrenaline_low',    label:'アドレナリン', sub:'心拍動時', unit:'μg/kg', dog:'1',  cat:'1',  routes:['IV','IM'], def:'IV', conc:1000 },
@@ -6649,6 +6649,10 @@ function quickDose(key) {
     html += `<div class="qdose-bar" id="doseRouteBar" style="margin-bottom:12px">`
       + d.routes.map(r => `<button type="button" class="qdose-btn doseroute-btn${r===doseSelectRoute?' on':''}" data-route="${esc(r)}" onclick="setDoseRoute('${esc(r)}')">${esc(r)}</button>`).join('')
       + `</div>`;
+  }
+  // 溶解・希釈の注意(ダントロレン: 注射用水60mLに溶解、アドレナリン/エフェドリン: 100倍希釈 など)を用量の前に表示
+  if (d.dilutionNote || d.dilution) {
+    html += `<div style="font-size:12.5px;font-weight:700;color:#075985;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:7px 9px;margin-bottom:10px;line-height:1.5">💧 ${d.dilution ? esc(d.dilution) + '：' : ''}${esc(d.dilutionNote || '')}</div>`;
   }
   if (!isNaN(std)) {
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">標準量 ${std}${d.unit} — 用量を選んでください</div>`;
