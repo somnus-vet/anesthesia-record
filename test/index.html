@@ -389,6 +389,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .dose-opt:active{background:var(--blue-bg);border-color:var(--blue)}
 .dose-opt-label{font-size:15px;font-weight:700;color:var(--text)}
 .dose-opt-val{font-size:12px;color:var(--muted);text-align:right}
+.dose-opt-perkg{font-size:12px;color:var(--muted);margin-left:7px;font-weight:600}
+.dose-opt-ml{display:block;font-size:17px;color:var(--navy);font-weight:800;line-height:1.2}
+.qdose-btn .qml{font-size:10.5px;color:var(--muted);font-weight:600;margin-left:2px}
 
 /* 狭い画面（iPhone等）では薬剤ログ表をカード式に */
 @media (max-width:600px){
@@ -1772,6 +1775,8 @@ const DRUG_GROUPS = {
     { key:'famotidine',      label:'ファモチジン',         unit:'mg/kg', dog:'0.5〜1', cat:'0.5〜1', routes:['IV'],      def:'IV', conc:10 },
     { key:'methylprednisolone_acetate', label:'メチルプレドニゾロン酢酸エステル', unit:'mg/kg', dog:'1', cat:'1', routes:['SC'], def:'SC', conc:20 },
     { key:'lipid20',         label:'20%脂肪乳剤(イントラリポス)', unit:'mL/kg', dog:'1.5', cat:'1.5', routes:['IV'], def:'IV', dilutionNote:'リピッドレスキュー: 1.5mL/kg を1分でボーラス → 0.25mL/kg/min 持続' },
+    { key:'dantrolene',      label:'ダントロレン',         unit:'mg/kg', dog:'2〜3',  cat:'2〜3',  routes:['IV'], def:'IV', conc:0.333, dilutionNote:'1バイアル(20mg)を注射用水60mLで溶解 → 0.33mg/mL' },
+    { key:'lidocaine_b',     label:'リドカイン(ボーラス)',  unit:'mg/kg', dog:'2',     cat:'0.25〜0.5', routes:['IV'], def:'IV', conc:20 },
   ],
 };
 
@@ -5396,12 +5401,16 @@ function renderDrugPick(q) {
   const qq = String(q || '').trim().toLowerCase();
   const gn = { premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
   const used = new Set(Object.values(DRUG_GROUPS).flat().filter(d => current && current.drugs && current.drugs[d.key] && current.drugs[d.key].use).map(d => d.key));
-  const html = Object.entries(DRUG_GROUPS).map(([gk, arr]) => {
+  const EMERG = ['adrenaline', 'atropine_v', 'ephedrine', 'phenylephrine', 'noradrenaline', 'dopamine', 'dobutamine', 'lidocaine_b', 'dantrolene', 'lipid20', 'diphenhydramine', 'famotidine', 'atipamezole', 'flumazenil', 'naloxone', 'sugammadex'];
+  const chip = d => `<button type="button" class="qdose-btn${used.has(d.key) ? '' : ' dp-unplanned'}" onclick="closeDrugPick();quickDose('${d.key}')">${esc(d.label)}<span style="font-size:10px;opacity:.7">${esc(d.unit)}</span>${plannedMl(d) ? `<span class="qml">${plannedMl(d)}</span>` : ''}${allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}</button>`;
+  const emerg = EMERG.map(k => findDrugDef(k)).filter(d => d && (!qq || d.label.toLowerCase().indexOf(qq) >= 0));
+  const emergHtml = emerg.length ? `<div style="font-size:11px;font-weight:800;color:#b91c1c;margin:4px 0 4px">🚨 緊急薬</div><div class="qdose-bar">${emerg.map(chip).join('')}</div>` : '';
+  const html = emergHtml + Object.entries(DRUG_GROUPS).map(([gk, arr]) => {
     if (gk === 'addon') return '';
     const list = arr.filter(d => !qq || d.label.toLowerCase().indexOf(qq) >= 0);
     if (!list.length) return '';
     return `<div style="font-size:11px;font-weight:800;color:var(--muted);margin:8px 0 4px">${gn[gk] || gk}</div><div class="qdose-bar">`
-      + list.map(d => `<button type="button" class="qdose-btn${used.has(d.key) ? '' : ' dp-unplanned'}" onclick="closeDrugPick();quickDose('${d.key}')">${esc(d.label)}<span style="font-size:10px;opacity:.7">${esc(d.unit)}</span>${allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}</button>`).join('')
+      + list.map(chip).join('')
       + `</div>`;
   }).join('');
   box.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">該当する薬剤がありません。「＋ 手入力の行」で記録してください</div>';
@@ -6610,7 +6619,8 @@ function renderQuickDoseBar() {
     // バッジは回数のみ。時刻まで載せるとボタンが横に伸びて折り返し、縦に積み上がるため。
     const badge = hits.length ? `<span class="qdose-badge">×${hits.length}</span>` : '';
     const laterTag = (DRUG_GROUPS.addon.some(x => x.key === d.key) ? '<span class="later-tag">追加</span>' : '') + (allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : '');
-    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${laterTag}${badge}</button>`;
+    const _ml = plannedMl(d);
+    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${_ml ? `<span class="qml">${_ml}</span>` : ''}${laterTag}${badge}</button>`;
   }).join('');
 }
 
@@ -6676,10 +6686,25 @@ function setDoseRoute(r) {
 }
 
 function doseOptBtn(d, perKg, label) {
+  // 用量(/kg)・総量・吸う量(mL)を分けて表示。mLを一番大きく(シリンジに引く量がすぐ分かるように)
+  const w = parseFloat(current && current.weight);
+  const dispUnit = d.unit.replace('/kg', '').replace('/hr', '').replace('/min', '');
+  let total = '', ml = '';
+  if (w) {
+    const t = perKg * w;
+    total = `${t.toFixed(2)}${dispUnit}`;
+    if (d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) ml = `${(t / d.conc).toFixed(2)} mL`;
+  }
   return `<button type="button" class="dose-opt" onclick="commitDose(${perKg})">
-      <span class="dose-opt-label">${label}</span>
-      <span class="dose-opt-val">${esc(formatDose(d, perKg))}</span>
+      <span class="dose-opt-label">${label}<span class="dose-opt-perkg">${perKg}${esc(d.unit)}</span></span>
+      <span class="dose-opt-val">${total ? `<span>= ${total}</span>` : ''}${ml ? `<b class="dose-opt-ml">${ml}</b>` : ''}</span>
     </button>`;
+}
+// プランの用量から吸う量(mL)を計算(薬剤ボタン/一覧の添え書き用)
+function plannedMl(d) {
+  const w = parseFloat(current && current.weight); const pk = stdDoseOf(d.key);
+  if (!w || isNaN(pk) || !d.conc || d.unit.includes('/hr') || d.unit.includes('/min')) return '';
+  return (pk * w / d.conc).toFixed(2) + 'mL';
 }
 
 function confirmCustomDose() {
