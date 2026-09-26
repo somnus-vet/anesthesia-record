@@ -2600,7 +2600,7 @@ function applyPreset(key) {
   if (hasDrugs && !confirm(`現在の薬剤選択を「${preset.label}」で上書きします。よろしいですか？`)) return;
   current.drugs = {};
   Object.entries(preset.drugs).forEach(([k, s]) => {
-    current.drugs[k] = { use:true, dose:s.dose, route:s.route };
+    current.drugs[k] = { use:true, dose:s.dose, route:s.route, mix: s.mix || '' };
   });
   // 維持薬（プリセットに設定があれば反映）
   if (preset.maint !== undefined) {
@@ -2685,7 +2685,7 @@ function renderPresetEditor() {
         <input class="fdose" type="text" inputmode="decimal" value="${esc(settings.dose||'')}"
                oninput="setPresetDrugDose('${drugKey}', this.value)" placeholder="0.0">
         <button class="preset-drug-del" type="button" onclick="removeDrugFromPreset('${drugKey}')" title="削除">×</button>
-        <div class="preset-drug-controls">${routeBtns}</div>
+        <div class="preset-drug-controls">${routeBtns}${isPremedKey(drugKey) ? `<span style="margin-left:8px;font-size:11px;color:var(--muted);font-weight:700">投与:</span>` + ['1','2','3'].map(m => `<button class="mbtn${String(settings.mix || '') === m ? ' on' : ''}" data-mix="${m}" type="button" onclick="setPresetDrugMix('${drugKey}',${m})">${MIX_LABELS[m]}</button>`).join('') : ''}</div>
       </div>`;
     }).join('');
   }
@@ -2714,6 +2714,15 @@ function setPresetDrugDose(drugKey, val) {
   if (editingPreset[key]?.drugs[drugKey]) editingPreset[key].drugs[drugKey].dose = val;
 }
 
+// プリセットの前投薬に混注①②③を指定(同じ番号を再タップで解除)。適用時に current.drugs[key].mix へ入る
+function setPresetDrugMix(drugKey, val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  const s = editingPreset[key] && editingPreset[key].drugs && editingPreset[key].drugs[drugKey];
+  if (!s) return;
+  s.mix = (String(s.mix || '') === String(val)) ? '' : val;
+  renderPresetEditor();
+}
 function setPresetDrugRoute(drugKey, route, el) {
   if (!editingPreset) return;
   const key = document.getElementById('presetSelect').value;
@@ -5421,6 +5430,23 @@ function renderDrugPick(q) {
   box.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">該当する薬剤がありません。「＋ 手入力の行」で記録してください</div>';
 }
 
+// 薬剤をチェックした時の初期用量: この病院の直近症例(同じ動物種を優先) → プリセット → 参考範囲の下限
+function defaultDoseFor(key) {
+  const d = findDrugDef(key); if (!d || !current) return null;
+  const fac = (sheetsConfig && sheetsConfig.facility) || '';
+  const usable = c => c && c.id !== current.id && (!fac || !c.facility || c.facility === fac) && c.drugs && c.drugs[key] && c.drugs[key].use && String(c.drugs[key].dose || '').trim();
+  const hist = (cases || []).filter(usable).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const same = hist.find(c => c.species === current.species) || hist[0];
+  if (same) return { dose: String(same.drugs[key].dose).trim(), src: '前回 ' + (same.date || '') };
+  for (const p of Object.values(userPresets || (typeof DRUG_PRESETS !== 'undefined' ? DRUG_PRESETS : {}) || {})) {
+    const s = p && p.drugs && p.drugs[key];
+    if (s && String(s.dose || '').trim()) return { dose: String(s.dose).trim(), src: 'プリセット ' + (p.label || '') };
+  }
+  const ref = String(current.species === 'cat' ? (d.cat || '') : (d.dog || ''));
+  const m = ref.match(/([\d.]+)/);
+  return m ? { dose: m[1], src: '参考範囲の下限' } : null;
+}
+
 function toggleDrug(key, event) {
   if (!current) return;
   if (isDrugBanned(key)) { showToast('⚠️ 猫にはアセトアミノフェンは使用できません（禁忌）'); return; }
@@ -5430,6 +5456,17 @@ function toggleDrug(key, event) {
   if (!current.drugs[key]) current.drugs[key] = { use:false, dose:'', route:'' };
   current.drugs[key].use = !current.drugs[key].use;
   if (current.drugs[key].use) { const _dd = findDrugDef(key); if (_dd) warnIfAllergyDrug(_dd.label); }
+  // チェックした時点で用量を入れておく(この病院の直近症例の用量 → プリセット → 参考範囲の下限)。入力欄で変更できる
+  if (current.drugs[key].use && !String(current.drugs[key].dose || '').trim()) {
+    const _df = defaultDoseFor(key);
+    if (_df && _df.dose) {
+      current.drugs[key].dose = _df.dose;
+      const _el = document.getElementById('ddose_' + key); if (_el) _el.value = _df.dose;
+      const _d2 = findDrugDef(key);
+      if (_d2) { updateCalc(key, _df.dose, current.weight, _d2.unit); showToast(`${_d2.label} ${_df.dose}${_d2.unit}（${_df.src}）を入れました。変更できます`); }
+      try { renderQuickDoseBar(); } catch (_) {}
+    }
+  }
   const row = document.getElementById('drow_' + key);
   if (row) row.classList.toggle('on', current.drugs[key].use);
   try { refreshMixChips(); renderMixSummary(); } catch (_) {}
