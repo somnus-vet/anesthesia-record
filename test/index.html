@@ -1778,8 +1778,8 @@ const DRUG_GROUPS = {
     { key:'dantrolene',      label:'ダントロレン',         unit:'mg/kg', dog:'1〜3',  cat:'1〜3',  routes:['IV'], def:'IV', conc:0.333, dilutionNote:'1バイアル(20mg)を注射用水60mLに溶解 → 0.33mg/mL。溶けにくいのでよく振る' },
     { key:'dexamethasone',   label:'デキサメタゾン',       unit:'mg/kg', dog:'0.1〜0.2', cat:'0.1〜0.2', routes:['IV'], def:'IV', conc:4 },
     // 緊急薬(早見表と同じ2用量)。ラベルは同じ「アドレナリン」で、sub で心拍動時/心停止時を区別する
-    { key:'adrenaline_low',    label:'アドレナリン', sub:'心拍動時', unit:'μg/kg', dog:'1',  cat:'1',  routes:['IV','IM'], def:'IV', conc:1000 },
-    { key:'adrenaline_arrest', label:'アドレナリン', sub:'心停止時', unit:'μg/kg', dog:'10', cat:'10', routes:['IV'],      def:'IV', conc:1000 },
+    { key:'adrenaline_low',    label:'アドレナリン', sub:'心拍動時', unit:'μg/kg', dog:'1',  cat:'1',  routes:['IV','IM'], def:'IV', conc:10, dilution:'100倍希釈', dilutionNote:'原液(1mg/mL) 0.1mL を生食で 10mL にメスアップ → 10μg/mL。mLは希釈液での量' },
+    { key:'adrenaline_arrest', label:'アドレナリン', sub:'心停止時', unit:'μg/kg', dog:'10', cat:'10', routes:['IV'],      def:'IV', conc:1000, dilutionNote:'原液(1mg/mL)のまま。mLは原液での量' },
     { key:'glucose20',       label:'20%ブドウ糖',          unit:'mL/kg', dog:'1',     cat:'1',     routes:['IV'], def:'IV', dilutionNote:'1mL/kg をゆっくりIV' },
   ],
 };
