@@ -843,12 +843,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           </div>
 
           <div class="sec-title">予想される合併症と対応</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:2px 0 8px">
-            <button type="button" class="qdose-btn" style="min-height:36px;padding:6px 10px;font-size:12px" onclick="saveHospitalDefaults()">🏥 この内容を病院の既定にする</button>
-            <button type="button" class="qdose-btn dp-unplanned" style="min-height:36px;padding:6px 10px;font-size:12px" onclick="applyHospitalDefaults(current,true)">既定を読み込む</button>
-            <span id="hospDefNote" style="font-size:11px;color:var(--muted)"></span>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">⚠️ 体重を入力すると、各対応の用量が自動計算されます。病院の既定を保存すると、新規症例に最初から入ります（機材や対応は病院ごとにほぼ固定のため）</div>
+          <div id="hospDefNote" style="font-size:11px;color:#075985;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:5px 9px;margin:2px 0 8px;display:none"></div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">⚠️ 体重を入力すると、各対応の用量が自動計算されます</div>
 
           <!-- 低血圧 -->
           <div class="comp-block">
@@ -5472,6 +5468,21 @@ const HOSP_DEFAULT_KEYS = [
   'equipTemp','equipECG','equipHR','equipRR','equipEtCO2','equipSpO2','equipABP','equipGas','equipOscillo','equipDoppler','equipArterial',
 ];
 function getHospitalDefaults() { const h = userPresets && userPresets.__hospital__; return (h && h.comps && typeof h.comps === 'object') ? h : null; }
+// ボタン無しで覚える: この病院の直近5症例の設定を多数決(チェック)・直近の非空(数値/メモ)で既定にする
+function derivedHospitalDefaults() {
+  const fac = (sheetsConfig && sheetsConfig.facility) || '';
+  const hist = (cases || []).filter(c => c && (!current || c.id !== current.id) && (!fac || !c.facility || c.facility === fac) && (c.caseNo || c.patientName))
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 5);
+  if (!hist.length) return null;
+  const comps = {};
+  HOSP_DEFAULT_KEYS.forEach(k => {
+    const vals = hist.map(c => c[k]).filter(v => v !== undefined && v !== null);
+    if (!vals.length) return;
+    if (typeof vals[0] === 'boolean') comps[k] = vals.filter(Boolean).length * 2 >= vals.length;
+    else { const nz = vals.find(v => String(v).trim() !== ''); if (nz !== undefined) comps[k] = nz; }
+  });
+  return { comps, src: `直近${hist.length}症例の設定` };
+}
 function saveHospitalDefaults() {
   if (!current) return;
   collectForm();
@@ -5488,15 +5499,18 @@ function saveHospitalDefaults() {
   showToast('🏥 合併症と対応・準備器材を病院の既定として保存しました。新規症例に自動で入ります');
 }
 function applyHospitalDefaults(c, manual) {
-  const h = getHospitalDefaults(); if (!h || !c) return false;
+  if (!c) return false;
+  const h = getHospitalDefaults() || derivedHospitalDefaults();  // 明示保存があればそれ、無ければ直近症例から
+  if (!h) return false;
   Object.keys(h.comps).forEach(k => { c[k] = h.comps[k]; });
+  c._compsAutoSrc = h.src || ('保存済みの既定 ' + String(h.savedAt || '').slice(5, 16));
   if (manual) { populateForm(); autoSave(); showToast('病院の既定を読み込みました'); }
   return true;
 }
 function updateHospDefNote() {
-  const el = document.getElementById('hospDefNote'); if (!el) return;
-  const h = getHospitalDefaults();
-  el.textContent = h ? `既定あり（保存 ${String(h.savedAt || '').slice(5, 16)}）・新規症例に自動適用` : '既定は未保存';
+  const el = document.getElementById('hospDefNote'); if (!el || !current) return;
+  if (current._compsAutoSrc) { el.textContent = `🏥 ${current._compsAutoSrc}から自動で入っています（変えれば次回以降に反映）`; el.style.display = ''; }
+  else el.style.display = 'none';
 }
 
 function toggleDrug(key, event) {
