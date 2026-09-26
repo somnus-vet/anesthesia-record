@@ -180,6 +180,32 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tl-row.tl-proc{border-left-color:#dc2626}
 .tl-kind-proc{background:#fee2e2;color:#991b1b}
 .tl-surg-tag{font-size:10.5px;font-weight:800;color:#fff;background:#1e3a5f;border-radius:6px;padding:2px 6px;margin-left:6px;white-space:nowrap}
+.alg-box{border:1.5px solid #f3b4b4;border-radius:10px;background:#fff7f7;padding:9px 10px;margin:4px 0 8px}
+.alg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.alg-title{font-weight:800;color:#b91c1c;font-size:13.5px;white-space:nowrap}
+.alg-seg{flex:1;min-width:230px}
+.alg-seg .seg-i.on-none{background:#15803d;color:#fff;font-weight:700}
+.alg-seg .seg-i.on-yes{background:#b91c1c;color:#fff;font-weight:700}
+.alg-seg .seg-i.on-unk{background:#b45309;color:#fff;font-weight:700}
+.alg-item{background:#fff;border:1.5px solid #fecaca;border-radius:9px;padding:8px 9px;margin-bottom:7px}
+.alg-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.alg-row:last-child{margin-bottom:0}
+.alg-chip{padding:5px 10px;border:1.5px solid var(--border);border-radius:14px;background:#f8fafc;font-size:12px;font-weight:700;cursor:pointer;min-height:32px;-webkit-user-select:none;color:var(--text)}
+.alg-chip.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.alg-chip.sev-mild.on{background:#ca8a04;border-color:#ca8a04}.alg-chip.sev-mod.on{background:#ea580c;border-color:#ea580c}.alg-chip.sev-severe.on{background:#b91c1c;border-color:#b91c1c}
+.alg-lbl{font-size:11px;color:var(--muted);font-weight:700;min-width:34px}
+.alg-name{flex:1;min-width:140px}
+.alg-del{width:32px;height:32px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--muted);cursor:pointer;margin-left:auto}
+.alg-past{font-size:12px;color:#9a3412;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:6px 9px;margin-bottom:7px;line-height:1.5}
+.alg-banner{padding:7px 12px;font-size:13px;font-weight:800;line-height:1.4;display:flex;gap:8px;align-items:center}
+.alg-banner.yes{background:#b91c1c;color:#fff}
+.alg-banner.past{background:#f59e0b;color:#111}
+.alg-banner.unk{background:#fef3c7;color:#92400e;font-weight:700;font-size:12px}
+.alg-banner .alg-b-body{flex:1;min-width:0;white-space:normal}
+.case-alg-badge{background:#b91c1c;color:#fff;font-size:10px;font-weight:800;border-radius:5px;padding:1px 5px;margin-left:5px;white-space:nowrap}
+.drug-alg-badge{background:#b91c1c;color:#fff;font-size:10px;font-weight:800;border-radius:5px;padding:1px 5px;margin-left:6px;white-space:nowrap}
+.alg-suggest{margin:0 0 6px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.10)}
+.alg-suggest .bs-i{padding:9px 12px;font-size:13.5px;cursor:pointer;border-bottom:1px solid #eef2f6}
 .drug-toggle{width:36px;height:36px;border:2px solid var(--border);border-radius:8px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:4px;transition:all .12s;font-size:0;-webkit-user-select:none}
 .drug-row.on .drug-toggle{background:var(--blue);border-color:var(--blue);font-size:16px;color:#fff}
 .drug-row.on .drug-toggle::after{content:'✓';font-weight:800}
@@ -594,6 +620,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <div class="hdr-date" id="hDate"></div>
     <div class="weight-pill" id="weightPill">—kg</div>
   </div>
+  <div id="algBanner" class="alg-banner" style="display:none" onclick="switchTab(0);setTimeout(()=>{const b=document.getElementById('algBox'); if(b) b.scrollIntoView({block:'center'});},50)"></div>
   <nav class="tab-bar">
     <div class="tab on" onclick="switchTab(0)"><span class="ti">🐶</span>患者/術前</div>
     <div class="tab" onclick="switchTab(1)"><span class="ti">🔧</span>手術/器材</div>
@@ -694,7 +721,19 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           </div>
           <div class="frow">
             <div class="chk-item" onclick="toggleChk(this,'seizures')"><div class="chk-box"></div><span class="chk-label">発作歴</span></div>
-            <div class="chk-item" onclick="toggleChk(this,'allergies')"><div class="chk-box"></div><span class="chk-label">アレルギー</span></div>
+          </div>
+          <div class="alg-box" id="algBox">
+            <div class="alg-head">
+              <span class="alg-title">⚠️ アレルギー</span>
+              <div class="seg alg-seg" id="algSeg">
+                <div class="seg-i" data-st="" onclick="setAllergyState('')">未確認</div>
+                <div class="seg-i" data-st="none" onclick="setAllergyState('none')">なし（確認済）</div>
+                <div class="seg-i" data-st="yes" onclick="setAllergyState('yes')">あり</div>
+              </div>
+            </div>
+            <div id="algPast"></div>
+            <div id="algItems"></div>
+            <button type="button" class="btn-add-row" id="algAddBtn" onclick="addAllergyItem()" style="margin-top:2px;padding:8px;display:none">＋ 項目を追加</button>
           </div>
           <div class="frow">
             <span class="flabel flabel-w">事前投与中薬剤</span>
@@ -3899,7 +3938,7 @@ function renderCasesList() {
     return `<div class="case-card${isToday ? ' case-today' : ''}" onclick="openCase('${c.id}')">
       <div class="case-icon">${sp}</div>
       <div class="case-info">
-        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${progressBadge}${rvCommentBadge(c)}</div>
+        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${algState(c) === 'yes' ? '<span class="case-alg-badge">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}${progressBadge}${rvCommentBadge(c)}</div>
         <div class="case-meta">${esc(c.date)} ${c.caseNo ? '| No.'+esc(c.caseNo) : ''} | ${esc(diag)}</div>
       </div>
       <button class="case-del" onclick="event.stopPropagation();deleteCase('${c.id}')" title="削除">🗑</button>
@@ -4068,7 +4107,8 @@ function openPastPreview(id) {
   const esc2 = v => esc(String(v || ''));
   const _tube = [c.tubeSize ? esc2(c.tubeSize) + 'mm' : '', c.tubeSizeFr ? esc2(c.tubeSizeFr) + 'Fr' : ''].filter(Boolean).join(' / ');
   let base = `${esc2(c.procedure || c.diagnosis || '術式未記載')} ／ ${esc2(c.weight || '—')}kg`
-    + (_tube ? ` ／ ET ${_tube}` : '') + (c.intubationDifficult ? ' ／ <b style="color:#c0392b">⚠️挿管困難</b>' : '');
+    + (_tube ? ` ／ ET ${_tube}` : '') + (c.intubationDifficult ? ' ／ <b style="color:#c0392b">⚠️挿管困難</b>' : '')
+    + (algState(c) === 'yes' ? `<div style="margin-top:4px;color:#b91c1c;font-weight:800">⚠️ アレルギー: ${esc2(allergySummaryText(c))}</div>` : (algState(c) === 'none' ? '<div style="margin-top:4px;color:var(--muted)">アレルギー: なし（確認済）</div>' : ''));
   const phases = [['導入', c.phaseFlagInd, c.phaseNoteInd], ['維持', c.phaseFlagMaint, c.phaseNoteMaint], ['覚醒', c.phaseFlagWake, c.phaseNoteWake], ['術後', c.phaseFlagPost, c.phaseNotePost]]
     .filter(x => x[1] || (x[2] || '').trim())
     .map(x => `<div>${x[1] ? '<b style="color:#c0392b">⚠️' : '<b>'}${x[0]}</b>: ${esc2(x[2] || '(メモなし)')}</div>`).join('');
@@ -4167,7 +4207,7 @@ function renderPatientHistory() {
     const proc = c.procedure || c.diagnosis || '術式未記載';
     const wt = c.weight ? ` / ${esc(c.weight)}kg` : '';
     const tube = c.tubeSize ? ` / ET${esc(c.tubeSize)}` : '';
-    const diff = c.intubationDifficult ? ' / ⚠️挿管困難' : '';
+    const diff = (c.intubationDifficult ? ' / ⚠️挿管困難' : '') + (algState(c) === 'yes' ? ` / <b style="color:#b91c1c">⚠️ｱﾚﾙｷﾞｰ: ${esc(allergySummaryText(c))}</b>` : '');
     const tr = caseTroubles(c);
     const badges = tr.map(x => `<span style="background:#ffe1e1;color:#c0392b;font-weight:800;font-size:10.5px;border-radius:5px;padding:1px 5px;margin-left:3px;white-space:nowrap">⚠️${x.ph}</span>`).join('');
     const noteLine = tr.filter(x => x.note).map(x => `${x.ph}: ${esc(x.note)}`).join(' ／ ');
@@ -4197,6 +4237,12 @@ function copyCaseAsNew(id) {
    'tubeSize','tubeSizeFr','intubationDifficult'].forEach(k => {
     if (src[k] !== undefined && src[k] !== null) c[k] = src[k];
   });
+  // アレルギーは命に関わるので必ず引き継ぐ(項目は複製し、この症例で再確認できる状態にする)
+  if (algState(src) === 'yes') {
+    c.allergyState = 'yes';
+    c.allergyItems = algItems(src).map(it => ({ uid: genUid(), cat: it.cat || '薬剤', name: it.name || '', reaction: it.reaction || '', severity: it.severity || '' }));
+    c.allergies = true; c.allergyDetail = src.allergyDetail || '';
+  } else if (algState(src) === 'none') { c.allergyState = ''; }  // 「なし」は今回あらためて確認する(未確認に戻す)
   // patientIdとcaseNoは常に同期(片方だけの旧データ対策)
   if (!c.patientId && c.caseNo) c.patientId = c.caseNo;
   if (!c.caseNo && c.patientId) c.caseNo = c.patientId;
@@ -4721,6 +4767,7 @@ function populateForm() {
 
   try { refreshMixChips(); renderMixSummary(); } catch (_) {}
   try { renderProcBoxes(); } catch (_) {}
+  try { renderAllergyBox(); updateAllergyBanner(); refreshAllergyDrugBadges(); } catch (_) {}
   // 猫×アセトアミノフェン禁忌の行状態を反映
   try { applyAcetaminophenBan(); } catch(_) {}
 
@@ -5076,6 +5123,219 @@ function removeAddonDrug(baseKey) {
   autoSave();
 }
 
+// ─────────────────────────────────────────────────
+// アレルギー: 命に関わるので3状態(未確認/なし(確認済)/あり)＋項目で記録し、
+// ヘッダーに常時表示・過去症例から警告・再麻酔コピーで引き継ぎ・薬剤名一致で警告する。
+//   current.allergyState = '' | 'none' | 'yes'
+//   current.allergyItems = [{uid, cat, name, reaction, severity}]
+//   互換: current.allergies(真偽) / current.allergyDetail(要約文) も同期して旧画面・振り返り・SomLogで使えるようにする
+// ─────────────────────────────────────────────────
+const ALG_CATS = ['薬剤', '食物', '造影剤', 'ワクチン', '環境', 'その他'];
+const ALG_REACTIONS = ['発疹・かゆみ', '顔面腫脹', '嘔吐・下痢', '呼吸困難', 'アナフィラキシー', '低血圧', 'その他'];
+const ALG_SEV = [['mild', '軽度'], ['mod', '中等度'], ['severe', '重度']];
+function algItems(c) { c = c || current; return (c && Array.isArray(c.allergyItems)) ? c.allergyItems.filter(x => x && !x.deleted) : []; }
+function algState(c) {
+  c = c || current; if (!c) return '';
+  if (c.allergyState === 'none' || c.allergyState === 'yes') return c.allergyState;
+  // 旧データ: チェックだけ/記載だけ → あり
+  if (c.allergies || (c.allergyDetail || '').trim() || algItems(c).length) return 'yes';
+  return '';
+}
+function algItemText(it) {
+  const sev = (ALG_SEV.find(s => s[0] === it.severity) || [])[1] || '';
+  const parts = [it.name || '(名称未入力)'];
+  const sub = [it.cat && it.cat !== '薬剤' ? it.cat : '', it.reaction || '', sev].filter(Boolean).join('・');
+  return parts[0] + (sub ? `（${sub}）` : '');
+}
+function allergySummaryText(c) {
+  c = c || current; if (!c) return '';
+  if (algState(c) !== 'yes') return '';
+  const items = algItems(c).map(algItemText);
+  if (!items.length && (c.allergyDetail || '').trim()) return c.allergyDetail.trim();
+  if (!items.length) return '（項目未入力）';
+  return items.join('、');
+}
+function syncAllergyLegacy() {
+  if (!current) return;
+  const st = algState(current);
+  current.allergies = (st === 'yes');
+  if (st === 'yes') {
+    const items = algItems(current).map(algItemText);
+    if (items.length) current.allergyDetail = items.join('、');
+  } else if (st === 'none') {
+    current.allergyDetail = '';
+  }
+}
+function setAllergyState(st) {
+  if (!current) return;
+  current.allergyState = st;
+  if (st === 'yes' && !algItems(current).length) {
+    if (!Array.isArray(current.allergyItems)) current.allergyItems = [];
+    current.allergyItems.push({ uid: genUid(), cat: '薬剤', name: '', reaction: '', severity: '' });
+  }
+  syncAllergyLegacy();
+  renderAllergyBox();
+  updateAllergyBanner();
+  autoSave();
+  if (st === 'yes') { const inp = document.querySelector('#algItems .alg-name'); if (inp) inp.focus(); }
+}
+function addAllergyItem() {
+  if (!current) return;
+  if (!Array.isArray(current.allergyItems)) current.allergyItems = [];
+  current.allergyItems.push({ uid: genUid(), cat: '薬剤', name: '', reaction: '', severity: '' });
+  current.allergyState = 'yes';
+  syncAllergyLegacy(); renderAllergyBox(); updateAllergyBanner(); autoSave();
+  const inps = document.querySelectorAll('#algItems .alg-name'); if (inps.length) inps[inps.length - 1].focus();
+}
+function removeAllergyItem(uid) {
+  if (!current || !Array.isArray(current.allergyItems)) return;
+  const it = current.allergyItems.find(x => x && x.uid === uid);
+  if (it) it.deleted = true;  // 同期unionで復活しないよう墓標
+  syncAllergyLegacy(); renderAllergyBox(); updateAllergyBanner(); autoSave();
+}
+function setAllergyField(uid, field, val) {
+  if (!current) return;
+  const it = algItems(current).find(x => x.uid === uid); if (!it) return;
+  if (field === 'severity' || field === 'cat' || field === 'reaction') {
+    it[field] = (it[field] === val && field !== 'cat') ? '' : val;  // 同じチップ再タップで解除(区分は常に1つ)
+  } else it[field] = val;
+  touchEv(it);
+  syncAllergyLegacy();
+  if (field !== 'name') renderAllergyBox();
+  updateAllergyBanner();
+  try { refreshAllergyDrugBadges(); renderQuickDoseBar(); } catch (_) {}
+  autoSave();
+}
+// 過去症例(同じ患者)の情報。renderPatientHistory と同じ照合(ID一致 → 名前＋動物種)
+function patientPastCases() {
+  if (!current) return [];
+  const fac = (sheetsConfig && sheetsConfig.facility) || '';
+  const pid = String(getVal('f_patientId') || current.patientId || current.caseNo || '').trim();
+  const nm = String(getVal('f_patientName') || current.patientName || '').trim();
+  return cases.filter(c => {
+    if (c.id === current.id) return false;
+    if (fac && c.facility && c.facility !== fac) return false;
+    if (pid) return String(c.caseNo || '').trim() === pid || String(c.patientId || '').trim() === pid;
+    if (nm) return String(c.patientName || '').trim() === nm && c.species === current.species;
+    return false;
+  }).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+}
+function pastAllergyInfo() {
+  const hits = patientPastCases().filter(c => algState(c) === 'yes');
+  if (!hits.length) return null;
+  const names = [];
+  hits.forEach(c => { const t = allergySummaryText(c); if (t && names.indexOf(t) < 0) names.push(t); });
+  return { count: hits.length, latest: hits[0].date || '', text: names.join('／') };
+}
+// 過去症例の項目をこの症例へ取り込む(再確認を促す)
+function importPastAllergies() {
+  if (!current) return;
+  const hits = patientPastCases().filter(c => algState(c) === 'yes');
+  if (!Array.isArray(current.allergyItems)) current.allergyItems = [];
+  const have = new Set(algItems(current).map(x => (x.name || '').trim()));
+  let n = 0;
+  hits.forEach(c => algItems(c).forEach(it => {
+    const nm = (it.name || '').trim();
+    if (!nm || have.has(nm)) return;
+    have.add(nm); n++;
+    current.allergyItems.push({ uid: genUid(), cat: it.cat || '薬剤', name: nm, reaction: it.reaction || '', severity: it.severity || '' });
+  }));
+  if (!n && hits.length) {
+    // 旧データ(記載文のみ)の場合は文をそのまま1項目に
+    hits.forEach(c => { const t = (c.allergyDetail || '').trim(); if (t && !have.has(t)) { have.add(t); n++; current.allergyItems.push({ uid: genUid(), cat: 'その他', name: t, reaction: '', severity: '' }); } });
+  }
+  current.allergyState = 'yes';
+  syncAllergyLegacy(); renderAllergyBox(); updateAllergyBanner(); autoSave();
+  showToast(n ? `過去の記録から ${n} 件を取り込みました。内容を再確認してください` : '取り込める項目がありませんでした');
+}
+function drugNameSuggestions(q) {
+  const qq = String(q || '').trim().toLowerCase(); if (!qq) return [];
+  const seen = new Set(), out = [];
+  Object.values(DRUG_GROUPS).flat().forEach(d => { if (d.label.toLowerCase().indexOf(qq) >= 0 && !seen.has(d.label)) { seen.add(d.label); out.push(d.label); } });
+  return out.slice(0, 6);
+}
+function algNameInput(uid, el) {
+  setAllergyField(uid, 'name', el.value);
+  const box = document.getElementById('algSug_' + uid); if (!box) return;
+  const it = algItems(current).find(x => x.uid === uid);
+  const list = (it && it.cat === '薬剤') ? drugNameSuggestions(el.value).filter(n => n !== el.value) : [];
+  if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = list.map(n => `<div class="bs-i" onmousedown="event.preventDefault();algPickName('${uid}',this.dataset.n)" data-n="${escA(n)}">${esc(n)}</div>`).join('');
+  box.style.display = '';
+}
+function algPickName(uid, name) {
+  const inp = document.querySelector(`#algItems .alg-name[data-uid="${uid}"]`); if (inp) inp.value = name;
+  const box = document.getElementById('algSug_' + uid); if (box) { box.style.display = 'none'; }
+  setAllergyField(uid, 'name', name);
+}
+function renderAllergyBox() {
+  const seg = document.getElementById('algSeg'), items = document.getElementById('algItems'), add = document.getElementById('algAddBtn'), past = document.getElementById('algPast');
+  if (!seg || !items || !current) return;
+  const st = algState(current);
+  seg.querySelectorAll('.seg-i').forEach(el => {
+    el.classList.remove('on', 'on-none', 'on-yes', 'on-unk');
+    if (el.dataset.st === st) el.classList.add('on', st === 'none' ? 'on-none' : st === 'yes' ? 'on-yes' : 'on-unk');
+  });
+  // 過去症例からの警告(この症例で「あり」以外の時に出す。「あり」なら項目の下に控えめに)
+  const pa = pastAllergyInfo();
+  if (past) {
+    past.innerHTML = pa ? `<div class="alg-past">🕘 過去の麻酔記録にアレルギーあり（${esc(pa.latest)}${pa.count > 1 ? ' 他' + (pa.count - 1) + '件' : ''}）: <b>${esc(pa.text)}</b>`
+      + (st !== 'yes' || !algItems(current).length ? ` <button type="button" class="alg-chip" style="margin-left:6px" onclick="importPastAllergies()">この症例に取り込む</button>` : '') + `</div>` : '';
+  }
+  if (st !== 'yes') { items.innerHTML = ''; if (add) add.style.display = 'none'; return; }
+  const rows = algItems(current);
+  items.innerHTML = rows.map(it => `<div class="alg-item">
+      <div class="alg-row"><span class="alg-lbl">区分</span>${ALG_CATS.map(c => `<button type="button" class="alg-chip${it.cat === c ? ' on' : ''}" onclick="setAllergyField('${it.uid}','cat','${c}')">${c}</button>`).join('')}
+        <button type="button" class="alg-del" onclick="removeAllergyItem('${it.uid}')" title="この項目を削除">✕</button></div>
+      <div class="alg-row"><span class="alg-lbl">名称</span><input class="fin alg-name" type="text" data-uid="${it.uid}" value="${escA(it.name || '')}" placeholder="${it.cat === '薬剤' ? '薬剤名（例: セファゾリン）' : '原因物質'}" oninput="algNameInput('${it.uid}',this)" onblur="setTimeout(()=>{const b=document.getElementById('algSug_${it.uid}'); if(b) b.style.display='none';},150)" autocomplete="off"></div>
+      <div class="alg-suggest" id="algSug_${it.uid}" style="display:none"></div>
+      <div class="alg-row"><span class="alg-lbl">反応</span>${ALG_REACTIONS.map(r => `<button type="button" class="alg-chip${it.reaction === r ? ' on' : ''}" onclick="setAllergyField('${it.uid}','reaction','${r}')">${r}</button>`).join('')}</div>
+      <div class="alg-row"><span class="alg-lbl">重症度</span>${ALG_SEV.map(s => `<button type="button" class="alg-chip sev-${s[0]}${it.severity === s[0] ? ' on' : ''}" onclick="setAllergyField('${it.uid}','severity','${s[0]}')">${s[1]}</button>`).join('')}</div>
+    </div>`).join('');
+  if (add) add.style.display = '';
+}
+function updateAllergyBanner() {
+  const b = document.getElementById('algBanner'); if (!b || !current) return;
+  const st = algState(current);
+  const pa = pastAllergyInfo();
+  b.className = 'alg-banner';
+  if (st === 'yes') {
+    b.classList.add('yes');
+    b.innerHTML = `<span>⚠️</span><span class="alg-b-body">アレルギー: ${esc(allergySummaryText(current))}</span>`;
+    b.style.display = '';
+  } else if (pa) {
+    b.classList.add('past');
+    b.innerHTML = `<span>⚠️</span><span class="alg-b-body">過去の麻酔記録にアレルギーあり: ${esc(pa.text)}（今回は${st === 'none' ? '「なし」と記録' : '未確認'}。タップして確認）</span>`;
+    b.style.display = '';
+  } else if (st === '') {
+    b.classList.add('unk');
+    b.innerHTML = `<span>❔</span><span class="alg-b-body">アレルギー未確認 — 術前タブで「なし（確認済）」か「あり」を記録してください</span>`;
+    b.style.display = '';
+  } else {
+    b.style.display = 'none';
+  }
+}
+// 薬剤名がアレルギー項目と一致(部分一致)するか
+function allergyMatchForDrug(label) {
+  if (!current || algState(current) !== 'yes' || !label) return null;
+  const l = String(label).toLowerCase();
+  return algItems(current).find(it => { const n = (it.name || '').trim().toLowerCase(); return n && (l.indexOf(n) >= 0 || n.indexOf(l) >= 0); }) || null;
+}
+function refreshAllergyDrugBadges() {
+  document.querySelectorAll('#formScreen .drug-row').forEach(row => {
+    const nameEl = row.querySelector('.drug-name'); if (!nameEl) return;
+    const old = nameEl.querySelector('.drug-alg-badge'); if (old) old.remove();
+    const key = row.id.replace(/^drow_/, '');
+    const d = findDrugDef(key); if (!d) return;
+    if (allergyMatchForDrug(d.label)) nameEl.insertAdjacentHTML('beforeend', '<span class="drug-alg-badge">⚠️アレルギー</span>');
+  });
+}
+function warnIfAllergyDrug(label) {
+  const it = allergyMatchForDrug(label);
+  if (it) { try { showToast(`⚠️ アレルギー登録薬です: ${algItemText(it)}`); } catch (_) {} }
+  return !!it;
+}
+
 function toggleDrug(key, event) {
   if (!current) return;
   if (isDrugBanned(key)) { showToast('⚠️ 猫にはアセトアミノフェンは使用できません（禁忌）'); return; }
@@ -5084,6 +5344,7 @@ function toggleDrug(key, event) {
   if (event.target.closest('.drug-inputs') || event.target.closest('.rgrp')) return;
   if (!current.drugs[key]) current.drugs[key] = { use:false, dose:'', route:'' };
   current.drugs[key].use = !current.drugs[key].use;
+  if (current.drugs[key].use) { const _dd = findDrugDef(key); if (_dd) warnIfAllergyDrug(_dd.label); }
   const row = document.getElementById('drow_' + key);
   if (row) row.classList.toggle('on', current.drugs[key].use);
   try { refreshMixChips(); renderMixSummary(); } catch (_) {}
@@ -6277,7 +6538,7 @@ function renderQuickDoseBar() {
     const hits = log.filter(r => r.drug === d.label && r.time && !r.deleted);  // 削除墓標は回数に数えない
     // バッジは回数のみ。時刻まで載せるとボタンが横に伸びて折り返し、縦に積み上がるため。
     const badge = hits.length ? `<span class="qdose-badge">×${hits.length}</span>` : '';
-    const laterTag = DRUG_GROUPS.addon.some(x => x.key === d.key) ? '<span class="later-tag">追加</span>' : '';
+    const laterTag = (DRUG_GROUPS.addon.some(x => x.key === d.key) ? '<span class="later-tag">追加</span>' : '') + (allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : '');
     return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${laterTag}${badge}</button>`;
   }).join('');
 }
@@ -6351,6 +6612,7 @@ function commitDose(perKg) {
   collectForm();
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
   const drugData = (current.drugs && current.drugs[doseSelectKey]) || {};
+  warnIfAllergyDrug(d.label);
   const t = nowTime();
   const route = doseSelectRoute || drugData.route || d.def;
   current.drugLog.push({ drug: d.label, dose: formatDose(d, perKg), route: route, time: t, uid: genUid() });
@@ -7408,7 +7670,7 @@ function generatePrintHTML(c) {
         ${fld('BCS', c.bcs ? c.bcs+'/9' : '')}
         ${fld('意識', c.consciousness)}
         ${c.seizures ? chip('発作歴',1) : ''}
-        ${c.allergies ? chip('アレルギー',1) : ''}
+        ${algState(c) === 'yes' ? fld('⚠️アレルギー', allergySummaryText(c)) : (algState(c) === 'none' ? fld('アレルギー', 'なし（確認済）') : fld('アレルギー', '未確認'))}
         ${fld('事前投与中薬剤', c.preMeds)}
       </div>
     </div>
@@ -8441,6 +8703,7 @@ function rvDraftRationale() {
   lines.push(`${c.ageY ? c.ageY + '歳' : ''}${c.sex ? c.sex : ''}${sp}、ASA-PS ${c.asaps || '?'}${c.asapsE ? 'E' : ''}${c.rvAsaReason ? '（' + c.rvAsaReason + '）' : ''}。${c.procedure || '手術'}で予想疼痛は${pain || '?'}。`);
   const g = (keys) => keys.map(k => { const d = findDrugDef(k); const dd = (c.drugs || {})[k]; if (!d || !dd || !dd.use) return ''; return `${d.label}${P[k] ? '(' + P[k] + ')' : ''}`; }).filter(Boolean);
   const _pg = premedGroupText(c, d => `${d.label}${P[d.key] ? '(' + P[d.key] + ')' : ''}`);
+  if (algState(c) === 'yes') lines.push(`⚠️アレルギー: ${allergySummaryText(c)}。`);
   if (_pg.premed.length) lines.push(`前投薬は${_pg.premed.join('＋')}を選択。`);
   { const _pst = procSegText(c); if (_pst) lines.push(`手技: ${_pst}。`); }
   const ind = g(DRUG_GROUPS.induction.map(d => d.key)); if (ind.length) lines.push(`導入は${ind.join('＋')}。`);
@@ -9283,7 +9546,7 @@ function _tsClose() {
 .screen{inset:22px 0 0 0!important}
 @media print{.demo-banner{display:none}}
 </style>
-<div class="demo-banner">テスト版（混注／追加投与／術式ボックス・検査/手術タグ切替・手技ごとの時間）— 架空データ・どこにも送信されません</div>
+<div class="demo-banner">テスト版（混注／追加投与／術式ボックス／アレルギー欄）— 架空データ・どこにも送信されません</div>
 <script>
 (function () {
   const D = (h, m, s) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s || 0).padStart(2, '0')}`;
