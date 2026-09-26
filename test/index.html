@@ -256,6 +256,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .mix-sum-row b{font-weight:800}
 .tl-mixbadge{font-size:10.5px;font-weight:800;color:#fff;border-radius:6px;padding:2px 5px;margin-right:2px;white-space:nowrap}
 .tl-mixbadge.m1{background:#f59e0b}.tl-mixbadge.m2{background:#0d9488}.tl-mixbadge.m3{background:#7c3aed}
+.qdose-btn.dp-unplanned{background:#fff;color:var(--navy);border-color:var(--border)}
 .qdose-btn .later-tag{font-size:10px;background:#64748b;color:#fff;border-radius:5px;padding:1px 4px}
 .ev-mix1{background:#fff7ed!important;border-color:#f59e0b!important;color:#b45309!important}
 .ev-mix2{background:#f0fdfa!important;border-color:#0d9488!important;color:#0f766e!important}
@@ -1248,7 +1249,10 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div id="eventBtnBar" class="qdose-bar"></div>
           <div style="font-size:12px;color:var(--muted);margin:12px 0 6px">💊 薬剤を記録 <span style="opacity:.7">— タップで用量を選んで記録</span></div>
           <div id="quickDoseBar" class="qdose-bar"></div>
-          <button class="btn-add-row" onclick="addDrugLogRow()" style="margin-top:6px">＋ 薬剤行を追加</button>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn-add-row" onclick="openDrugPick()" style="margin-top:0;flex:1;border-style:solid;border-color:var(--blue);color:var(--blue);font-weight:700">💊 薬剤一覧から選んで記録</button>
+            <button class="btn-add-row" onclick="addDrugLogRow()" style="margin-top:0;flex:1">＋ 手入力の行</button>
+          </div>
           <div style="font-size:12px;color:var(--muted);font-weight:700;margin:14px 0 5px">📋 記録（時刻順）</div>
           <div id="timelineList"></div>
           <button class="btn-add-row" onclick="renderTimelineList()" style="margin-top:9px">⏱ 時刻順に整列</button>
@@ -1524,6 +1528,25 @@ input.fin[readonly]{background:#fff;cursor:pointer}
         <button type="button" onclick="closeDelCase()" style="flex:1;min-height:48px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-weight:700;color:var(--muted);font-family:inherit;font-size:14px;cursor:pointer">キャンセル</button>
         <button type="button" onclick="confirmDelCase()" style="flex:1;min-height:48px;border:none;border-radius:10px;background:#c0392b;color:#fff;font-weight:800;font-family:inherit;font-size:14px;cursor:pointer">削除する</button>
       </div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="algModal" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-hdr" style="background:#b91c1c">⚠️ アレルギーあり
+      <button class="modal-close" onclick="document.getElementById('algModal').classList.remove('on')">✕</button></div>
+    <div class="modal-body" id="algModalBody" style="font-size:15px;font-weight:700;line-height:1.7;color:#b91c1c"></div>
+    <div class="modal-footer">
+      <button class="btn-save" style="width:100%;background:#b91c1c" onclick="document.getElementById('algModal').classList.remove('on')">確認した</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="drugPickModal" onclick="if(event.target===this)closeDrugPick()">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-hdr"><span>💊 薬剤一覧から選んで記録</span><button class="modal-close" onclick="closeDrugPick()">×</button></div>
+    <div class="modal-body" style="padding-top:8px">
+      <input class="fin" id="drugPickSearch" type="text" placeholder="薬剤名で検索（例: ブト）" oninput="renderDrugPick(this.value)" autocomplete="off" style="margin-bottom:8px">
+      <div id="drugPickBody" style="max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     </div>
   </div>
 </div>
@@ -5347,6 +5370,41 @@ function warnIfAllergyDrug(label) {
   return !!it;
 }
 
+const _algPopShown = {};  // 症例id → 表示済み(この画面を開いている間)
+function showAllergyPopup(force) {
+  if (!current || algState(current) !== 'yes') return;
+  if (!force && _algPopShown[current.id]) return;
+  _algPopShown[current.id] = true;
+  const body = document.getElementById('algModalBody'); if (!body) return;
+  const items = algItems(current);
+  body.innerHTML = (items.length ? items.map(it => `<div>・${esc(algItemText(it))}</div>`).join('') : `<div>${esc(allergySummaryText(current))}</div>`)
+    + `<div style="font-size:12.5px;font-weight:600;color:#555;margin-top:10px">該当薬にはプランと薬剤ボタンに ⚠️ が付きます。麻酔プランを組む前に確認してください</div>`;
+  document.getElementById('algModal').classList.add('on');
+}
+// ── 術中タブ: 薬剤一覧から選んで記録(プランに無い薬も用量シートで記録できる) ──
+function openDrugPick() {
+  const s = document.getElementById('drugPickSearch'); if (s) s.value = '';
+  renderDrugPick('');
+  document.getElementById('drugPickModal').classList.add('on');
+  setTimeout(() => { if (s) s.focus(); }, 80);
+}
+function closeDrugPick() { document.getElementById('drugPickModal').classList.remove('on'); }
+function renderDrugPick(q) {
+  const box = document.getElementById('drugPickBody'); if (!box) return;
+  const qq = String(q || '').trim().toLowerCase();
+  const gn = { premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
+  const used = new Set(Object.values(DRUG_GROUPS).flat().filter(d => current && current.drugs && current.drugs[d.key] && current.drugs[d.key].use).map(d => d.key));
+  const html = Object.entries(DRUG_GROUPS).map(([gk, arr]) => {
+    if (gk === 'addon') return '';
+    const list = arr.filter(d => !qq || d.label.toLowerCase().indexOf(qq) >= 0);
+    if (!list.length) return '';
+    return `<div style="font-size:11px;font-weight:800;color:var(--muted);margin:8px 0 4px">${gn[gk] || gk}</div><div class="qdose-bar">`
+      + list.map(d => `<button type="button" class="qdose-btn${used.has(d.key) ? '' : ' dp-unplanned'}" onclick="closeDrugPick();quickDose('${d.key}')">${esc(d.label)}<span style="font-size:10px;opacity:.7">${esc(d.unit)}</span>${allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}</button>`).join('')
+      + `</div>`;
+  }).join('');
+  box.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">該当する薬剤がありません。「＋ 手入力の行」で記録してください</div>';
+}
+
 function toggleDrug(key, event) {
   if (!current) return;
   if (isDrugBanned(key)) { showToast('⚠️ 猫にはアセトアミノフェンは使用できません（禁忌）'); return; }
@@ -6564,7 +6622,7 @@ function quickDose(key) {
   doseSelectKey = key;
   const drugData0 = (current.drugs && current.drugs[key]) || {};
   doseSelectRoute = drugData0.route || d.def || (d.routes && d.routes[0]) || '';
-  document.getElementById('doseSelectTitle').textContent = `${d.label} を記録`;
+  document.getElementById('doseSelectTitle').textContent = `${allergyMatchForDrug(d.label) ? '⚠️アレルギー登録薬 ' : ''}${d.label} を記録`;
   const std = stdDoseOf(key);
   const body = document.getElementById('doseSelectBody');
   let html = '';
@@ -6585,7 +6643,20 @@ function quickDose(key) {
     html += doseOptBtn(d, +(std * 2).toFixed(4), '×2');
     html += `</div>`;
   } else {
-    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">プロトコルに標準量が未設定です。用量を入力してください。</div>`;
+    // プランに用量が無い薬(一覧から選んだ薬など): 動物種の参考範囲から 下限/中央/上限 を選べる
+    const _ref = String(current.species === 'cat' ? (d.cat || '') : (d.dog || ''));
+    const _m = _ref.match(/([\d.]+)\s*[〜~\-]\s*([\d.]+)/);
+    const _one = !_m && _ref.match(/^\s*([\d.]+)\s*$/);
+    if (_m || _one) {
+      const lo = parseFloat(_m ? _m[1] : _one[1]), hi = parseFloat(_m ? _m[2] : _one[1]);
+      html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">プランに用量が無いため、参考範囲（${esc(_ref)} ${esc(d.unit)}）から選ぶか手入力してください</div>`;
+      html += `<div class="dose-opts">`;
+      if (_m) { html += doseOptBtn(d, lo, '下限'); html += doseOptBtn(d, +((lo + hi) / 2).toFixed(4), '中央'); html += doseOptBtn(d, hi, '上限'); }
+      else html += doseOptBtn(d, lo, '参考');
+      html += `</div>`;
+    } else {
+      html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">プロトコルに標準量が未設定です。用量を入力してください。</div>`;
+    }
   }
   html += `<div style="display:flex;gap:6px;margin-top:11px;align-items:center">
       <input id="doseCustomInput" class="fin" type="text" inputmode="decimal" placeholder="手入力 (${d.unit})" style="flex:1" autocomplete="off">
@@ -7338,6 +7409,8 @@ function switchTab(i) {
   document.querySelectorAll('.panel').forEach((p,idx) => p.classList.toggle('on', idx === i));
   // 「手術/器材」タブを開いたら、低血圧の昇圧剤一覧を最新の選択状態で再描画
   if (i === 1) renderHypotensionDrugs();
+  // 「麻酔PL」タブを開いたら、アレルギーがあれば1回だけ警告(術中タブでは出さない)
+  if (i === 2) { try { showAllergyPopup(); } catch (_) {} }
   // 「術中/薬剤」タブを開いたら、統合タイムラインを再描画
   if (i === 3) renderTimeline();
   // 「合併/回復」タブを開いたら、経過メモの高さを内容に合わせる
