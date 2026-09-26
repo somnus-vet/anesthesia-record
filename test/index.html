@@ -167,7 +167,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .proc-box{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .proc-box .fin{flex:1;min-width:0}
 .proc-del{width:36px;height:36px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--muted);font-size:15px;cursor:pointer;flex-shrink:0}
-.proc-type{font-size:10px;font-weight:700;border-radius:5px;padding:2px 5px;flex-shrink:0}
+.proc-type{font-size:10px;font-weight:700;border-radius:5px;padding:2px 5px;flex-shrink:0;border:none;font-family:inherit;cursor:pointer;min-height:26px}
 .proc-type.exam{background:#e0f2fe;color:#075985}.proc-type.surg{background:#fee2e2;color:#991b1b}
 .proc-suggest{margin:-2px 0 8px 0;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.10);-webkit-overflow-scrolling:touch}
 .proc-suggest .bs-i{padding:10px 12px;font-size:14px;color:var(--text);cursor:pointer;border-bottom:1px solid #eef2f6;display:flex;align-items:center;gap:8px}
@@ -1159,12 +1159,12 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="dur-box" id="durBoxSurg">
             <span class="dur-lbl">手術時間</span>
             <span class="dur-val" id="durValSurg">—</span>
-            <span class="dur-sub">手術開始から</span>
+            <span class="dur-sub" id="durSubSurg">手術開始から</span>
           </div>
           <div class="dur-box" id="durBoxGlove">
             <span class="dur-lbl">グローブ</span>
             <span class="dur-val" id="durValGlove">—</span>
-            <span class="dur-sub">交換から</span>
+            <span class="dur-sub" id="durSubGlove">交換から</span>
           </div>
         </div>
       </div>
@@ -5380,6 +5380,17 @@ function updateLiveTimers() {
   setTimerBox('Surg', current.surgStart, current.surgEnd, now);
   // グローブ交換から: 最後のグローブ交換時刻（無ければ手術開始）→手術終了で停止
   setTimerBox('Glove', latestGloveTime(), current.surgEnd, now);
+  // 手技の内訳: 進行中の手術手技名と経過分を手術時間の下に、グローブは起点(交換/手術開始)と歯科中の停止を表示
+  try {
+    const _ss = document.getElementById('durSubSurg'), _gs = document.getElementById('durSubGlove'), _gv = document.getElementById('durValGlove');
+    const _segs = procSegments(current);
+    const _act = _segs.filter(s => s.type === 'surg' && s.start && !s.end).slice(-1)[0];
+    if (_ss) _ss.textContent = _act ? `${_act.name} 進行中 ${calcMinutesBetween(_act.start, now) ?? '—'}分` : '手術開始から';
+    if (_gs) {
+      if (procDentalActive(current)) { _gs.textContent = '歯科中は対象外'; if (_gv) _gv.textContent = '—'; }
+      else _gs.textContent = (current.freeNotes || []).some(n => n && !n.deleted && n.kind === 'gloveChange' && n.time) ? '交換から' : '手術開始から';
+    }
+  } catch (_) {}
 }
 
 // 最後のグローブ交換時刻。freeNotes の kind==='gloveChange' の最新時刻。
@@ -6644,10 +6655,48 @@ const PROC_MASTER = [
   { name:'眼科手術', type:'surg' }, { name:'耳道手術', type:'surg' }, { name:'抜歯', type:'surg' }, { name:'生検', type:'surg' },
 ];
 const PROC_EXAM_RE = /CT|MRI|内視鏡|エコー|検査|X線|レントゲン|造影|透視/i;
+// 種別の決め方: 症例での指定(current.procTypes) → この端末で覚えた指定 → マスタ → 語で推定 → 手術
+const PROC_TYPE_LS = 'vet_test_proc_types';
+function procTypeLearned() { try { return JSON.parse(localStorage.getItem(PROC_TYPE_LS) || '{}') || {}; } catch (_) { return {}; } }
 function procType(name) {
+  const ov = current && current.procTypes && current.procTypes[name];
+  if (ov === 'exam' || ov === 'surg') return ov;
+  const lv = procTypeLearned()[name];
+  if (lv === 'exam' || lv === 'surg') return lv;
   const m = PROC_MASTER.find(p => p.name === name);
   if (m) return m.type;
   return PROC_EXAM_RE.test(name) ? 'exam' : 'surg';
+}
+// ボックス横の「検査/手術」タグをタップで切替。症例に保存し、この端末でも覚える(次回から同じ判定)
+function toggleProcType(name) {
+  if (!current || !name) return;
+  const nt = procType(name) === 'exam' ? 'surg' : 'exam';
+  if (!current.procTypes || typeof current.procTypes !== 'object') current.procTypes = {};
+  current.procTypes[name] = nt;
+  try { const m = procTypeLearned(); m[name] = nt; localStorage.setItem(PROC_TYPE_LS, JSON.stringify(m)); } catch (_) {}
+  renderProcBoxes();
+  renderEventButtons();
+  try { recomputeSurgTimes(); renderTimelineList(); updateLiveTimers(); } catch (_) {}
+  autoSave();
+  showToast(`${name} を「${nt === 'exam' ? '検査' : '手術'}」扱いにしました（次回から同じ判定）`);
+}
+// 手技ごとの開始/終了/所要分 [{name,type,start,end,mins}]
+function procSegments(c) {
+  c = c || current; if (!c) return [];
+  return procTokens(c.procedure || '').map(name => {
+    const notes = (c.freeNotes || []).filter(n => n && !n.deleted && n.kind === 'proc' && n.name === name && n.time);
+    const st = notes.filter(n => n.phase === 'start').map(n => n.time).sort((a, b) => (timeToSec(a) || 0) - (timeToSec(b) || 0))[0] || '';
+    const en = notes.filter(n => n.phase === 'end').map(n => n.time).sort((a, b) => (timeToSec(b) || 0) - (timeToSec(a) || 0))[0] || '';
+    const mins = (st && en) ? calcMinutesBetween(st, en) : null;
+    return { name, type: procType(name), start: st, end: en, mins };
+  });
+}
+function procSegText(c) {
+  return procSegments(c).filter(s => s.start || s.end)
+    .map(s => `${s.name}${s.type === 'exam' ? '(検査)' : ''} ${s.start || '?'}〜${s.end || '進行中'}${s.mins !== null ? '（' + s.mins + '分）' : ''}`).join(' / ');
+}
+function procDentalActive(c) {
+  return procSegments(c).some(s => /歯科/.test(s.name) && s.start && !s.end);
 }
 function escA(s) { return esc(s).replace(/"/g, '&quot;'); }
 // この病院の過去症例で使った術式名を回数順に（サジェスト上位に出す）
@@ -6679,7 +6728,7 @@ function renderProcBoxes() {
     return `<div class="proc-box">
       <input class="fin proc-in" type="text" data-i="${i}" value="${escA(t)}" placeholder="${i === 0 ? '術式（タップで候補）' : '追加の手技'}"
         onfocus="onProcFocus(${i})" oninput="onProcInput(${i})" onblur="setTimeout(()=>closeProcSuggest(${i}),150)" autocomplete="off">
-      ${ty ? `<span class="proc-type ${ty}">${ty === 'exam' ? '検査' : '手術'}</span>` : ''}
+      ${ty ? `<button type="button" class="proc-type ${ty}" data-n="${escA(t)}" onclick="toggleProcType(this.dataset.n)" title="タップで検査/手術を切替">${ty === 'exam' ? '検査' : '手術'}</button>` : ''}
       ${(rows.length > 1 || t) ? `<button type="button" class="proc-del" onclick="removeProcBox(${i})" title="この手技を消す">✕</button>` : ''}
     </div>
     <div class="proc-suggest" id="procSuggest_${i}" style="display:none"></div>`;
@@ -6802,8 +6851,12 @@ function recomputeSurgTimes() {
     if (n.phase === 'start' && (s === null || sec < s.sec)) s = { sec, time: n.time };
     if (n.phase === 'end' && (e === null || sec > e.sec)) e = { sec, time: n.time };
   });
-  // 手術種別の手技の記録がまだ1件も無ければ触らない（旧ボタンで記録済みの症例の値を消さない）
-  if (!s && !e) return;
+  // 手術種別の手技の記録が1件も無ければ: 自動で入れた値だけ消し、旧ボタンで記録した値は残す
+  if (!s && !e) {
+    if (current.surgAuto) { current.surgAuto = false; current.surgStart = ''; current.surgEnd = ''; setVal('f_surgStart', ''); setVal('f_surgEnd', ''); updateDurations(); }
+    return;
+  }
+  current.surgAuto = true;
   const ns = s ? s.time : '', ne = e ? e.time : '';
   if ((current.surgStart || '') !== ns) { current.surgStart = ns; setVal('f_surgStart', ns); }
   if ((current.surgEnd || '') !== ne) { current.surgEnd = ne; setVal('f_surgEnd', ne); }
@@ -7550,6 +7603,7 @@ function generatePrintHTML(c) {
         ${fld('帰舎', c.returnToWard)}
         ${fld('麻酔時間', c.anesthDur ? c.anesthDur+'分':'')}
         ${fld('手術時間', c.surgDur ? c.surgDur+'分':'')}
+        ${procSegText(c) ? fld('手技の内訳', procSegText(c)) : ''}
         ${Object.entries(c.procEvents || {}).filter(([k,t]) => t && String(t).trim()).map(([k,t]) => fld(evtLabel(k), t)).join('')}
       </div>
       ${c.events ? `<div class="p-block"><span class="p-label">経過: </span><span class="p-text">${esc(c.events)}</span></div>` : ''}
@@ -8388,6 +8442,7 @@ function rvDraftRationale() {
   const g = (keys) => keys.map(k => { const d = findDrugDef(k); const dd = (c.drugs || {})[k]; if (!d || !dd || !dd.use) return ''; return `${d.label}${P[k] ? '(' + P[k] + ')' : ''}`; }).filter(Boolean);
   const _pg = premedGroupText(c, d => `${d.label}${P[d.key] ? '(' + P[d.key] + ')' : ''}`);
   if (_pg.premed.length) lines.push(`前投薬は${_pg.premed.join('＋')}を選択。`);
+  { const _pst = procSegText(c); if (_pst) lines.push(`手技: ${_pst}。`); }
   const ind = g(DRUG_GROUPS.induction.map(d => d.key)); if (ind.length) lines.push(`導入は${ind.join('＋')}。`);
   const mt = []; if (c.maintIsoflurane) mt.push('イソフルラン'); if (c.maintSevoflurane) mt.push('セボフルラン'); if (c.maintPropofol) mt.push('プロポフォールCRI');
   if (mt.length) lines.push(`維持は${mt.join('/')}${c.maintConc ? ' ' + c.maintConc + '%' : ''}${P.maint ? '(' + P.maint + ')' : ''}。`);
@@ -8647,6 +8702,7 @@ function renderReviewReport() {
       <span class="rv-f"><span class="rv-k">麻酔時間（導入〜抜管）</span>${anesthIE !== null ? `<span class="rv-v">${anesthIE} 分</span>` : missNote('未算出: 術中タブで導入/抜管の時刻を記録')}</span>
       ${anesthAll !== null ? f('（前投薬〜帰舎）', anesthAll + ' 分') : ''}
       <span class="rv-f"><span class="rv-k">手術時間</span>${surgMin !== null ? `<span class="rv-v">${surgMin} 分</span>` : missNote('未算出: 手術開始/終了の時刻を記録')}</span>
+      ${procSegText(c) ? f('手技の内訳', procSegText(c)) : ''}
     </div>
     <div class="rv-kv" style="margin-top:4px">
       ${f('前投薬', c.anesthStart)} ${f('導入', c.inductionTime)} ${f('挿管', c.intubationTime)} ${f('手術開始', c.surgStart)} ${f('手術終了', c.surgEnd)} ${f('抜管', c.extubation)} ${f('帰舎', c.returnToWard)}
@@ -9227,7 +9283,7 @@ function _tsClose() {
 .screen{inset:22px 0 0 0!important}
 @media print{.demo-banner{display:none}}
 </style>
-<div class="demo-banner">テスト版（混注①②③／追加投与／術式ボックス＋手技ごとの開始・終了）— 架空データ・どこにも送信されません</div>
+<div class="demo-banner">テスト版（混注／追加投与／術式ボックス・検査/手術タグ切替・手技ごとの時間）— 架空データ・どこにも送信されません</div>
 <script>
 (function () {
   const D = (h, m, s) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s || 0).padStart(2, '0')}`;
