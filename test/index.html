@@ -5479,7 +5479,10 @@ function saveHospitalDefaults() {
   HOSP_DEFAULT_KEYS.forEach(k => { if (current[k] !== undefined) comps[k] = current[k]; });
   if (!userPresets || typeof userPresets !== 'object') userPresets = {};
   userPresets.__hospital__ = { label: '（病院の既定）', drugs: {}, comps, savedAt: nowIsoStr() };
+  // 通常プリセットがまだ無ければ既定を補う(プリセットバーが空にならないように)
+  if (!Object.keys(userPresets).some(k => k.indexOf('__') !== 0)) Object.assign(userPresets, JSON.parse(JSON.stringify(DRUG_PRESETS)));
   savePresetsToStorage();
+  try { renderPresetBar(); } catch (_) {}
   pushPresetsToSheets().then(ok => { if (ok === false) showToast('端末には保存しました（Sheetsへの共有は同期ON時に）'); });
   updateHospDefNote();
   showToast('🏥 合併症と対応・準備器材を病院の既定として保存しました。新規症例に自動で入ります');
