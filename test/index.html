@@ -206,11 +206,10 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .mbtn.on[data-mix="1"]{background:#f59e0b;border-color:#f59e0b;color:#fff}
 .mbtn.on[data-mix="2"]{background:#0d9488;border-color:#0d9488;color:#fff}
 .mbtn.on[data-mix="3"]{background:#7c3aed;border-color:#7c3aed;color:#fff}
-.mbtn.on[data-mix="later"]{background:#64748b;border-color:#64748b;color:#fff}
-.drug-row.mix-1{box-shadow:inset 4px 0 0 #f59e0b}.drug-row.mix-2{box-shadow:inset 4px 0 0 #0d9488}.drug-row.mix-3{box-shadow:inset 4px 0 0 #7c3aed}.drug-row.mix-later{box-shadow:inset 4px 0 0 #64748b}
+.drug-row.mix-1{box-shadow:inset 4px 0 0 #f59e0b}.drug-row.mix-2{box-shadow:inset 4px 0 0 #0d9488}.drug-row.mix-3{box-shadow:inset 4px 0 0 #7c3aed}
 .mix-summary{width:100%;order:3;margin-top:8px;display:flex;flex-direction:column;gap:5px}
 .mix-sum-row{font-size:12.5px;line-height:1.5;padding:7px 10px;border-radius:8px;background:#fff7ed;border:1px solid #fdba74}
-.mix-sum-row.g2{background:#f0fdfa;border-color:#5eead4}.mix-sum-row.g3{background:#f5f3ff;border-color:#c4b5fd}.mix-sum-row.glater{background:#f8fafc;border-color:#cbd5e1}
+.mix-sum-row.g2{background:#f0fdfa;border-color:#5eead4}.mix-sum-row.g3{background:#f5f3ff;border-color:#c4b5fd}
 .mix-sum-row b{font-weight:800}
 .tl-mixbadge{font-size:10.5px;font-weight:800;color:#fff;border-radius:6px;padding:2px 5px;margin-right:2px;white-space:nowrap}
 .tl-mixbadge.m1{background:#f59e0b}.tl-mixbadge.m2{background:#0d9488}.tl-mixbadge.m3{background:#7c3aed}
@@ -748,14 +747,17 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           </div>
           <div class="frow">
             <span class="flabel flabel-w">術式</span>
-            <input class="fin" type="text" id="f_procedure" placeholder="術式" oninput="autoSave();renderEventButtons()">
+            <input class="fin" type="text" id="f_procedure" placeholder="術式（処置内容）" oninput="autoSave();renderEventButtons();refreshProcedureBtns()">
           </div>
           <div class="qdose-bar" style="margin:6px 0 2px">
-            <button type="button" class="qdose-btn" onclick="setProcedure('CAST')">CAST</button>
-            <button type="button" class="qdose-btn" onclick="setProcedure('SPAY')">SPAY</button>
-            <button type="button" class="qdose-btn" onclick="setProcedure('CT')">CT</button>
-            <button type="button" class="qdose-btn" onclick="setProcedure('歯科処置')">歯科処置</button>
+            <button type="button" class="qdose-btn proc-btn" data-proc="CAST" onclick="toggleProcedure('CAST')">CAST</button>
+            <button type="button" class="qdose-btn proc-btn" data-proc="SPAY" onclick="toggleProcedure('SPAY')">SPAY</button>
+            <button type="button" class="qdose-btn proc-btn" data-proc="CT" onclick="toggleProcedure('CT')">CT</button>
+            <button type="button" class="qdose-btn proc-btn" data-proc="歯科処置" onclick="toggleProcedure('歯科処置')">歯科処置</button>
+            <button type="button" class="qdose-btn proc-btn" data-proc="内視鏡" onclick="toggleProcedure('内視鏡')">内視鏡</button>
+            <button type="button" class="qdose-btn proc-btn" data-proc="開腹" onclick="toggleProcedure('開腹')">開腹</button>
           </div>
+          <div style="font-size:11px;color:var(--muted);margin:0 0 4px">処置内容は複数選択できます（CT＋開腹 など）。「＋」区切りで手入力も可</div>
           <div class="frow">
             <span class="flabel flabel-w">術者</span>
             <input class="fin" type="text" id="f_surgeon" readonly placeholder="術者" onclick="openStaffPicker('f_surgeon','術者')">
@@ -963,6 +965,13 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="sub-body">
           <div id="drugList_induction"></div>
 
+          </div></div>
+
+          <div class="sub-acc" data-sub="addon">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>追加投与 <span class="sub-en">Add-on（CT後など）</span><span class="sub-sum" id="ssum_addon"></span></div>
+          <div class="sub-body">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">前投薬とは別に、検査後（CT後など）や術中に投与する薬。チェックすると術中タブの薬剤ボタンに「追加」タグ付きで出ます</div>
+          <div id="drugList_addon"></div>
           </div></div>
 
           <div class="sub-acc" data-sub="maint">
@@ -1630,6 +1639,12 @@ const DRUG_GROUPS = {
   induction: [
     { key:'propofol',       label:'プロポフォール',   unit:'mg/kg', dog:'4〜6',  cat:'6〜8',  routes:['IV'],      def:'IV', conc:10 },
     { key:'alfaxalone_i',   label:'アルファキサロン', unit:'mg/kg', dog:'2〜3',  cat:'2〜5',  routes:['IV','IM'], def:'IV', conc:10 },
+  ],
+  // 追加投与: 前投薬とは別に術中/検査後(CT後など)に投与する薬。前投薬欄にしか無かった
+  // メデトミジン/ニカルジピンを、前投薬として扱わずに計画・記録できるようにする
+  addon: [
+    { key:'medetomidine_a', label:'メデトミジン', unit:'μg/kg', dog:'5〜40', cat:'40〜80', routes:['IV','IM','SC'], def:'IV', conc:1000 },
+    { key:'nicardipine_a',  label:'ニカルジピン', unit:'μg/kg', dog:'1〜5',  cat:'1〜5',   routes:['IV','IM','SC'], def:'IV', conc:1000 },
   ],
   antibiotics: [
     { key:'cefazolin',      label:'セファゾリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:100 },
@@ -2590,7 +2605,7 @@ function renderPresetEditor() {
   }
 
   // 追加ドロップダウン（既に追加済みは除外）
-  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
+  const groupNames = {premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
   const sel = document.getElementById('addDrugSelect');
   sel.innerHTML = '<option value="">+ 薬剤を選択して追加…</option>' +
     Object.entries(DRUG_GROUPS).map(([gk, drugs]) => {
@@ -4046,7 +4061,7 @@ function openPastPreview(id) {
     .filter(x => x[1] || (x[2] || '').trim())
     .map(x => `<div>${x[1] ? '<b style="color:#c0392b">⚠️' : '<b>'}${x[0]}</b>: ${esc2(x[2] || '(メモなし)')}</div>`).join('');
   // 麻酔プラン: チェック済み薬剤(用量/経路)・維持・輸液・局所麻酔ブロック
-  const _gn = { premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
+  const _gn = { premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
   const planParts = [];
   Object.entries(DRUG_GROUPS).forEach(([gk, defs]) => {
     const on = defs.filter(d => c.drugs && c.drugs[d.key] && c.drugs[d.key].use)
@@ -4567,7 +4582,7 @@ function renderDrugRow(d) {
   const concInfo = d.conc ? ` <span style="color:var(--muted);font-size:11px">| 規格 ${d.conc < 1 ? d.conc : (d.unit.startsWith('μg') ? (d.conc>=1000 ? d.conc/1000+'mg/mL' : d.conc+'μg/mL') : d.conc+'mg/mL')}${d.dilution ? '（'+d.dilution+'）' : ''}</span>` : '';
   const mixGrp = isPremedKey(d.key)
     ? `<div class="mixgrp" onclick="event.stopPropagation()"><span class="mix-lbl">投与:</span>`
-      + ['1','2','3','later'].map(m => `<button type="button" class="mbtn" data-mix="${m}" onclick="setDrugMix('${d.key}',${m === 'later' ? "'later'" : m})">${MIX_LABELS[m]}</button>`).join('')
+      + ['1','2','3'].map(m => `<button type="button" class="mbtn" data-mix="${m}" onclick="setDrugMix('${d.key}',${m})">${MIX_LABELS[m]}</button>`).join('')
       + `</div>`
     : '';
   return `<div class="drug-row" id="drow_${d.key}" onclick="toggleDrug('${d.key}',event)">
@@ -4692,6 +4707,7 @@ function populateForm() {
   });
 
   try { refreshMixChips(); renderMixSummary(); } catch (_) {}
+  try { refreshProcedureBtns(); } catch (_) {}
   // 猫×アセトアミノフェン禁忌の行状態を反映
   try { applyAcetaminophenBan(); } catch(_) {}
 
@@ -4895,10 +4911,9 @@ function applyAcetaminophenBan() {
 }
 
 // ── 前投薬の投与区分: 混注①②③ / 後で投与 ──────────────────────────
-// current.drugs[key].mix = 1|2|3|'later'|'' 。同じ番号の薬は1本の混注として扱い、
+// current.drugs[key].mix = 1|2|3|'' 。同じ番号の薬は1本の混注として扱い、
 // 術中タブに「混注①」ボタンが出て、タップで構成薬剤をまとめて薬剤ログに記録する。
-// 'later' は「前投薬の一覧にはあるが前投薬としては投与しない(CT後など)」印。
-const MIX_LABELS = { 1:'混注①', 2:'混注②', 3:'混注③', later:'後で投与' };
+const MIX_LABELS = { 1:'混注①', 2:'混注②', 3:'混注③' };
 function isPremedKey(key) { return DRUG_GROUPS.premeds.some(d => d.key === key); }
 function mixOf(key) { const dd = current && current.drugs && current.drugs[key]; return dd ? (dd.mix || '') : ''; }
 function setDrugMix(key, val) {
@@ -4918,12 +4933,12 @@ function refreshMixChips() {
   DRUG_GROUPS.premeds.forEach(d => {
     const row = document.getElementById('drow_' + d.key); if (!row) return;
     const m = String(mixOf(d.key) || '');
-    row.classList.remove('mix-1','mix-2','mix-3','mix-later');
+    row.classList.remove('mix-1','mix-2','mix-3');
     if (m && row.classList.contains('on')) row.classList.add('mix-' + m);
     row.querySelectorAll('.mbtn').forEach(b => b.classList.toggle('on', b.dataset.mix === m));
   });
 }
-function mixMembers(n) { // n: 1|2|3|'later' → [{d, dd}] (チェック済みのみ)
+function mixMembers(n) { // n: 1|2|3 → [{d, dd}] (チェック済みのみ)
   if (!current || !current.drugs) return [];
   return DRUG_GROUPS.premeds
     .filter(d => { const dd = current.drugs[d.key]; return dd && dd.use && String(dd.mix || '') === String(n); })
@@ -4954,9 +4969,6 @@ function renderMixSummary() {
       + (routes.length > 1 ? ' <span style="color:var(--red)">⚠ 経路が混在</span>' : '')
       + `<br><span style="color:var(--muted)">術中タブの「${MIX_LABELS[n]}」ボタンで、構成薬剤をその時刻でまとめて記録</span></div>`);
   });
-  const later = mixMembers('later');
-  if (later.length) rows.push(`<div class="mix-sum-row glater"><b>後で投与</b>　${later.map(({ d }) => esc(d.label)).join('・')}`
-    + `<br><span style="color:var(--muted)">前投薬としては扱わない。術中タブの薬剤ボタンで、投与した時刻(CT後など)に記録</span></div>`);
   box.innerHTML = rows.join('');
   box.style.display = rows.length ? '' : 'none';
 }
@@ -4969,7 +4981,7 @@ function premedGroupText(c, fmt) {
   const byMix = n => on.filter(d => String(dz[d.key].mix || '') === String(n)).map(fmt);
   const parts = [1, 2, 3].map(n => { const a = byMix(n); return a.length ? `${MIX_LABELS[n]}(${a.join('＋')})` : ''; }).filter(Boolean)
     .concat(on.filter(d => !dz[d.key].mix).map(fmt));
-  return { premed: parts, later: byMix('later') };
+  return { premed: parts };
 }
 
 function toggleDrug(key, event) {
@@ -6138,7 +6150,7 @@ function renderQuickDoseBar() {
     const hits = log.filter(r => r.drug === d.label && r.time && !r.deleted);  // 削除墓標は回数に数えない
     // バッジは回数のみ。時刻まで載せるとボタンが横に伸びて折り返し、縦に積み上がるため。
     const badge = hits.length ? `<span class="qdose-badge">×${hits.length}</span>` : '';
-    const laterTag = mixOf(d.key) === 'later' ? '<span class="later-tag">後で</span>' : '';
+    const laterTag = DRUG_GROUPS.addon.some(x => x.key === d.key) ? '<span class="later-tag">追加</span>' : '';
     return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${laterTag}${badge}</button>`;
   }).join('');
 }
@@ -6292,7 +6304,7 @@ function getActiveProcEvents() {
   let evts = [];
   for (const k of Object.keys(PROCEDURE_EVENTS)) {
     if (k === 'KNEE') continue;  // KNEEは術式名でなくキーワードで判定
-    if (proc.indexOf(k) !== -1) { evts = PROCEDURE_EVENTS[k]; break; }
+    if (proc.indexOf(k) !== -1) evts = evts.concat(PROCEDURE_EVENTS[k]);  // 複数術式(CT＋SPAY等)は全部合流
   }
   const diag = (getVal('f_diagnosis') || (current && current.diagnosis) || '').toUpperCase();
   const hay = proc + ' ' + diag;
@@ -6494,7 +6506,21 @@ function setProcedure(v) {
   setVal('f_procedure', v);
   if (current) current.procedure = v;
   renderEventButtons();
+  refreshProcedureBtns();
   autoSave();
+}
+// 術式(処置内容)の複数選択: ボタンをタップで「＋」区切りに追加/除去（CT→手術、内視鏡→開腹 など）
+const PROC_SEP = '＋';
+function procTokens(s) { return String(s || '').split(/[＋+]/).map(x => x.trim()).filter(Boolean); }
+function toggleProcedure(v) {
+  const cur = procTokens(getVal('f_procedure'));
+  const i = cur.indexOf(v);
+  if (i >= 0) cur.splice(i, 1); else cur.push(v);
+  setProcedure(cur.join(PROC_SEP));
+}
+function refreshProcedureBtns() {
+  const cur = procTokens(getVal('f_procedure'));
+  document.querySelectorAll('.proc-btn').forEach(b => b.classList.toggle('on', cur.indexOf(b.dataset.proc) >= 0));
 }
 
 // ─────────────────────────────────────────────────
@@ -6881,7 +6907,7 @@ function generatePrintHTML(c) {
   const chip = (label, warn) => `<span class="p-chip${warn?' p-chip-warn':''}">${esc(label)}</span>`;
 
   // 選択された薬剤
-  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
+  const groupNames = {premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
   const selectedDrugs = [];
   Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
     drugs.forEach(d => {
@@ -8062,7 +8088,6 @@ function rvDraftRationale() {
   const g = (keys) => keys.map(k => { const d = findDrugDef(k); const dd = (c.drugs || {})[k]; if (!d || !dd || !dd.use) return ''; return `${d.label}${P[k] ? '(' + P[k] + ')' : ''}`; }).filter(Boolean);
   const _pg = premedGroupText(c, d => `${d.label}${P[d.key] ? '(' + P[d.key] + ')' : ''}`);
   if (_pg.premed.length) lines.push(`前投薬は${_pg.premed.join('＋')}を選択。`);
-  if (_pg.later.length) lines.push(`${_pg.later.join('＋')}は前投薬でなく後で（CT後など）投与。`);
   const ind = g(DRUG_GROUPS.induction.map(d => d.key)); if (ind.length) lines.push(`導入は${ind.join('＋')}。`);
   const mt = []; if (c.maintIsoflurane) mt.push('イソフルラン'); if (c.maintSevoflurane) mt.push('セボフルラン'); if (c.maintPropofol) mt.push('プロポフォールCRI');
   if (mt.length) lines.push(`維持は${mt.join('/')}${c.maintConc ? ' ' + c.maintConc + '%' : ''}${P.maint ? '(' + P.maint + ')' : ''}。`);
@@ -8148,12 +8173,12 @@ function renderReviewReport() {
   const pushDrug = (grp, d, dd) => {
     drugRows.push({ grp, name: d.label + (d.dilution ? `（${d.dilution}）` : ''), dose: dd.dose ? `${dd.dose} ${d.unit}` : '', route: dd.route || d.def || '', pkey: d.key, opts: RV_PURPOSE_OPTS[d.key] || [] });
   };
-  const grpOf = { premeds: '麻酔前投薬', induction: '麻酔導入薬', antibiotics: '抗菌薬', cri: '術中鎮痛/CRI', vasopressors: '事前準備(循環作動薬)', antagonists: '拮抗薬', postAnalg: '術後鎮痛薬', other: 'その他' };
+  const grpOf = { premeds: '麻酔前投薬', induction: '麻酔導入薬', addon: '追加投与(CT後など)', antibiotics: '抗菌薬', cri: '術中鎮痛/CRI', vasopressors: '事前準備(循環作動薬)', antagonists: '拮抗薬', postAnalg: '術後鎮痛薬', other: 'その他' };
   ['premeds', 'induction'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g] + (g === 'premeds' && dd.mix ? '（' + (MIX_LABELS[dd.mix] || dd.mix) + '）' : ''), d, dd); }));
   const maint = [];
   if (c.maintIsoflurane) maint.push('イソフルラン'); if (c.maintSevoflurane) maint.push('セボフルラン'); if (c.maintPropofol) maint.push('プロポフォール(CRI)');
   if (maint.length) drugRows.push({ grp: '麻酔維持薬', name: maint.join(' / '), dose: c.maintConc ? `${c.maintConc}%` : '', route: maint.some(m => /フルラン/.test(m)) ? '吸入' : 'IV', pkey: 'maint', opts: ['麻酔維持'] });
-  ['cri', 'antibiotics'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
+  ['addon', 'cri', 'antibiotics'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
   ['postAnalg', 'vasopressors', 'antagonists', 'other'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
   const pin = (pkey, opts) => {
     const cur = String(purpose[pkey] || '').split('・').map(x => x.trim());
@@ -8902,7 +8927,7 @@ function _tsClose() {
 .screen{inset:22px 0 0 0!important}
 @media print{.demo-banner{display:none}}
 </style>
-<div class="demo-banner">テスト版（前投薬の混注①②③／後で投与）— 架空データ・どこにも送信されません</div>
+<div class="demo-banner">テスト版（混注①②③／追加投与／術式の複数選択）— 架空データ・どこにも送信されません</div>
 <script>
 (function () {
   const D = (h, m, s) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s || 0).padStart(2, '0')}`;
