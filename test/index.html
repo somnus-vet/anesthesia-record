@@ -843,7 +843,12 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           </div>
 
           <div class="sec-title">予想される合併症と対応</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">⚠️ 体重を入力すると、各対応の用量が自動計算されます</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:2px 0 8px">
+            <button type="button" class="qdose-btn" style="min-height:36px;padding:6px 10px;font-size:12px" onclick="saveHospitalDefaults()">🏥 この内容を病院の既定にする</button>
+            <button type="button" class="qdose-btn dp-unplanned" style="min-height:36px;padding:6px 10px;font-size:12px" onclick="applyHospitalDefaults(current,true)">既定を読み込む</button>
+            <span id="hospDefNote" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">⚠️ 体重を入力すると、各対応の用量が自動計算されます。病院の既定を保存すると、新規症例に最初から入ります（機材や対応は病院ごとにほぼ固定のため）</div>
 
           <!-- 低血圧 -->
           <div class="comp-block">
@@ -2493,11 +2498,8 @@ async function loadPresetsFromSheets() {
       if (!key) return;
       if (!presets[key]) presets[key] = { label: r['表示名'] || key, drugs: {} };
       if (r['薬剤キー'] === '__extras__') {
-        // 拡張項目(維持薬・濃度・O₂・Air・輸液)はJSONで「用量」列に格納
-        try {
-          const ex = JSON.parse(r['用量'] || '{}');
-          EXTRA_PRESET_FIELDS.forEach(f => { if (ex[f] !== undefined) presets[key][f] = ex[f]; });
-        } catch(_) {}
+        // 拡張項目はJSONで「用量」列に格納(維持薬・輸液・病院の既定 comps・薬剤ごとの混注 drugMix)
+        try { presets[key].__ex = JSON.parse(r['用量'] || '{}') || {}; } catch(_) {}
       } else if (r['薬剤キー']) {
         presets[key].drugs[r['薬剤キー']] = {
           dose: r['用量'] || '',
@@ -2505,14 +2507,22 @@ async function loadPresetsFromSheets() {
         };
       }
     });
-    // Sheets未保存の拡張項目は localStorage キャッシュで補完（Sheets値が優先）
+    // __extras__ を各プリセットへ展開(薬剤行との順序に依存しない)
+    Object.values(presets).forEach(p => {
+      const ex = p.__ex || {}; delete p.__ex;
+      Object.keys(ex).forEach(f => { if (f === 'drugMix') return; p[f] = ex[f]; });
+      if (ex.drugMix && typeof ex.drugMix === 'object') Object.entries(ex.drugMix).forEach(([dk, m]) => { if (p.drugs[dk]) p.drugs[dk].mix = m; });
+    });
+    // Sheets未保存の拡張項目(GAS更新前に保存した混注番号・病院の既定など)は localStorage キャッシュで補完（Sheets値が優先）
     try {
       const cached = JSON.parse(localStorage.getItem('vet_test_presets') || '{}');
-      Object.keys(presets).forEach(k => {
-        if (!cached[k]) return;
-        EXTRA_PRESET_FIELDS.forEach(f => {
+      Object.keys(cached).forEach(k => {
+        if (k === '__hospital__' && !presets[k]) { presets[k] = cached[k]; return; }
+        if (!presets[k]) return;
+        EXTRA_PRESET_FIELDS.concat(['comps', 'savedAt']).forEach(f => {
           if (presets[k][f] === undefined && cached[k][f] !== undefined) presets[k][f] = cached[k][f];
         });
+        Object.entries(cached[k].drugs || {}).forEach(([dk, st]) => { if (st && st.mix && presets[k].drugs[dk] && !presets[k].drugs[dk].mix) presets[k].drugs[dk].mix = st.mix; });
       });
     } catch(e) {}
     return Object.keys(presets).length > 0 ? presets : null;
@@ -2569,8 +2579,9 @@ async function loadPresets() {
     }
   }
   // プリセットが空のときだけデフォルトを投入（ユーザーの削除を尊重）
-  if (!userPresets || typeof userPresets !== 'object' || Object.keys(userPresets).length === 0) {
-    userPresets = JSON.parse(JSON.stringify(DRUG_PRESETS));
+  if (!userPresets || typeof userPresets !== 'object') userPresets = {};
+  if (!Object.keys(userPresets).some(k => k.indexOf('__') !== 0)) {
+    Object.assign(userPresets, JSON.parse(JSON.stringify(DRUG_PRESETS)));  // 通常プリセットが無い時だけ既定を投入(病院の既定 __hospital__ は保持)
   }
   renderPresetBar();
 }
@@ -2583,7 +2594,7 @@ function savePresetsToStorage() {
 function renderPresetBar() {
   const bar = document.getElementById('presetBar');
   if (!bar || !userPresets) return;
-  bar.innerHTML = Object.entries(userPresets).map(([key, preset]) => {
+  bar.innerHTML = Object.entries(userPresets).filter(([key]) => key.indexOf('__') !== 0).map(([key, preset]) => {
     const desc = PRESET_DESC[key] || '';
     return `<button class="preset-btn" type="button" onclick="applyPreset('${key}')">
       <div class="preset-label">${esc(preset.label)}</div>
@@ -2634,10 +2645,10 @@ async function openPresetEditor() {
   editingPreset = JSON.parse(JSON.stringify(userPresets || {}));
   // セレクト初期化
   const sel = document.getElementById('presetSelect');
-  sel.innerHTML = Object.entries(editingPreset).map(([k, p]) =>
+  sel.innerHTML = Object.entries(editingPreset).filter(([k]) => k.indexOf('__') !== 0).map(([k, p]) =>
     `<option value="${k}">${esc(p.label)}</option>`
   ).join('');
-  sel.value = Object.keys(editingPreset)[0];
+  sel.value = Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0)[0];
   document.getElementById('presetModal').classList.add('on');
   renderPresetEditor();
 }
@@ -2813,13 +2824,13 @@ function deletePreset() {
   if (!editingPreset) return;
   const sel = document.getElementById('presetSelect');
   const key = sel.value;
-  if (Object.keys(editingPreset).length <= 1) { showToast('プリセットは1つ以上必要です'); return; }
+  if (Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0).length <= 1) { showToast('プリセットは1つ以上必要です'); return; }
   if (!confirm(`プリセット「${editingPreset[key].label}」を削除しますか？`)) return;
   delete editingPreset[key];
-  sel.innerHTML = Object.entries(editingPreset).map(([k, p]) =>
+  sel.innerHTML = Object.entries(editingPreset).filter(([k]) => k.indexOf('__') !== 0).map(([k, p]) =>
     `<option value="${k}">${esc(p.label)}</option>`
   ).join('');
-  sel.value = Object.keys(editingPreset)[0];
+  sel.value = Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0)[0];
   renderPresetEditor();
 }
 
@@ -3996,6 +4007,7 @@ function esc(s) {
 
 function newCase() {
   current = makeCase();
+  try { applyHospitalDefaults(current); } catch (_) {}
   cases.push(current);
   saveStorage();
   openForm();
@@ -4046,6 +4058,7 @@ function onNcsIdInput() {
 function newCaseWithId() {
   const raw = String((document.getElementById('ncsId') || {}).value || '').trim();
   current = makeCase();
+  try { applyHospitalDefaults(current); } catch (_) {}
   if (raw) { current.caseNo = raw; current.patientId = raw; }
   cases.push(current);
   saveStorage();
@@ -4276,6 +4289,7 @@ function copyCaseAsNew(id) {
   const src = cases.find(c => c.id === id);
   if (!src) return;
   const c = makeCase();
+  try { applyHospitalDefaults(c); } catch (_) {}
   ['caseNo','patientId','ownerName','patientName','species','breed','birthdate',
    'ageY','ageM','sex','weight','bcs','staff',
    'tubeSize','tubeSizeFr','intubationDifficult'].forEach(k => {
@@ -4812,6 +4826,7 @@ function populateForm() {
   try { refreshMixChips(); renderMixSummary(); } catch (_) {}
   try { renderProcBoxes(); } catch (_) {}
   try { renderAllergyBox(); updateAllergyBanner(); refreshAllergyDrugBadges(); } catch (_) {}
+  try { updateHospDefNote(); } catch (_) {}
   // 猫×アセトアミノフェン禁忌の行状態を反映
   try { applyAcetaminophenBan(); } catch(_) {}
 
@@ -5445,6 +5460,40 @@ function defaultDoseFor(key) {
   const ref = String(current.species === 'cat' ? (d.cat || '') : (d.dog || ''));
   const m = ref.match(/([\d.]+)/);
   return m ? { dose: m[1], src: '参考範囲の下限' } : null;
+}
+
+// ── 病院の既定: 予想される合併症と対応・準備器材(機材は病院ごとに固定なので覚えておく) ──
+// プリセットの内部キー __hospital__ に comps として保存(Sheetsの __extras__ 行 → 端末間で共有)。
+const HOSP_DEFAULT_KEYS = [
+  'expectedHypotension','hpot_miniFluid','hpot_atropine','hpot_ephedrine','hpot_norad','hpot_notes',
+  'expectedHypothermia','hthm_warmAir','hthm_warmMat','hthm_warmWater','hthm_notes',
+  'expectedHypovent','hvent_pcv','hvent_pcvPIP','hvent_pcvRR','hvent_vcv','hvent_vcvVT','hvent_vcvRR','hvent_manual','hvent_notes',
+  'expectedAnaphylaxis','anaphy_notes','expectedMH','mh_notes','expectedLAST','last_notes','expectedHypo','hypoTx',
+  'equipTemp','equipECG','equipHR','equipRR','equipEtCO2','equipSpO2','equipABP','equipGas','equipOscillo','equipDoppler','equipArterial',
+];
+function getHospitalDefaults() { const h = userPresets && userPresets.__hospital__; return (h && h.comps && typeof h.comps === 'object') ? h : null; }
+function saveHospitalDefaults() {
+  if (!current) return;
+  collectForm();
+  const comps = {};
+  HOSP_DEFAULT_KEYS.forEach(k => { if (current[k] !== undefined) comps[k] = current[k]; });
+  if (!userPresets || typeof userPresets !== 'object') userPresets = {};
+  userPresets.__hospital__ = { label: '（病院の既定）', drugs: {}, comps, savedAt: nowIsoStr() };
+  savePresetsToStorage();
+  pushPresetsToSheets().then(ok => { if (ok === false) showToast('端末には保存しました（Sheetsへの共有は同期ON時に）'); });
+  updateHospDefNote();
+  showToast('🏥 合併症と対応・準備器材を病院の既定として保存しました。新規症例に自動で入ります');
+}
+function applyHospitalDefaults(c, manual) {
+  const h = getHospitalDefaults(); if (!h || !c) return false;
+  Object.keys(h.comps).forEach(k => { c[k] = h.comps[k]; });
+  if (manual) { populateForm(); autoSave(); showToast('病院の既定を読み込みました'); }
+  return true;
+}
+function updateHospDefNote() {
+  const el = document.getElementById('hospDefNote'); if (!el) return;
+  const h = getHospitalDefaults();
+  el.textContent = h ? `既定あり（保存 ${String(h.savedAt || '').slice(5, 16)}）・新規症例に自動適用` : '既定は未保存';
 }
 
 function toggleDrug(key, event) {
