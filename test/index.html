@@ -5158,7 +5158,7 @@ function removeAddonDrug(baseKey) {
 // ─────────────────────────────────────────────────
 const ALG_CATS = ['薬剤', '食物', '造影剤', 'ワクチン', 'その他'];
 const ALG_REACTIONS = ['発疹・かゆみ', '顔面腫脹', '嘔吐', '下痢・軟便', '呼吸困難', 'アナフィラキシー', '低血圧', 'その他'];
-const ALG_ROUTES = ['IV', 'IM', 'SC', 'PO', '外用'];
+const ALG_ROUTES = ['IV', 'IM', 'SC', 'PO'];
 const ALG_ROUTE_CATS = ['薬剤', '造影剤', 'ワクチン'];
 function algReactions(it) { return Array.isArray(it.reactions) ? it.reactions : (it.reaction ? [it.reaction] : []); }
 const ALG_SEV = [['mild', '軽度'], ['mod', '中等度'], ['severe', '重度']];

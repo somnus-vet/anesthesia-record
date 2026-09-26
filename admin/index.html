@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>振り返り 進捗ボード（運営用）</title>
+<style>
+:root{--navy:#1e3a5f;--blue:#2b6cb0;--muted:#6b7a8c;--border:#d9e1ea;--bg:#f2f5f9;--red:#b91c1c;--green:#15803d;--amber:#b45309}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;color:#1f2937;font-size:14px}
+header{background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0;font-weight:800}
+header .sub{font-size:12px;opacity:.85}
+.hbtn{background:#fff;color:var(--navy);border:none;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:13px;min-height:36px}
+.hbtn.ghost{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.6)}
+main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.stat{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;min-width:150px}
+.stat b{display:block;font-size:24px;color:var(--navy);line-height:1.1}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.new b{color:var(--red)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.chip{border:1.5px solid var(--border);background:#fff;border-radius:16px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;color:#334155;min-height:34px}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:9px;display:grid;grid-template-columns:auto 1fr auto;gap:10px 14px;align-items:center;cursor:pointer}
+.card.new{border-color:#f0b429;box-shadow:0 0 0 3px #fff3c4}
+.card .hosp{font-size:11px;font-weight:800;color:#fff;background:var(--blue);border-radius:6px;padding:3px 7px;white-space:nowrap}
+.card .who{font-weight:800;font-size:15px}
+.card .meta{font-size:12px;color:var(--muted);margin-top:2px}
+.card .right{text-align:right;white-space:nowrap}
+.bar{height:8px;background:#e5e9f0;border-radius:4px;overflow:hidden;width:120px;display:inline-block;vertical-align:middle;margin-left:6px}
+.bar i{display:block;height:100%;background:var(--amber)}
+.bar i.done{background:var(--green)}
+.pct{font-weight:800;font-size:16px}
+.badge{display:inline-block;font-size:11px;font-weight:800;border-radius:6px;padding:2px 6px;margin-left:4px}
+.badge.new{background:#fff3c4;color:#7a4b00;border:1px solid #f0b429}
+.badge.sub{background:#eafaf1;color:var(--green);border:1px solid #a9dfbf}
+.badge.cm{background:#eef6fc;color:var(--blue);border:1px solid #bcd7ee}
+.when{font-size:12px;color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:30px 0}
+.err{background:#fff1f0;border:1px solid #f5b7b1;color:var(--red);border-radius:8px;padding:8px 10px;font-size:12.5px;margin-bottom:8px}
+/* 設定 */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:30px 12px;z-index:10;overflow:auto}
+.overlay.on{display:flex}
+.box{background:#fff;border-radius:14px;max-width:640px;width:100%;padding:16px 18px}
+.box h2{margin:0 0 6px;font-size:16px}
+.hrow{border:1.5px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px}
+.hrow label{font-size:12px;color:var(--muted);display:block;margin:6px 0 2px}
+.hrow input{width:100%;padding:8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+.hrow .nm{font-weight:800;display:flex;align-items:center;gap:8px}
+.hrow .nm input[type=checkbox]{width:18px;height:18px}
+.note{font-size:12px;color:var(--muted);line-height:1.6}
+.foot{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;padding:10px;border-radius:9px;border:none;font-weight:800;cursor:pointer;font-size:14px}
+.btn.p{background:var(--navy);color:#fff}.btn.s{background:#eef2f7;color:#334155}
+@media (max-width:600px){.card{grid-template-columns:1fr auto}.card .hosp{grid-column:1/-1;justify-self:start}.bar{width:80px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>📝 振り返り 進捗ボード</h1><div class="sub" id="subLine">未設定</div></div>
+  <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+    <button class="hbtn ghost" onclick="markAllSeen()">すべて既読</button>
+    <button class="hbtn ghost" id="notifBtn" onclick="enableNotify()">🔔 通知ON</button>
+    <button class="hbtn" onclick="refreshAll()">↻ 更新</button>
+    <button class="hbtn ghost" onclick="openSettings()">⚙ 設定</button>
+  </div>
+</header>
+<main>
+  <div id="errBox"></div>
+  <div class="stats">
+    <div class="stat new"><b id="stNew">0</b><span>新着（前回見た後に編集）</span></div>
+    <div class="stat"><b id="stToday">0</b><span>今日 編集あり</span></div>
+    <div class="stat"><b id="stWip">0</b><span>記載中（未提出）</span></div>
+    <div class="stat"><b id="stSub">0</b><span>提出済</span></div>
+  </div>
+  <div class="filters">
+    <button class="chip on" data-f="active" onclick="setFilter('active',this)">記載あり（未提出）</button>
+    <button class="chip" data-f="new" onclick="setFilter('new',this)">新着だけ</button>
+    <button class="chip" data-f="sub" onclick="setFilter('sub',this)">提出済</button>
+    <button class="chip" data-f="all" onclick="setFilter('all',this)">全症例（30日）</button>
+    <span class="when" id="lastLoad" style="margin-left:auto"></span>
+  </div>
+  <div id="list"><div class="empty">⚙ 設定から病院ごとの合言葉を入れてください</div></div>
+</main>
+
+<div class="overlay" id="settings">
+  <div class="box">
+    <h2>⚙ 設定（この端末に保存）</h2>
+    <div class="note">各病院のアプリと同じ「合言葉」を入れると、その病院のスプレッドシートから振り返りの記載状況を読み取ります（読み取りのみ・書き込みはしません）。5分ごとに自動更新します。</div>
+    <div id="hospRows" style="margin-top:8px"></div>
+    <div class="foot"><button class="btn s" onclick="closeSettings()">閉じる</button><button class="btn p" onclick="saveSettings()">保存して読み込む</button></div>
+  </div>
+</div>
+
+<script>
+// 病院一覧（アプリの各ビルドと同じ GAS / URL）
+const HOSPITALS = [
+  { key:'BDY', name:'個人（BDY）', app:'https://somnus-vet.github.io/anesthesia-record/', url:'https://script.google.com/macros/s/AKfycbwQ_Oqtsl4ptT2g2JNpCyjsnl_hqpGd2CYQf7S7Uzbf4WmJkSG6aIOVTpgbGFjrkK9Z/exec' },
+  { key:'FAH', name:'フクナガ', app:'https://somnus-vet.github.io/anesthesia-record/fukunaga/', url:'https://script.google.com/macros/s/AKfycbwIVEjIEQvnI3k39H992jRwGnBXEYAbc0jRvixcUNua0fI_J9MY89XAa0tudp9vmMfR/exec' },
+  { key:'ANG', name:'姉ヶ崎', app:'https://somnus-vet.github.io/anesthesia-record/anegasaki/', url:'https://script.google.com/macros/s/AKfycbx3LKoMw0pXFjombv7nl0X_45opzCfmUSzNKO5g5Aw_NdkYjNQGA-DuE3XD7D38161h/exec' },
+  { key:'MHM', name:'みはま', app:'https://somnus-vet.github.io/anesthesia-record/mihama/', url:'https://script.google.com/macros/s/AKfycbwuIfxG0MogJ4VG5aw5AhRX7MRiXvbXzj_gO8tGqO7aITYfG8fSV8D5j92x4sG_QHj0pQ/exec' },
+];
+const CFG_KEY = 'som_rvboard_cfg', SEEN_KEY = 'som_rvboard_seen', SEENALL_KEY = 'som_rvboard_seen_all';
+let cfg = {}, seen = {}, seenAll = '';
+let rows = [], filter = 'active', errors = [];
+try { cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}') || {}; } catch (_) {}
+try { seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}') || {}; } catch (_) {}
+try { seenAll = localStorage.getItem(SEENALL_KEY) || ''; } catch (_) {}
+
+function parseCSV(text) {
+  const rs = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { field += '"'; i++; } else if (c === '"') q = false; else field += c; }
+    else { if (c === '"') q = true; else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(field); rs.push(row); row = []; field = ''; }
+      else field += c; }
+  }
+  if (field || row.length) { row.push(field); rs.push(row); }
+  if (!rs.length) return [];
+  const h = rs.shift();
+  return rs.filter(r => r.some(v => v && v.trim() !== '')).map(r => Object.fromEntries(h.map((k, i) => [k, (r[i] || '').trim()])));
+}
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function tsOf(s) { // "2026/09/26 14:02:11" or ISO → ms
+  if (!s) return 0;
+  const m = String(s).match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)).getTime();
+  const d = new Date(s); return isNaN(d) ? 0 : d.getTime();
+}
+function fmt(ms) { if (!ms) return ''; const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
+function rel(ms) {
+  if (!ms) return ''; const s = Math.round((Date.now() - ms) / 1000);
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))}分前`;
+  if (s < 86400) return `${Math.round(s / 3600)}時間前`;
+  return `${Math.round(s / 86400)}日前`;
+}
+
+async function fetchHospital(h) {
+  const token = (cfg[h.key] && cfg[h.key].token) || '';
+  if (!token || (cfg[h.key] && cfg[h.key].off)) return [];
+  const url = `${h.url}?action=read&sheet=${encodeURIComponent('症例予約')}&token=${encodeURIComponent(token)}&_=${Date.now()}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`${h.name}: HTTP ${res.status}`);
+  const text = (await res.text()).replace(/^﻿/, '');
+  if (/^\s*unauthorized/i.test(text)) throw new Error(`${h.name}: 合言葉が違います`);
+  if (!text.split(/\r?\n/)[0].includes('詳細')) throw new Error(`${h.name}: 応答が不正`);
+  const cutoff = Date.now() - 30 * 86400 * 1000;
+  return parseCSV(text).map(r => {
+    let d = {}; try { d = JSON.parse(r['詳細'] || '{}') || {}; } catch (_) {}
+    const p = d.rvProgress || null;
+    const edited = tsOf(d.rvEditedAt) || (p ? tsOf(p.at) : 0);
+    const submitted = tsOf(d.rvSubmittedAt);
+    const cms = Array.isArray(d.rvComments) ? d.rvComments.filter(x => x && !x.deleted) : [];
+    const caseDate = tsOf((r['日付'] || d.date || '') + ' 00:00');
+    return {
+      hosp: h, id: r['内部ID'] || d.id || '', date: r['日付'] || d.date || '', caseDate,
+      name: r['患者名'] || d.patientName || '', proc: r['術式'] || d.procedure || '', staff: r['担当'] || d.staff || '',
+      pct: p && typeof p.pct === 'number' ? p.pct : null, total: p ? p.total : 0, missing: p ? p.missing : 0,
+      edited, submitted, submittedBy: d.rvSubmittedBy || '', comments: cms.length,
+      updated: tsOf(r['updated_at'] || d.updated_at),
+    };
+  }).filter(x => x.caseDate >= cutoff || x.edited || x.submitted);
+}
+async function refreshAll() {
+  const btnTxt = document.getElementById('lastLoad'); btnTxt.textContent = '読み込み中…';
+  errors = [];
+  const results = await Promise.all(HOSPITALS.map(h => fetchHospital(h).catch(e => { errors.push(e.message || String(e)); return []; })));
+  const prevNew = new Set(rows.filter(isNew).map(x => x.hosp.key + '|' + x.id));
+  rows = results.flat();
+  render();
+  btnTxt.textContent = `最終更新 ${fmt(Date.now())}`;
+  // 通知: 前回の読み込み後に新しく「新着」になった症例
+  const fresh = rows.filter(isNew).filter(x => !prevNew.has(x.hosp.key + '|' + x.id));
+  if (fresh.length && _notifyOn && 'Notification' in window && Notification.permission === 'granted') {
+    fresh.slice(0, 3).forEach(x => { try { new Notification(`${x.hosp.name}: ${x.name || '患者名なし'} 振り返り ${x.pct != null ? x.pct + '%' : ''}${x.submitted ? '（提出）' : ''}`, { body: `${x.date} ${x.proc}${x.staff ? ' ／ ' + x.staff : ''}`, tag: x.hosp.key + x.id }); } catch (_) {} });
+  }
+  try { document.title = (rows.filter(isNew).length ? `(${rows.filter(isNew).length}) ` : '') + '振り返り 進捗ボード'; } catch (_) {}
+}
+function isNew(x) {
+  const last = Math.max(x.edited || 0, x.submitted || 0);
+  if (!last) return false;
+  const s = Math.max(tsOf(seen[x.hosp.key + '|' + x.id] || ''), tsOf(seenAll));
+  return last > s;
+}
+function setFilter(f, el) { filter = f; document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === el)); render(); }
+function render() {
+  const list = document.getElementById('list');
+  const err = document.getElementById('errBox');
+  err.innerHTML = errors.map(e => `<div class="err">⚠️ ${esc(e)}</div>`).join('');
+  const active = rows.filter(x => (x.pct != null || x.edited) && !x.submitted);
+  const subs = rows.filter(x => x.submitted);
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  document.getElementById('stNew').textContent = rows.filter(isNew).length;
+  document.getElementById('stToday').textContent = rows.filter(x => Math.max(x.edited, x.submitted) >= todayStart.getTime()).length;
+  document.getElementById('stWip').textContent = active.length;
+  document.getElementById('stSub').textContent = subs.length;
+  const on = HOSPITALS.filter(h => cfg[h.key] && cfg[h.key].token && !cfg[h.key].off).map(h => h.name);
+  document.getElementById('subLine').textContent = on.length ? `監視中: ${on.join('・')}` : '未設定';
+  let show;
+  if (filter === 'active') show = active;
+  else if (filter === 'new') show = rows.filter(isNew);
+  else if (filter === 'sub') show = subs;
+  else show = rows;
+  show = show.slice().sort((a, b) => Math.max(b.edited, b.submitted, filter === 'all' ? b.caseDate : 0) - Math.max(a.edited, a.submitted, filter === 'all' ? a.caseDate : 0));
+  if (!show.length) { list.innerHTML = `<div class="empty">${on.length ? '該当する症例はありません' : '⚙ 設定から病院ごとの合言葉を入れてください'}</div>`; return; }
+  list.innerHTML = show.map(x => {
+    const last = Math.max(x.edited, x.submitted);
+    const link = `${x.hosp.app}?case=${encodeURIComponent(x.id)}&view=review`;
+    return `<div class="card${isNew(x) ? ' new' : ''}" onclick="openCase('${esc(x.hosp.key)}','${esc(x.id)}','${link}')">
+      <span class="hosp">${esc(x.hosp.name)}</span>
+      <div><div class="who">${esc(x.name || '（患者名なし）')}${isNew(x) ? '<span class="badge new">新着</span>' : ''}${x.submitted ? '<span class="badge sub">📤 提出済</span>' : ''}${x.comments ? `<span class="badge cm">💬${x.comments}</span>` : ''}</div>
+        <div class="meta">${esc(x.date)} ／ ${esc(x.proc || '術式未記載')}${x.staff ? ' ／ 記載: ' + esc(x.staff) : ''}${x.submittedBy ? ' ／ 提出: ' + esc(x.submittedBy) : ''}</div></div>
+      <div class="right">${x.pct != null ? `<span class="pct">${x.pct}%</span><span class="bar"><i class="${x.submitted ? 'done' : ''}" style="width:${x.pct}%"></i></span><div class="when">記載 ${x.total - x.missing}/${x.total} 項目</div>` : '<span class="when">進捗 未計測</span>'}
+        <div class="when">${last ? `最終 ${fmt(last)}（${rel(last)}）` : ''}</div></div>
+    </div>`;
+  }).join('');
+}
+function openCase(hk, id, link) {
+  seen[hk + '|' + id] = new Date().toISOString();
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch (_) {}
+  render();
+  window.open(link, '_blank');
+}
+function markAllSeen() { seenAll = new Date().toISOString(); try { localStorage.setItem(SEENALL_KEY, seenAll); } catch (_) {} render(); }
+// 設定
+function openSettings() {
+  document.getElementById('hospRows').innerHTML = HOSPITALS.map(h => `<div class="hrow">
+    <div class="nm"><input type="checkbox" id="on_${h.key}" ${cfg[h.key] && cfg[h.key].off ? '' : 'checked'}> ${esc(h.name)} <span class="note" style="font-weight:400">(${esc(h.key)})</span></div>
+    <label>合言葉（アクセスキー）</label><input type="text" id="tk_${h.key}" value="${esc((cfg[h.key] && cfg[h.key].token) || '')}" placeholder="アプリの設定画面と同じ合言葉" autocomplete="off">
+  </div>`).join('');
+  document.getElementById('settings').classList.add('on');
+}
+function closeSettings() { document.getElementById('settings').classList.remove('on'); }
+function saveSettings() {
+  HOSPITALS.forEach(h => { cfg[h.key] = { token: (document.getElementById('tk_' + h.key).value || '').trim(), off: !document.getElementById('on_' + h.key).checked }; });
+  try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (_) {}
+  closeSettings(); refreshAll();
+}
+// 通知（このページを開いている間、5分ごとの自動更新で新着があれば通知）
+let _notifyOn = false;
+function enableNotify() {
+  if (!('Notification' in window)) { alert('このブラウザは通知に対応していません'); return; }
+  Notification.requestPermission().then(p => { _notifyOn = (p === 'granted'); document.getElementById('notifBtn').textContent = _notifyOn ? '🔔 通知ON（有効）' : '🔔 通知ON'; try { localStorage.setItem('som_rvboard_notify', _notifyOn ? '1' : ''); } catch (_) {} });
+}
+try { if (localStorage.getItem('som_rvboard_notify') === '1' && 'Notification' in window && Notification.permission === 'granted') { _notifyOn = true; document.getElementById('notifBtn').textContent = '🔔 通知ON（有効）'; } } catch (_) {}
+refreshAll();
+setInterval(refreshAll, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshAll(); });
+</script>
+</body>
+</html>
