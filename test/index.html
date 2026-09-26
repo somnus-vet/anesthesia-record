@@ -164,6 +164,22 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .drug-row{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid #f0f4f8}
 .drug-row:last-child{border-bottom:none}
 .addon-del{margin-top:6px;padding:4px 9px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:11px;color:var(--muted);cursor:pointer}
+.proc-box{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.proc-box .fin{flex:1;min-width:0}
+.proc-del{width:36px;height:36px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--muted);font-size:15px;cursor:pointer;flex-shrink:0}
+.proc-type{font-size:10px;font-weight:700;border-radius:5px;padding:2px 5px;flex-shrink:0}
+.proc-type.exam{background:#e0f2fe;color:#075985}.proc-type.surg{background:#fee2e2;color:#991b1b}
+.proc-suggest{margin:-2px 0 8px 0;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.10);-webkit-overflow-scrolling:touch}
+.proc-suggest .bs-i{padding:10px 12px;font-size:14px;color:var(--text);cursor:pointer;border-bottom:1px solid #eef2f6;display:flex;align-items:center;gap:8px}
+.proc-suggest .bs-i:last-child{border-bottom:none}.proc-suggest .bs-i:active{background:#eef4ff}
+.proc-suggest .bs-hdr{font-size:11px;color:var(--muted);padding:6px 12px 2px;font-weight:700}
+.ev-proc{background:#fef2f2!important;border-color:#dc2626!important;color:#b91c1c!important}
+.ev-proc-end{background:#dc2626!important;border-color:#dc2626!important;color:#fff!important}
+.ev-proc.exam{background:#f0f9ff!important;border-color:#0284c7!important;color:#075985!important}
+.ev-proc-end.exam{background:#0284c7!important;border-color:#0284c7!important;color:#fff!important}
+.tl-row.tl-proc{border-left-color:#dc2626}
+.tl-kind-proc{background:#fee2e2;color:#991b1b}
+.tl-surg-tag{font-size:10.5px;font-weight:800;color:#fff;background:#1e3a5f;border-radius:6px;padding:2px 6px;margin-left:6px;white-space:nowrap}
 .drug-toggle{width:36px;height:36px;border:2px solid var(--border);border-radius:8px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:4px;transition:all .12s;font-size:0;-webkit-user-select:none}
 .drug-row.on .drug-toggle{background:var(--blue);border-color:var(--blue);font-size:16px;color:#fff}
 .drug-row.on .drug-toggle::after{content:'✓';font-weight:800}
@@ -746,19 +762,14 @@ input.fin[readonly]{background:#fff;cursor:pointer}
             <span class="flabel flabel-w">診断名</span>
             <input class="fin" type="text" id="f_diagnosis" placeholder="診断名" oninput="autoSave();renderEventButtons()">
           </div>
-          <div class="frow">
-            <span class="flabel flabel-w">術式</span>
-            <input class="fin" type="text" id="f_procedure" placeholder="術式（処置内容）" oninput="autoSave();renderEventButtons();refreshProcedureBtns()">
+          <div class="frow" style="align-items:flex-start">
+            <span class="flabel flabel-w" style="padding-top:10px">術式</span>
+            <div style="flex:1;min-width:0">
+              <div id="procBoxes"></div>
+              <button type="button" class="btn-add-row" id="procAddBtn" onclick="addProcBox()" style="margin-top:2px;padding:7px">＋ 手技を追加（CT→手術、内視鏡→開腹 など）</button>
+              <input type="hidden" id="f_procedure">
+            </div>
           </div>
-          <div class="qdose-bar" style="margin:6px 0 2px">
-            <button type="button" class="qdose-btn proc-btn" data-proc="CAST" onclick="toggleProcedure('CAST')">CAST</button>
-            <button type="button" class="qdose-btn proc-btn" data-proc="SPAY" onclick="toggleProcedure('SPAY')">SPAY</button>
-            <button type="button" class="qdose-btn proc-btn" data-proc="CT" onclick="toggleProcedure('CT')">CT</button>
-            <button type="button" class="qdose-btn proc-btn" data-proc="歯科処置" onclick="toggleProcedure('歯科処置')">歯科処置</button>
-            <button type="button" class="qdose-btn proc-btn" data-proc="内視鏡" onclick="toggleProcedure('内視鏡')">内視鏡</button>
-            <button type="button" class="qdose-btn proc-btn" data-proc="開腹" onclick="toggleProcedure('開腹')">開腹</button>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin:0 0 4px">処置内容は複数選択できます（CT＋開腹 など）。「＋」区切りで手入力も可</div>
           <div class="frow">
             <span class="flabel flabel-w">術者</span>
             <input class="fin" type="text" id="f_surgeon" readonly placeholder="術者" onclick="openStaffPicker('f_surgeon','術者')">
@@ -4709,7 +4720,7 @@ function populateForm() {
   });
 
   try { refreshMixChips(); renderMixSummary(); } catch (_) {}
-  try { refreshProcedureBtns(); } catch (_) {}
+  try { renderProcBoxes(); } catch (_) {}
   // 猫×アセトアミノフェン禁忌の行状態を反映
   try { applyAcetaminophenBan(); } catch(_) {}
 
@@ -5503,6 +5514,13 @@ function renderEventButtons() {
       }
     });
   }
+  // 術式(手技)が入っていれば、全体の「手術開始/終了」ボタンは出さず、手技ごとの「○○ 開始/終了」に置き換える
+  const _ptok = procTokens(getVal('f_procedure') || current.procedure || '');
+  if (_ptok.length) {
+    const _ps = procSegEvents(_ptok), _out = [];
+    baseEvents.forEach(e => { if (e.key === 'surgStart') _ps.forEach(x => _out.push(x)); else if (e.key === 'surgEnd') return; else _out.push(e); });
+    baseEvents = _out;
+  }
   // 混注①②③(プランで区分した前投薬)は「前投薬」ボタンの直後に並べる
   const _mixEv = mixEventList();
   if (_mixEv.length) { const _i = baseEvents.findIndex(e => e.key === 'anesthStart'); baseEvents = baseEvents.slice(0, _i + 1).concat(_mixEv, baseEvents.slice(_i + 1)); }
@@ -5513,6 +5531,7 @@ function renderEventButtons() {
   const shown = all.filter(e => VISC_KEYS.indexOf(e.key) === -1);
   const _pe = k => ((current.procEvents[k] || '').trim());
   const unset = shown.filter(e => {
+    if (e.ps) return true;  // 手技の開始/終了は procSegEvents が状態込みで作っている
     if (e.laHasSide) {
       // 側付き局麻: 両側 / 左右両方 / (旧データ)側なし が記録済みならボタンを消す。
       // PLで片側(R/L)を指定している場合は、その側を記録した時点で消える
@@ -5568,6 +5587,7 @@ function renderEventButtons() {
   // 側のあるブロックはタップで 右/左/両側 の選択に展開（膝の粘稠度と同方式）。
   // 片側記録済みなら残りの側だけを選択肢に出す。
   const laBtn = e => {
+    if (e.ps) return `<button type="button" class="qdose-btn ${e.cls}" data-n="${escA(e.ps.name)}" data-p="${e.ps.phase}" onclick="recordProcSeg(this.dataset.n,this.dataset.p)">${esc(e.label)}</button>`;
     if (!e.laHasSide) return `<button type="button" class="qdose-btn${e.cls ? ' ' + e.cls : ''}" onclick="recordEvent('${e.key}')">${e.label}</button>`;
     if (window._laOpen !== e.key) {
       return `<button type="button" class="qdose-btn" onclick="window._laOpen='${e.key}';renderEventButtons()">${e.label}</button>`;
@@ -5620,7 +5640,9 @@ function renderTimelineList() {
   // 描画のたびに時刻順で計算し直し、常に直前の行の値と一致させる（保存値も同時に更新）。
   try { recomputeFreeNotesFroms(); } catch (_) {}
   const entries = [];
+  const _derive = procDeriveMode();
   INTRAOP_EVENTS.forEach(e => {
+    if (_derive && (e.key === 'surgStart' || e.key === 'surgEnd')) return;  // 手技の開始/終了から自動で決まる
     if ((current[e.key] || '').trim()) entries.push({ type:'event', key:e.key, label:e.label, time:current[e.key] });
   });
   Object.entries(current.procEvents).forEach(([key, t]) => {
@@ -5635,6 +5657,7 @@ function renderTimelineList() {
     entries.push({
       type:'free', idx:i,
       kind: n.kind || 'memo',
+      name: n.name || '', phase: n.phase || '',
       text: n.text || '',
       time: n.time || '',
       from: n.from || '',
@@ -5720,6 +5743,16 @@ function renderTimelineList() {
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind ${kindCls}">${lbl}</span>
           <span class="tl-io"><span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${unitStr}</span></span>
+          <span class="tl-spacer"></span>
+          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+        </div>`;
+      }
+      // 手技の開始/終了（術式ボックスごと）。手術種別の最初の開始/最後の終了には「手術開始/終了」タグ
+      if (k === 'proc') {
+        const _tag = procSegTag(en);
+        return `<div class="tl-row tl-proc">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
+          <span class="tl-kind tl-kind-proc">${esc(en.name)} ${en.phase === 'end' ? '終了' : '開始'}</span>${_tag ? `<span class="tl-surg-tag">${_tag}</span>` : ''}
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
@@ -5927,7 +5960,7 @@ function removeDrugLog(idx) {
 function addFreeNote(kind, opts) {
   if (!current) return;
   if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
-  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange'];
+  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange','proc'];
   const k = valid.indexOf(kind) >= 0 ? kind : 'memo';
   // opts.time があればその時刻で追加（挿管後の自動入力で数秒ずらすため）。無ければ現在時刻。
   const entry = { time: (opts && opts.time) ? opts.time : nowTime(), kind: k, uid: genUid() };
@@ -6091,6 +6124,7 @@ function removeFreeNote(idx) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
   current.freeNotes[idx].deleted = true;
   recomputeFreeNotesFroms();
+  try { recomputeSurgTimes(); } catch (_) {}
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
@@ -6146,6 +6180,7 @@ function flushTimelineRender() {
 }
 function onFreeNoteFinalize() {
   recomputeFreeNotesFroms();
+  try { recomputeSurgTimes(); } catch (_) {}
   autoSave();
   setTimeout(flushTimelineRender, 80);
 }
@@ -6357,9 +6392,8 @@ const PROCEDURE_EVENTS = {
     { key:'pe_deciduous_end', label:'乳歯抜歯終了' },
   ],
   CT: [
-    { key:'pe_ct_start',    label:'撮影開始' },
+    // 撮影開始/終了は手技ボタン「CT 開始/終了」に統合。造影剤投与だけ専用ボタンとして残す
     { key:'pe_ct_contrast', label:'造影剤投与' },
-    { key:'pe_ct_end',      label:'撮影終了' },
   ],
   // 整形(膝): 診断名/術式にキーワードが含まれるとき、標準グループに追加で合流する
   // （パテラ整復・膝蓋骨脱臼整復・前十字靭帯断裂・ラテラルスーチャー等は部分一致でカバー）
@@ -6586,22 +6620,199 @@ function setFluidType(v) {
 function setProcedure(v) {
   setVal('f_procedure', v);
   if (current) current.procedure = v;
+  renderProcBoxes();
   renderEventButtons();
-  refreshProcedureBtns();
   autoSave();
 }
-// 術式(処置内容)の複数選択: ボタンをタップで「＋」区切りに追加/除去（CT→手術、内視鏡→開腹 など）
+// ─────────────────────────────────────────────────
+// 術式(処置内容): 複数ボックス＋サジェスト。保存は従来どおり f_procedure / current.procedure に
+// 「＋」区切りの1文字列（Sheetsの術式列・SomLogの術式表示・検索はそのまま動く）。
+// 手技ごとに術中タブへ「○○ 開始」→「○○ 終了」→消える ボタンが出る（記録欄の✕で復活）。
+// 手術開始/手術終了(surgStart/surgEnd)はボタンでなく、手術種別の手技の開始/終了から自動で決まる。
+// ─────────────────────────────────────────────────
 const PROC_SEP = '＋';
+const PROC_MAX = 4;
 function procTokens(s) { return String(s || '').split(/[＋+]/).map(x => x.trim()).filter(Boolean); }
-function toggleProcedure(v) {
-  const cur = procTokens(getVal('f_procedure'));
-  const i = cur.indexOf(v);
-  if (i >= 0) cur.splice(i, 1); else cur.push(v);
-  setProcedure(cur.join(PROC_SEP));
+// 手技マスタ: type = 'exam'(検査: 手術開始/終了の起点にしない) | 'surg'(手術)
+const PROC_MASTER = [
+  { name:'CAST', type:'surg' }, { name:'SPAY', type:'surg' }, { name:'歯科処置', type:'surg' },
+  { name:'CT', type:'exam' }, { name:'MRI', type:'exam' }, { name:'内視鏡', type:'exam' }, { name:'エコー', type:'exam' },
+  { name:'開腹', type:'surg' }, { name:'腫瘤切除', type:'surg' }, { name:'皮膚腫瘤切除', type:'surg' }, { name:'乳腺腫瘍切除', type:'surg' },
+  { name:'脾臓摘出', type:'surg' }, { name:'胃切開', type:'surg' }, { name:'腸切開', type:'surg' }, { name:'腸管切除吻合', type:'surg' },
+  { name:'膀胱切開', type:'surg' }, { name:'会陰ヘルニア整復', type:'surg' }, { name:'膝蓋骨脱臼整復', type:'surg' },
+  { name:'前十字靭帯断裂整復', type:'surg' }, { name:'TPLO', type:'surg' }, { name:'骨折整復', type:'surg' },
+  { name:'眼科手術', type:'surg' }, { name:'耳道手術', type:'surg' }, { name:'抜歯', type:'surg' }, { name:'生検', type:'surg' },
+];
+const PROC_EXAM_RE = /CT|MRI|内視鏡|エコー|検査|X線|レントゲン|造影|透視/i;
+function procType(name) {
+  const m = PROC_MASTER.find(p => p.name === name);
+  if (m) return m.type;
+  return PROC_EXAM_RE.test(name) ? 'exam' : 'surg';
 }
-function refreshProcedureBtns() {
-  const cur = procTokens(getVal('f_procedure'));
-  document.querySelectorAll('.proc-btn').forEach(b => b.classList.toggle('on', cur.indexOf(b.dataset.proc) >= 0));
+function escA(s) { return esc(s).replace(/"/g, '&quot;'); }
+// この病院の過去症例で使った術式名を回数順に（サジェスト上位に出す）
+function procHistoryNames() {
+  const cnt = {};
+  (cases || []).forEach(c => {
+    if (current && c.id === current.id) return;
+    procTokens(c.procedure).forEach(t => { cnt[t] = (cnt[t] || 0) + 1; });
+  });
+  return Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
+}
+function procSuggestList(q) {
+  const hist = procHistoryNames();
+  const all = [];
+  const seen = new Set();
+  hist.forEach(n => { if (!seen.has(n)) { seen.add(n); all.push({ name:n, hist:true }); } });
+  PROC_MASTER.forEach(p => { if (!seen.has(p.name)) { seen.add(p.name); all.push({ name:p.name, hist:false }); } });
+  const qq = String(q || '').trim().toLowerCase();
+  const cur = new Set(procTokens(getVal('f_procedure')));
+  return all.filter(x => !cur.has(x.name) && (!qq || x.name.toLowerCase().indexOf(qq) >= 0)).slice(0, qq ? 10 : 8);
+}
+let _procOpen = -1;  // サジェストを開いているボックス番号
+function renderProcBoxes() {
+  const box = document.getElementById('procBoxes'); if (!box) return;
+  const toks = procTokens(getVal('f_procedure') || (current && current.procedure) || '');
+  const rows = toks.length ? toks : [''];
+  box.innerHTML = rows.map((t, i) => {
+    const ty = t ? procType(t) : '';
+    return `<div class="proc-box">
+      <input class="fin proc-in" type="text" data-i="${i}" value="${escA(t)}" placeholder="${i === 0 ? '術式（タップで候補）' : '追加の手技'}"
+        onfocus="onProcFocus(${i})" oninput="onProcInput(${i})" onblur="setTimeout(()=>closeProcSuggest(${i}),150)" autocomplete="off">
+      ${ty ? `<span class="proc-type ${ty}">${ty === 'exam' ? '検査' : '手術'}</span>` : ''}
+      ${(rows.length > 1 || t) ? `<button type="button" class="proc-del" onclick="removeProcBox(${i})" title="この手技を消す">✕</button>` : ''}
+    </div>
+    <div class="proc-suggest" id="procSuggest_${i}" style="display:none"></div>`;
+  }).join('');
+  const add = document.getElementById('procAddBtn');
+  if (add) add.style.display = (rows.length < PROC_MAX && rows[rows.length - 1]) ? '' : 'none';
+}
+function procBoxValues() {
+  return Array.from(document.querySelectorAll('#procBoxes .proc-in')).map(el => el.value.trim());
+}
+function syncProcFromBoxes(rerender) {
+  const toks = procBoxValues().filter(Boolean);
+  const v = toks.join(PROC_SEP);
+  setVal('f_procedure', v);
+  if (current) current.procedure = v;
+  if (rerender) renderProcBoxes();
+  updateHeaderMeta();
+  renderEventButtons();
+  try { recomputeSurgTimes(); renderTimelineList(); } catch (_) {}
+  autoSave();
+}
+function onProcFocus(i) { _procOpen = i; showProcSuggest(i); }
+function onProcInput(i) {
+  showProcSuggest(i);
+  // 入力中は再描画しない（フォーカス維持）。値は隠し欄へ即時反映
+  const toks = procBoxValues().filter(Boolean);
+  const v = toks.join(PROC_SEP);
+  setVal('f_procedure', v);
+  if (current) current.procedure = v;
+  updateHeaderMeta();
+  autoSave();
+}
+function showProcSuggest(i) {
+  const el = document.getElementById('procSuggest_' + i); if (!el) return;
+  const inp = document.querySelector(`#procBoxes .proc-in[data-i="${i}"]`);
+  const q = inp ? inp.value : '';
+  const list = procSuggestList(q);
+  if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const hasHist = list.some(x => x.hist);
+  el.innerHTML = (q ? '' : `<div class="bs-hdr">${hasHist ? 'よく使う手技（この病院の記録＋定番）' : 'よく使う手技'}</div>`) +
+    list.map(x => `<div class="bs-i" onmousedown="event.preventDefault();selectProcSuggest(${i},this.dataset.n)" data-n="${escA(x.name)}">`
+      + `<span class="proc-type ${procType(x.name)}">${procType(x.name) === 'exam' ? '検査' : '手術'}</span>${esc(x.name)}${x.hist ? '<span style="margin-left:auto;font-size:11px;color:var(--muted)">履歴</span>' : ''}</div>`).join('');
+  el.style.display = '';
+}
+function closeProcSuggest(i) {
+  const el = document.getElementById('procSuggest_' + i);
+  if (el) { el.style.display = 'none'; }
+  // 手入力で確定した名前も種別タグ等を反映
+  const before = getVal('f_procedure');
+  const after = procBoxValues().filter(Boolean).join(PROC_SEP);
+  if (before !== after || document.activeElement === null || !document.activeElement.classList || !document.activeElement.classList.contains('proc-in')) syncProcFromBoxes(true);
+}
+function selectProcSuggest(i, name) {
+  const inp = document.querySelector(`#procBoxes .proc-in[data-i="${i}"]`);
+  if (inp) inp.value = name;
+  syncProcFromBoxes(true);
+}
+function addProcBox() {
+  const toks = procBoxValues().filter(Boolean);
+  if (toks.length >= PROC_MAX) return;
+  setVal('f_procedure', toks.join(PROC_SEP));
+  renderProcBoxes();
+  // 末尾に空ボックスを足してフォーカス
+  const box = document.getElementById('procBoxes');
+  const i = toks.length;
+  box.insertAdjacentHTML('beforeend', `<div class="proc-box">
+      <input class="fin proc-in" type="text" data-i="${i}" value="" placeholder="追加の手技（タップで候補）"
+        onfocus="onProcFocus(${i})" oninput="onProcInput(${i})" onblur="setTimeout(()=>closeProcSuggest(${i}),150)" autocomplete="off">
+      <button type="button" class="proc-del" onclick="removeProcBox(${i})" title="この手技を消す">✕</button>
+    </div>
+    <div class="proc-suggest" id="procSuggest_${i}" style="display:none"></div>`);
+  const add = document.getElementById('procAddBtn'); if (add) add.style.display = 'none';
+  const inp = box.querySelector(`.proc-in[data-i="${i}"]`); if (inp) inp.focus();
+}
+function removeProcBox(i) {
+  const vals = procBoxValues(); vals.splice(i, 1);
+  setVal('f_procedure', vals.filter(Boolean).join(PROC_SEP));
+  if (current) current.procedure = getVal('f_procedure');
+  renderProcBoxes();
+  syncProcFromBoxes(false);
+}
+
+// ── 手技ごとの 開始/終了 ボタンと、手術開始/終了の自動導出 ──
+function procSegNotes(name) {
+  return ((current && current.freeNotes) || []).filter(n => n && !n.deleted && n.kind === 'proc' && n.name === name);
+}
+function procSegEvents(tokens) {
+  const out = [];
+  tokens.forEach(name => {
+    const notes = procSegNotes(name);
+    const hasStart = notes.some(n => n.phase === 'start');
+    const hasEnd = notes.some(n => n.phase === 'end');
+    const ty = procType(name);
+    if (!hasStart) out.push({ key: 'ps|start|' + name, label: name + ' 開始', ps: { name, phase: 'start' }, cls: 'ev-proc' + (ty === 'exam' ? ' exam' : '') });
+    else if (!hasEnd) out.push({ key: 'ps|end|' + name, label: name + ' 終了', ps: { name, phase: 'end' }, cls: 'ev-proc-end' + (ty === 'exam' ? ' exam' : '') });
+  });
+  return out;
+}
+function procDeriveMode() { return procTokens(getVal('f_procedure') || (current && current.procedure) || '').length > 0; }
+function recordProcSeg(name, phase) {
+  if (!current || !name) return;
+  if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
+  const t = nowTime();
+  current.freeNotes.push({ time: t, kind: 'proc', name, phase, text: `${name} ${phase === 'end' ? '終了' : '開始'}`, uid: genUid() });
+  recomputeSurgTimes();
+  renderTimeline();
+  autoSave();
+  pushCurrentToSheets();
+  showToast(`✅ ${name} ${phase === 'end' ? '終了' : '開始'} を ${t} に記録`);
+}
+// 手術開始 = 手術種別の手技で最初の「開始」、手術終了 = 手術種別の手技で最後の「終了」
+function recomputeSurgTimes() {
+  if (!current || !procDeriveMode()) return;
+  const toks = procTokens(getVal('f_procedure') || current.procedure || '');
+  const surgNames = new Set(toks.filter(n => procType(n) === 'surg'));
+  let s = null, e = null;
+  ((current.freeNotes) || []).forEach(n => {
+    if (!n || n.deleted || n.kind !== 'proc' || !surgNames.has(n.name)) return;
+    const sec = timeToSec(n.time); if (sec === null) return;
+    if (n.phase === 'start' && (s === null || sec < s.sec)) s = { sec, time: n.time };
+    if (n.phase === 'end' && (e === null || sec > e.sec)) e = { sec, time: n.time };
+  });
+  const ns = s ? s.time : '', ne = e ? e.time : '';
+  if ((current.surgStart || '') !== ns) { current.surgStart = ns; setVal('f_surgStart', ns); }
+  if ((current.surgEnd || '') !== ne) { current.surgEnd = ne; setVal('f_surgEnd', ne); }
+  updateDurations();
+}
+function procSegTag(en) {
+  if (!procDeriveMode() || !en.time) return '';
+  if (procType(en.name) !== 'surg') return '';
+  if (en.phase === 'start' && en.time === current.surgStart) return '手術開始';
+  if (en.phase === 'end' && en.time === current.surgEnd) return '手術終了';
+  return '';
 }
 
 // ─────────────────────────────────────────────────
@@ -9008,7 +9219,7 @@ function _tsClose() {
 .screen{inset:22px 0 0 0!important}
 @media print{.demo-banner{display:none}}
 </style>
-<div class="demo-banner">テスト版（混注①②③／追加投与／術式の複数選択）— 架空データ・どこにも送信されません</div>
+<div class="demo-banner">テスト版（混注①②③／追加投与／術式ボックス＋手技ごとの開始・終了）— 架空データ・どこにも送信されません</div>
 <script>
 (function () {
   const D = (h, m, s) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s || 0).padStart(2, '0')}`;
