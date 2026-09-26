@@ -151,14 +151,17 @@ async function fetchHospital(h) {
   return parseCSV(text).map(r => {
     let d = {}; try { d = JSON.parse(r['詳細'] || '{}') || {}; } catch (_) {}
     const p = d.rvProgress || null;
-    const edited = tsOf(d.rvEditedAt) || (p ? tsOf(p.at) : 0);
+    // 進捗率が無い(旧ビルドで記載した)症例: 振り返り項目(rv*)の記載数から「記載あり」を判定し、最終更新を編集時刻の代わりにする
+    const RV_META = new Set(['rvProgress','rvEditedAt','rvSubmittedAt','rvSubmittedBy','rvComments','rvCommentSeen','rvAutoComp','rvPurpose','rvVitalsCache']);
+    const rvFilled = Object.keys(d).filter(k => /^rv/.test(k) && !RV_META.has(k) && d[k] !== '' && d[k] != null && d[k] !== false).length;
+    const edited = tsOf(d.rvEditedAt) || (p ? tsOf(p.at) : 0) || (rvFilled ? tsOf(r['updated_at'] || d.updated_at) : 0);
     const submitted = tsOf(d.rvSubmittedAt);
     const cms = Array.isArray(d.rvComments) ? d.rvComments.filter(x => x && !x.deleted) : [];
     const caseDate = tsOf((r['日付'] || d.date || '') + ' 00:00');
     return {
       hosp: h, id: r['内部ID'] || d.id || '', date: r['日付'] || d.date || '', caseDate,
       name: r['患者名'] || d.patientName || '', proc: r['術式'] || d.procedure || '', staff: r['担当'] || d.staff || '',
-      pct: p && typeof p.pct === 'number' ? p.pct : null, total: p ? p.total : 0, missing: p ? p.missing : 0,
+      pct: p && typeof p.pct === 'number' ? p.pct : null, total: p ? p.total : 0, missing: p ? p.missing : 0, rvFilled,
       edited, submitted, submittedBy: d.rvSubmittedBy || '', comments: cms.length,
       updated: tsOf(r['updated_at'] || d.updated_at),
     };
@@ -213,7 +216,7 @@ function render() {
       <span class="hosp">${esc(x.hosp.name)}</span>
       <div><div class="who">${esc(x.name || '（患者名なし）')}${isNew(x) ? '<span class="badge new">新着</span>' : ''}${x.submitted ? '<span class="badge sub">📤 提出済</span>' : ''}${x.comments ? `<span class="badge cm">💬${x.comments}</span>` : ''}</div>
         <div class="meta">${esc(x.date)} ／ ${esc(x.proc || '術式未記載')}${x.staff ? ' ／ 記載: ' + esc(x.staff) : ''}${x.submittedBy ? ' ／ 提出: ' + esc(x.submittedBy) : ''}</div></div>
-      <div class="right">${x.pct != null ? `<span class="pct">${x.pct}%</span><span class="bar"><i class="${x.submitted ? 'done' : ''}" style="width:${x.pct}%"></i></span><div class="when">記載 ${x.total - x.missing}/${x.total} 項目</div>` : '<span class="when">進捗 未計測</span>'}
+      <div class="right">${x.pct != null ? `<span class="pct">${x.pct}%</span><span class="bar"><i class="${x.submitted ? 'done' : ''}" style="width:${x.pct}%"></i></span><div class="when">記載 ${x.total - x.missing}/${x.total} 項目</div>` : `<span class="when">${x.rvFilled ? '記載 ' + x.rvFilled + ' 項目（進捗率は新版アプリから）' : '進捗 未計測'}</span>`}
         <div class="when">${last ? `最終 ${fmt(last)}（${rel(last)}）` : ''}</div></div>
     </div>`;
   }).join('');
