@@ -163,6 +163,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 /* DRUG ROWS */
 .drug-row{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid #f0f4f8}
 .drug-row:last-child{border-bottom:none}
+.addon-del{margin-top:6px;padding:4px 9px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:11px;color:var(--muted);cursor:pointer}
 .drug-toggle{width:36px;height:36px;border:2px solid var(--border);border-radius:8px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:4px;transition:all .12s;font-size:0;-webkit-user-select:none}
 .drug-row.on .drug-toggle{background:var(--blue);border-color:var(--blue);font-size:16px;color:#fff}
 .drug-row.on .drug-toggle::after{content:'✓';font-weight:800}
@@ -970,8 +971,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="sub-acc" data-sub="addon">
           <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>追加投与 <span class="sub-en">Add-on（CT後など）</span><span class="sub-sum" id="ssum_addon"></span></div>
           <div class="sub-body">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">前投薬とは別に、検査後（CT後など）や術中に投与する薬。チェックすると術中タブの薬剤ボタンに「追加」タグ付きで出ます</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">前投薬とは別に、検査後（CT後など）や術中に投与する予定の薬を、薬剤一覧から選んで入れます。用量・経路を入れておくと術中タブの薬剤ボタンに「追加」タグ付きで出ます</div>
           <div id="drugList_addon"></div>
+          <select id="addonSelect" class="fin" style="margin-top:8px;font-size:13px" onchange="addAddonDrug(this.value)"><option value="">＋ 薬剤を選んで追加…</option></select>
           </div></div>
 
           <div class="sub-acc" data-sub="maint">
@@ -1642,10 +1644,9 @@ const DRUG_GROUPS = {
   ],
   // 追加投与: 前投薬とは別に術中/検査後(CT後など)に投与する薬。前投薬欄にしか無かった
   // メデトミジン/ニカルジピンを、前投薬として扱わずに計画・記録できるようにする
-  addon: [
-    { key:'medetomidine_a', label:'メデトミジン', unit:'μg/kg', dog:'5〜40', cat:'40〜80', routes:['IV','IM','SC'], def:'IV', conc:1000 },
-    { key:'nicardipine_a',  label:'ニカルジピン', unit:'μg/kg', dog:'1〜5',  cat:'1〜5',   routes:['IV','IM','SC'], def:'IV', conc:1000 },
-  ],
+  // 既定の薬は置かない。症例ごとに選んだ薬(current.addonKeys)から syncAddonDefs() が
+  // 仮想定義(key='a_'+元キー、他は元の定義を流用)を入れる
+  addon: [],
   antibiotics: [
     { key:'cefazolin',      label:'セファゾリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:100 },
     { key:'ampicillin',     label:'アンピシリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:100 },
@@ -4682,6 +4683,7 @@ function populateForm() {
     .forEach(k => { current[k] = true; });
 
   // Drugs
+  try { renderAddonRows(); } catch (_) {}  // 追加投与枠(症例ごとの薬)を先に描く
   Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
     drugs.forEach(d => {
       const drugData = current.drugs[d.key] || {};
@@ -4982,6 +4984,85 @@ function premedGroupText(c, fmt) {
   const parts = [1, 2, 3].map(n => { const a = byMix(n); return a.length ? `${MIX_LABELS[n]}(${a.join('＋')})` : ''; }).filter(Boolean)
     .concat(on.filter(d => !dz[d.key].mix).map(fmt));
   return { premed: parts };
+}
+
+// ── 追加投与(Add-on)枠: 症例ごとに薬剤マスタから選んで入れる ──────────────
+// current.addonKeys = ['medetomidine', ...](元の定義キー)。DRUG_GROUPS.addon には
+// 仮想定義 {…元定義, key:'a_'+元キー} を入れて、薬剤ボタン/報告書/用量計算を他グループと同じ経路で動かす。
+const ADDON_GROUP_NAMES = { premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
+function addonBaseDef(baseKey) {
+  for (const [gk, arr] of Object.entries(DRUG_GROUPS)) {
+    if (gk === 'addon') continue;
+    const d = arr.find(x => x.key === baseKey);
+    if (d) return d;
+  }
+  return null;
+}
+function syncAddonDefs(c) {
+  DRUG_GROUPS.addon.length = 0;
+  ((c && c.addonKeys) || []).forEach(k => {
+    const b = addonBaseDef(k);
+    if (b) DRUG_GROUPS.addon.push(Object.assign({}, b, { key: 'a_' + k, baseKey: k }));
+  });
+}
+function restoreDrugRowState(d) {
+  const drugData = (current.drugs && current.drugs[d.key]) || {};
+  const row = document.getElementById('drow_' + d.key); if (!row) return;
+  row.classList.toggle('on', !!drugData.use);
+  const doseEl = document.getElementById('ddose_' + d.key); if (doseEl) doseEl.value = drugData.dose || '';
+  updateCalc(d.key, drugData.dose, current.weight, d.unit);
+  const route = drugData.route || d.def;
+  const rgrp = document.getElementById('rgrp_' + d.key);
+  if (rgrp) rgrp.querySelectorAll('.rbtn').forEach(btn => btn.classList.toggle('on', btn.dataset.route === route));
+}
+function renderAddonRows() {
+  if (!current) return;
+  syncAddonDefs(current);
+  const el = document.getElementById('drugList_addon'); if (!el) return;
+  el.innerHTML = DRUG_GROUPS.addon.map(d => renderDrugRow(d)).join('');
+  DRUG_GROUPS.addon.forEach(d => {
+    restoreDrugRowState(d);
+    const row = document.getElementById('drow_' + d.key);
+    const content = row && row.querySelector('.drug-content');
+    if (content) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'addon-del'; b.textContent = '✕ この枠から外す';
+      b.onclick = (ev) => { ev.stopPropagation(); removeAddonDrug(d.baseKey); };
+      content.appendChild(b);
+    }
+  });
+  const sel = document.getElementById('addonSelect');
+  if (sel) {
+    const have = new Set(current.addonKeys || []);
+    sel.innerHTML = '<option value="">＋ 薬剤を選んで追加…</option>' +
+      Object.entries(DRUG_GROUPS).map(([gk, arr]) => {
+        if (gk === 'addon') return '';
+        const opts = arr.filter(d => !have.has(d.key)).map(d => `<option value="${d.key}">${esc(d.label)} (${esc(d.unit)})</option>`).join('');
+        return opts ? `<optgroup label="${esc(ADDON_GROUP_NAMES[gk] || gk)}">${opts}</optgroup>` : '';
+      }).join('');
+  }
+}
+function addAddonDrug(baseKey) {
+  if (!current || !baseKey) return;
+  const b = addonBaseDef(baseKey); if (!b) return;
+  if (!Array.isArray(current.addonKeys)) current.addonKeys = [];
+  if (current.addonKeys.indexOf(baseKey) < 0) current.addonKeys.push(baseKey);
+  if (!current.drugs) current.drugs = {};
+  const ak = 'a_' + baseKey;
+  if (!current.drugs[ak]) current.drugs[ak] = { use: true, dose: '', route: b.def || '' };
+  else current.drugs[ak].use = true;
+  renderAddonRows();
+  try { renderQuickDoseBar(); updateSubSums(); } catch (_) {}
+  autoSave();
+  const inp = document.getElementById('ddose_' + ak); if (inp) inp.focus();
+}
+function removeAddonDrug(baseKey) {
+  if (!current) return;
+  current.addonKeys = (current.addonKeys || []).filter(k => k !== baseKey);
+  if (current.drugs) delete current.drugs['a_' + baseKey];
+  renderAddonRows();
+  try { renderQuickDoseBar(); updateSubSums(); } catch (_) {}
+  autoSave();
 }
 
 function toggleDrug(key, event) {
