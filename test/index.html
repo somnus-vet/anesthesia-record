@@ -6101,8 +6101,11 @@ function renderTimelineList() {
   try { recomputeFreeNotesFroms(); } catch (_) {}
   const entries = [];
   const _derive = procDeriveMode();
+  // 混注①②③の時刻がそのまま前投薬時刻になっている時は、前投薬の行を別に出さず混注の行に「前投薬」タグを付ける
+  const _mixIsPremed = ['pe_mix1', 'pe_mix2', 'pe_mix3'].some(k => (current.procEvents[k] || '').trim() && current.procEvents[k] === (current.anesthStart || ''));
   INTRAOP_EVENTS.forEach(e => {
     if (_derive && procSurgNotesExist() && (e.key === 'surgStart' || e.key === 'surgEnd')) return;  // 手技の開始/終了から自動で決まる
+    if (_mixIsPremed && e.key === 'anesthStart') return;  // 混注の行に統合
     if ((current[e.key] || '').trim()) entries.push({ type:'event', key:e.key, label:e.label, time:current[e.key] });
   });
   Object.entries(current.procEvents).forEach(([key, t]) => {
@@ -6154,7 +6157,7 @@ function renderTimelineList() {
       }
       return `<div class="tl-row tl-event">
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
-        <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>
+        <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
       </div>`;
