@@ -534,6 +534,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .rv-hbtn.rv-submit.arm{background:#c0392b;border-color:#c0392b;animation:rvblink .6s steps(2) infinite}
 .rv-hbtn:disabled{opacity:.6}
 @keyframes rvblink{50%{opacity:.7}}
+.case-rv-badge{display:inline-block;margin-left:6px;background:#fdf6e3;color:#8a6d0b;border:1px solid #f1d98a;border-radius:9px;padding:0 7px;font-size:11px;font-weight:700;vertical-align:1px}
+.case-rv-badge.new{background:#fff3c4;border-color:#f0b429;color:#7a4b00}
+.case-rv-badge.done{background:#eafaf1;border-color:#a9dfbf;color:#1e8449}
 .case-cm-badge{display:inline-block;margin-left:6px;background:#eef6fc;color:var(--blue);border:1px solid #bcd7ee;border-radius:9px;padding:0 7px;font-size:11px;font-weight:700;vertical-align:1px}
 .case-cm-badge.new{background:var(--orange);color:#fff;border-color:var(--orange)}
 .rv-cm{border:1px solid var(--line, #e3e8ee);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#fbfcfe}
@@ -3938,7 +3941,7 @@ function renderCasesList() {
     return `<div class="case-card${isToday ? ' case-today' : ''}" onclick="openCase('${c.id}')">
       <div class="case-icon">${sp}</div>
       <div class="case-info">
-        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${algState(c) === 'yes' ? '<span class="case-alg-badge">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}${progressBadge}${rvCommentBadge(c)}</div>
+        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${algState(c) === 'yes' ? '<span class="case-alg-badge">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}${progressBadge}${rvProgressBadge(c)}${rvCommentBadge(c)}</div>
         <div class="case-meta">${esc(c.date)} ${c.caseNo ? '| No.'+esc(c.caseNo) : ''} | ${esc(diag)}</div>
       </div>
       <button class="case-del" onclick="event.stopPropagation();deleteCase('${c.id}')" title="削除">🗑</button>
@@ -5132,7 +5135,7 @@ function removeAddonDrug(baseKey) {
 // ─────────────────────────────────────────────────
 const ALG_CATS = ['薬剤', '食物', '造影剤', 'ワクチン', 'その他'];
 const ALG_REACTIONS = ['発疹・かゆみ', '顔面腫脹', '嘔吐', '下痢・軟便', '呼吸困難', 'アナフィラキシー', '低血圧', 'その他'];
-const ALG_ROUTES = ['IV', 'IM', 'SC', 'PO', '外用', '吸入', '点眼'];
+const ALG_ROUTES = ['IV', 'IM', 'SC', 'PO', '外用'];
 const ALG_ROUTE_CATS = ['薬剤', '造影剤', 'ワクチン'];
 function algReactions(it) { return Array.isArray(it.reactions) ? it.reactions : (it.reaction ? [it.reaction] : []); }
 const ALG_SEV = [['mild', '軽度'], ['mod', '中等度'], ['severe', '重度']];
@@ -8030,15 +8033,30 @@ function rvSet(key, val) {
   if (!current) return;
   current[key] = val;
   current.updated_at = nowIsoStr();
+  if (String(key).indexOf('rv') === 0 || String(key).indexOf('rec') === 0) current.rvEditedAt = nowIsoStr();  // 最終編集(進捗通知・一覧表示用)
   clearTimeout(_rvTimer);
   _rvTimer = setTimeout(rvCommit, 800);
 }
+let _rvPushTimer = null;
 function rvCommit() {
   clearTimeout(_rvTimer);
   if (!current) return;
   const idx = cases.findIndex(c => c.id === current.id);
   if (idx >= 0) cases[idx] = current;
   saveStorage();
+  // 記載が進んだら20秒後にまとめてSheetsへ(運営側の一覧・通知が「提出」前でも追従する)
+  clearTimeout(_rvPushTimer);
+  _rvPushTimer = setTimeout(() => { try { if (current && sheetsConfig.enabled) pushToSheets(current, { skipFollowupSync: true }); } catch (_) {} }, 20000);
+}
+// 一覧カードの振り返りバッジ: 提出済 / 進捗率(＋24時間以内の編集は「更新」)
+function rvProgressBadge(c) {
+  if (!c) return '';
+  if (c.rvSubmittedAt) return `<span class="case-rv-badge done">📤 提出済</span>`;
+  const p = c.rvProgress; if (!p || typeof p.pct !== 'number') return '';
+  let recent = false;
+  try { const t = parseSheetTs(c.rvEditedAt || p.at); recent = !!t && (Date.now() - t) < 24 * 3600 * 1000; } catch (_) {}
+  const when = String(c.rvEditedAt || p.at || '').slice(5, 16);
+  return `<span class="case-rv-badge${recent ? ' new' : ''}" title="振り返り 記載 ${p.total - p.missing}/${p.total} 項目 最終編集 ${esc(when)}">📝 ${p.pct}%${recent ? ' 更新' : ''}</span>`;
 }
 function rvToggle(key, el) {
   if (!current) return;
@@ -8613,6 +8631,15 @@ function rvMissUpd(el) {
 }
 function rvMissCount() {
   const n = document.querySelectorAll('#rvReport .rv-miss').length;
+  // 進捗率(記載済み/必須)を症例に保存 → Sheets経由で運営側の一覧に「振り返り 60%」と出る
+  try {
+    const total = document.querySelectorAll('#rvReport .rv-reqf').length;
+    if (current && total) {
+      const pct = Math.round(100 * (total - n) / total);
+      const prev = current.rvProgress || {};
+      if (prev.pct !== pct || prev.total !== total) { current.rvProgress = { pct, total, missing: n, at: nowIsoStr() }; rvCommit(); }
+    }
+  } catch (_) {}
   const bar = document.getElementById('rvMissBar');
   if (!bar) return n;
   if (n) bar.innerHTML = `⚠️ 未記載 <b>${n}</b> 項目（赤枠）<button type="button" class="rv-missbtn" onclick="rvNextMiss()">次の未記載へ ›</button>`;
@@ -8764,7 +8791,7 @@ function renderReviewReport() {
   if (st) rvAutoFillComps(st);
   const autoComp = c.rvAutoComp || {};
   const purpose = c.rvPurpose || {};
-  const miss = v => rvIsEmpty(v) ? ' rv-miss' : '';
+  const miss = v => ' rv-reqf' + (rvIsEmpty(v) ? ' rv-miss' : '');  // rv-reqf=必須項目の目印(進捗率の分母)
   const f = (label, val, unit) => `<span class="rv-f"><span class="rv-k">${label}</span><span class="rv-v">${!rvIsEmpty(val) ? esc(String(val)) + (unit || '') : ''}</span></span>`;
   // 必須テキスト入力（空なら赤枠）
   const fi = (label, key, unit, o) => { o = o || {}; return `<span class="rv-f"><span class="rv-k">${label}</span><input class="rv-in rv-req${miss(c[key])}" type="text" ${o.num ? 'inputmode="decimal"' : ''} style="width:${o.w || 72}px" value="${rvAttr(c[key] || '')}" placeholder="${rvAttr(o.ph || '')}" oninput="rvSet('${key}', this.value);rvMissUpd(this)">${unit ? `<span class="rv-k">${unit}</span>` : ''}</span>`; };
