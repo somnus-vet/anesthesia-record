@@ -5163,6 +5163,8 @@ const ALG_ROUTE_CATS = ['薬剤', '造影剤', 'ワクチン'];
 function algReactions(it) { return Array.isArray(it.reactions) ? it.reactions : (it.reaction ? [it.reaction] : []); }
 const ALG_SEV = [['mild', '軽度'], ['mod', '中等度'], ['severe', '重度']];
 function algItems(c) { c = c || current; return (c && Array.isArray(c.allergyItems)) ? c.allergyItems.filter(x => x && !x.deleted) : []; }
+// 名称が入った項目だけ(バナー/ポップアップ/要約用。編集欄には空行も出す)
+function algItemsNamed(c) { return algItems(c).filter(x => (x.name || '').trim()); }
 function algState(c) {
   c = c || current; if (!c) return '';
   if (typeof c.allergyState === 'string') return (c.allergyState === 'none' || c.allergyState === 'yes') ? c.allergyState : '';
@@ -5179,7 +5181,7 @@ function algItemText(it) {
 function allergySummaryText(c) {
   c = c || current; if (!c) return '';
   if (algState(c) !== 'yes') return '';
-  const items = algItems(c).map(algItemText);
+  const items = algItemsNamed(c).map(algItemText);
   if (!items.length && (c.allergyDetail || '').trim()) return c.allergyDetail.trim();
   if (!items.length) return '（項目未入力）';
   return items.join('、');
@@ -5189,7 +5191,7 @@ function syncAllergyLegacy() {
   const st = algState(current);
   current.allergies = (st === 'yes');
   if (st === 'yes') {
-    const items = algItems(current).map(algItemText);
+    const items = algItemsNamed(current).map(algItemText);
     if (items.length) current.allergyDetail = items.join('、');
   } else if (st === 'none') {
     current.allergyDetail = '';
@@ -5376,7 +5378,7 @@ function showAllergyPopup(force) {
   if (!force && _algPopShown[current.id]) return;
   _algPopShown[current.id] = true;
   const body = document.getElementById('algModalBody'); if (!body) return;
-  const items = algItems(current);
+  const items = algItemsNamed(current);
   body.innerHTML = (items.length ? items.map(it => `<div>・${esc(algItemText(it))}</div>`).join('') : `<div>${esc(allergySummaryText(current))}</div>`)
     + `<div style="font-size:12.5px;font-weight:600;color:#555;margin-top:10px">該当薬にはプランと薬剤ボタンに ⚠️ が付きます。麻酔プランを組む前に確認してください</div>`;
   document.getElementById('algModal').classList.add('on');
