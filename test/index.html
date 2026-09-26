@@ -5642,7 +5642,7 @@ function renderTimelineList() {
   const entries = [];
   const _derive = procDeriveMode();
   INTRAOP_EVENTS.forEach(e => {
-    if (_derive && (e.key === 'surgStart' || e.key === 'surgEnd')) return;  // 手技の開始/終了から自動で決まる
+    if (_derive && procSurgNotesExist() && (e.key === 'surgStart' || e.key === 'surgEnd')) return;  // 手技の開始/終了から自動で決まる
     if ((current[e.key] || '').trim()) entries.push({ type:'event', key:e.key, label:e.label, time:current[e.key] });
   });
   Object.entries(current.procEvents).forEach(([key, t]) => {
@@ -6701,7 +6701,7 @@ function syncProcFromBoxes(rerender) {
   try { recomputeSurgTimes(); renderTimelineList(); } catch (_) {}
   autoSave();
 }
-function onProcFocus(i) { _procOpen = i; showProcSuggest(i); }
+function onProcFocus(i) { _procOpen = i; showProcSuggest(i, true); }
 function onProcInput(i) {
   showProcSuggest(i);
   // 入力中は再描画しない（フォーカス維持）。値は隠し欄へ即時反映
@@ -6712,10 +6712,10 @@ function onProcInput(i) {
   updateHeaderMeta();
   autoSave();
 }
-function showProcSuggest(i) {
+function showProcSuggest(i, all) {
   const el = document.getElementById('procSuggest_' + i); if (!el) return;
   const inp = document.querySelector(`#procBoxes .proc-in[data-i="${i}"]`);
-  const q = inp ? inp.value : '';
+  const q = all ? '' : (inp ? inp.value : '');
   const list = procSuggestList(q);
   if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
   const hasHist = list.some(x => x.hist);
@@ -6802,10 +6802,18 @@ function recomputeSurgTimes() {
     if (n.phase === 'start' && (s === null || sec < s.sec)) s = { sec, time: n.time };
     if (n.phase === 'end' && (e === null || sec > e.sec)) e = { sec, time: n.time };
   });
+  // 手術種別の手技の記録がまだ1件も無ければ触らない（旧ボタンで記録済みの症例の値を消さない）
+  if (!s && !e) return;
   const ns = s ? s.time : '', ne = e ? e.time : '';
   if ((current.surgStart || '') !== ns) { current.surgStart = ns; setVal('f_surgStart', ns); }
   if ((current.surgEnd || '') !== ne) { current.surgEnd = ne; setVal('f_surgEnd', ne); }
   updateDurations();
+}
+// 手術種別の手技の開始/終了が1件でも記録されているか（＝手術開始/終了が自動導出されている）
+function procSurgNotesExist() {
+  if (!current || !procDeriveMode()) return false;
+  const surg = new Set(procTokens(getVal('f_procedure') || current.procedure || '').filter(n => procType(n) === 'surg'));
+  return ((current.freeNotes) || []).some(n => n && !n.deleted && n.kind === 'proc' && surg.has(n.name));
 }
 function procSegTag(en) {
   if (!procDeriveMode() || !en.time) return '';
