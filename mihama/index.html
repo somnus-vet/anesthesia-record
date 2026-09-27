@@ -254,6 +254,12 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .mix-sum-row{font-size:12.5px;line-height:1.5;padding:7px 10px;border-radius:8px;background:#fff7ed;border:1px solid #fdba74}
 .mix-sum-row.g2{background:#f0fdfa;border-color:#5eead4}.mix-sum-row.g3{background:#f5f3ff;border-color:#c4b5fd}
 .mix-sum-row b{font-weight:800}
+.tl-mixsub{flex-basis:100%;display:flex;flex-direction:column;gap:3px;padding:2px 0 3px 90px}
+.tl-mixsub-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.tl-mixsub-name{flex:1 1 90px;min-width:0;font-size:12.5px;font-weight:600;color:#1f6b34;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-mixsub-row .tl-drug-dose{flex:0 0 46px;min-height:30px;font-size:12.5px;padding:3px 4px}
+.tl-mixsub-row .tl-opt-chip{min-height:30px;padding:3px 6px;font-size:11px}
+.tl-mixsub-row .btn-del{min-height:30px;padding:0 4px;font-size:15px}
 .tl-mixbadge{font-size:10.5px;font-weight:800;color:#fff;border-radius:6px;padding:2px 5px;margin-right:2px;white-space:nowrap}
 .tl-mixbadge.m1{background:#f59e0b}.tl-mixbadge.m2{background:#0d9488}.tl-mixbadge.m3{background:#7c3aed}
 .qdose-btn.dp-unplanned{background:#fff;color:var(--navy);border-color:var(--border)}
@@ -445,6 +451,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .tl-row.tl-event .tl-tube-in{flex-basis:38px;font-size:12px;padding:6px 1px}
   .tl-row.tl-event .tl-diff{font-size:11px;padding:6px 5px}
   .tl-row.tl-event .tl-name{font-size:13px}
+  .tl-mixsub{padding-left:68px}
   .tl-row.tl-vent .btn-del,.tl-row.tl-flow .btn-del,.tl-row.tl-event .btn-del{padding:2px;font-size:16px}
   .tl-row.tl-vent .tl-spacer,.tl-row.tl-flow .tl-spacer,.tl-row.tl-event .tl-spacer{flex:1 1 0;min-width:0}
 }
@@ -6212,8 +6219,10 @@ function renderTimelineList() {
   Object.entries(current.procEvents).forEach(([key, t]) => {
     if (t && String(t).trim()) entries.push({ type:'event', key, label:evtLabel(key), time:t });
   });
+  const _mixGrouped = n => !!((current.procEvents || {})['pe_mix' + n] || '').trim();
   current.drugLog.forEach((d, i) => {
     if (!d || d.deleted) return; // 削除墓標は表示しない
+    if (d.mix && _mixGrouped(d.mix)) return; // 混注の構成薬は「混注①」の行の下にまとめて出す(時刻は混注の行で一括)
     entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'', mix:d.mix||'' });
   });
   current.freeNotes.forEach((n, i) => {
@@ -6256,11 +6265,36 @@ function renderTimelineList() {
           + `<input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(current.tubeSizeFr||'')}" placeholder="-" oninput="editIntubField('tubeSizeFr',this.value)" autocomplete="off"><span class="tl-unit">Fr</span>`
           + `<button type="button" class="tl-diff${current.intubationDifficult?' on':''}" onclick="toggleIntubDifficult()">${window.innerWidth <= 430 ? '困難' : '挿管困難'} ${current.intubationDifficult?'有':'無'}</button>`;
       }
-      return `<div class="tl-row tl-event">
+      // 混注①②③: 構成薬を小さな行で下に付ける(時刻は混注の行で一括、用量/単位/経路は個別に編集可)
+      let mixSub = '';
+      const _mn = (String(en.key).match(/^pe_mix([123])$/) || [])[1];
+      if (_mn) {
+        const items = [];
+        (current.drugLog || []).forEach((d, i) => { if (d && !d.deleted && String(d.mix) === _mn) items.push({ d, i }); });
+        if (items.length) mixSub = `<div class="tl-mixsub">` + items.map(({ d, i }) => {
+          const dd = drugDefForLog(d);
+          const perKg = (String(d.dose || '').match(/^\s*([\d.]+)/) || [, ''])[1];
+          const unit = dd ? dd.unit : ((String(d.dose || '').match(/^\s*[\d.]*\s*([^\s=\d.][^\s=]*)/) || [, ''])[1] || '');
+          let opt = '';
+          if (_drugOptOpen && _drugOptOpen.idx === i) {
+            const ro = Array.from(new Set(((dd && dd.routes) || []).concat(MANUAL_ROUTE_OPTS)));
+            const opts = _drugOptOpen.which === 'unit' ? unitOptsForDrug(d.drug) : ro;
+            const cur = _drugOptOpen.which === 'unit' ? unit : d.route;
+            opt = `<div class="tl-opt-line">` + opts.map(o => `<button type="button" class="tl-opt-btn${o === cur ? ' on' : ''}" onclick="setDrugOpt(${i},'${_drugOptOpen.which}','${o}')">${o}</button>`).join('') + `</div>`;
+          }
+          return `<div class="tl-mixsub-row"><span class="tl-mixsub-name">${esc(d.drug)}</span>
+            <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(perKg)}" placeholder="量" onfocus="tapClear(this)" oninput="editDrugLogDose(${i},this.value)" onblur="tapClearRestoreDrug(this,${i})" autocomplete="off">
+            <button type="button" class="tl-opt-chip${unit ? '' : ' empty'}" onclick="toggleDrugOpt(${i},'unit')">${esc(unit) || '単位'}</button>
+            <button type="button" class="tl-opt-chip${d.route ? '' : ' empty'}" onclick="toggleDrugOpt(${i},'route')">${esc(d.route) || '経路'}</button>
+            <button class="btn-del" onclick="removeDrugLog(${i})">✕</button>${opt}</div>`;
+        }).join('') + `</div>`;
+      }
+      return `<div class="tl-row tl-event"${mixSub ? ' style="flex-wrap:wrap"' : ''}>
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
         <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
+        ${mixSub}
       </div>`;
     }
     if (en.type === 'free') {
@@ -7159,8 +7193,15 @@ function editEventTime(key, val) {
   if (!current) return;
   if (isProcEventKey(key)) {
     if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
+    const _old = current.procEvents[key] || '';
     current.procEvents[key] = val;
     markProcEventMeta(key, false);
+    // 混注①②③の時刻変更: 構成薬の行と、混注が前投薬だった場合は前投薬時刻も一緒に動かす
+    const _mn = (String(key).match(/^pe_mix([123])$/) || [])[1];
+    if (_mn) {
+      (current.drugLog || []).forEach(d => { if (d && !d.deleted && String(d.mix) === _mn) { d.time = val; touchEv(d); } });
+      if (_old && (current.anesthStart || '') === _old) { current.anesthStart = val; setVal('f_anesthStart', val); updateDurations(); }
+    }
   } else {
     current[key] = val;
     setVal('f_' + key, val);
@@ -7175,6 +7216,8 @@ function clearEvent(key) {
   if (isProcEventKey(key)) {
     if (current.procEvents) delete current.procEvents[key];
     markProcEventMeta(key, true);
+    const _mn = (String(key).match(/^pe_mix([123])$/) || [])[1];
+    if (_mn) (current.drugLog || []).forEach(d => { if (d && !d.deleted && String(d.mix) === _mn) { d.deleted = true; touchEv(d); } });  // 構成薬も一緒に取り消す
   } else {
     current[key] = '';
     setVal('f_' + key, '');
