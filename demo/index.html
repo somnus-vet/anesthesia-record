@@ -238,7 +238,9 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .block-inputs .unit{font-size:11px}
 .block-note{width:100%;margin-top:5px;font-size:14px;padding:7px 9px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;min-height:38px}
 .block-note:focus{outline:none;border-color:var(--blue);background:#fff}
-.dose-calc{font-size:13px;color:var(--blue);font-weight:700;min-width:88px;white-space:nowrap}
+.dose-calc{font-size:13px;color:var(--blue);font-weight:700;min-width:70px;white-space:nowrap}
+.ml-wrap{display:inline-flex;align-items:center;gap:4px}
+.fdose.fml{width:62px;color:var(--navy);font-weight:700}
 .rgrp{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
 .rbtn{padding:5px 10px;border:1.5px solid var(--border);border-radius:5px;background:#f8fafc;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;min-height:32px;-webkit-user-select:none}
 .rbtn.on{background:var(--navy);border-color:var(--navy);color:#fff}
@@ -4755,6 +4757,7 @@ function renderDrugRow(d) {
           oninput="onDoseInput('${d.key}',this.value)" autocomplete="off">
         <span class="unit">${d.unit}</span>
         <span class="dose-calc" id="dcalc_${d.key}"></span>
+        ${(d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) ? `<span class="ml-wrap"><span class="tl-arrow">→</span><input class="fdose fml" type="text" inputmode="decimal" id="dml_${d.key}" placeholder="mL" onfocus="tapClear(this)" oninput="onMlInput('${d.key}',this.value)" onblur="onMlBlur('${d.key}',this)" autocomplete="off"><span class="unit">mL</span></span>` : ''}
       </div>
       <div class="rgrp" onclick="event.stopPropagation()" id="rgrp_${d.key}">
         ${routeBtns}
@@ -5106,6 +5109,8 @@ function mixMembers(n) { // n: 1|2|3 → [{d, dd}] (チェック済みのみ)
     .map(d => ({ d, dd: current.drugs[d.key] }));
 }
 function mixVolumeMl(d, perKg) {
+  const _dd = current && current.drugs && current.drugs[d.key];
+  if (_dd && _dd.ml !== undefined && String(_dd.ml).trim() !== '' && !isNaN(parseFloat(_dd.ml))) return parseFloat(_dd.ml);
   const w = parseFloat(current && current.weight);
   if (!w || !d.conc || isNaN(perKg)) return null;
   return perKg * w / d.conc;
@@ -5648,6 +5653,7 @@ function onDoseInput(key, val) {
   if (!current.drugs[key]) current.drugs[key] = { use:true, dose:'', route:'' };
   current.drugs[key].dose = val;
   current.drugs[key].use = true;
+  delete current.drugs[key].ml;  // 用量を直したら薬液量は用量から計算し直す
   const row = document.getElementById('drow_' + key);
   if (row) row.classList.add('on');
   // Find drug definition to get unit
@@ -5677,26 +5683,51 @@ function updateCalc(key, dose, weight, unit) {
     const total = d * w;
     const dispUnit = unit.replace('/kg','').replace('/hr','').replace('/min','');
     const totalStr = `${total % 1 === 0 ? total : total.toFixed(2)} ${dispUnit}`;
-    // 薬液量計算（CRI/分量除く）
+    // 薬液量: mL欄へ(規格がある薬のみ)。手で直した mL(drugs[key].ml)があればそれを優先。編集中の欄は触らない
     const drug = Object.values(DRUG_GROUPS).flat().find(dr => dr.key === key);
-    let volStr = '';
-    if (drug && drug.conc && drug.conc > 0 && !unit.includes('/hr') && !unit.includes('/min')) {
-      const vol = total / drug.conc;
-      volStr = ` → ${vol.toFixed(2)} mL`;
+    el.textContent = `= ${totalStr}`;
+    const mlEl = document.getElementById('dml_' + key);
+    if (mlEl && document.activeElement !== mlEl && drug && drug.conc && drug.conc > 0 && !unit.includes('/hr') && !unit.includes('/min')) {
+      const stored = current && current.drugs && current.drugs[key] && current.drugs[key].ml;
+      mlEl.value = (stored !== undefined && stored !== null && String(stored).trim() !== '') ? String(stored) : (total / drug.conc).toFixed(2);
     }
-    el.textContent = `= ${totalStr}${volStr}`;
   } else {
     el.textContent = '';
+    const mlEl = document.getElementById('dml_' + key);
+    if (mlEl && document.activeElement !== mlEl) mlEl.value = '';
   }
+}
+// 薬液量(mL)を手で直したら、薬用量(/kg)を逆算して書き換える(シリンジ目盛りで吸える量に合わせるため)
+function onMlInput(key, val) {
+  if (!current) return;
+  const d = findDrugDef(key); if (!d || !d.conc) return;
+  if (!current.drugs[key]) current.drugs[key] = { use:true, dose:'', route:'' };
+  const r = current.drugs[key]; r.use = true;
+  r.ml = String(val || '').trim();
+  const ml = parseFloat(r.ml), w = parseFloat(current.weight);
+  if (!isNaN(ml) && ml > 0 && w > 0) {
+    r.dose = String(+((ml * d.conc / w).toPrecision(3)));
+    const de = document.getElementById('ddose_' + key); if (de) de.value = r.dose;
+  }
+  const row = document.getElementById('drow_' + key); if (row) row.classList.add('on');
+  updateCalc(key, r.dose, current.weight, d.unit);
+  try { renderMixSummary(); renderQuickDoseBar(); } catch (_) {}
+  autoSave();
+}
+function onMlBlur(key, el) {
+  // 空のまま離れたら用量から計算した値に戻す
+  if (el.value === '') { const r = current && current.drugs && current.drugs[key]; if (r) delete r.ml; el.dataset.prev = ''; const d = findDrugDef(key); if (d) updateCalc(key, r ? r.dose : '', current.weight, d.unit); }
+  else el.dataset.prev = '';
 }
 
 function onWeightChange(val) {
   if (!current) return;
   current.weight = val;
   updateWeightPill(val);
-  // Recalculate all drug rows
+  // Recalculate all drug rows(体重が変わったら手直しの薬液量は用量から計算し直す)
   Object.values(DRUG_GROUPS).flat().forEach(d => {
     const drugData = current.drugs[d.key] || {};
+    if (drugData.ml !== undefined) delete drugData.ml;
     updateCalc(d.key, drugData.dose, val, d.unit);
   });
   // 緊急対応用量も再計算
@@ -6963,6 +6994,8 @@ function doseOptBtn(d, perKg, label) {
 }
 // プランの用量から吸う量(mL)を計算(薬剤ボタン/一覧の添え書き用)
 function plannedMl(d) {
+  const _dd = current && current.drugs && current.drugs[d.key];
+  if (_dd && _dd.ml !== undefined && String(_dd.ml).trim() !== '' && !isNaN(parseFloat(_dd.ml))) return parseFloat(_dd.ml).toFixed(2) + 'mL';
   const w = parseFloat(current && current.weight); const pk = stdDoseOf(d.key);
   if (!w || isNaN(pk) || !d.conc || d.unit.includes('/hr') || d.unit.includes('/min')) return '';
   return (pk * w / d.conc).toFixed(2) + 'mL';
