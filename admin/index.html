@@ -238,7 +238,7 @@ function openCase(hk, id, link) {
   seen[hk + '|' + id] = new Date().toISOString();
   try { localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch (_) {}
   render();
-  window.open(link, '_blank');
+  location.href = link + '&from=board';  // 同じタブで開く(戻るボタン/アプリ側の「ボードに戻る」で帰れる)
 }
 function markAllSeen() { seenAll = new Date().toISOString(); try { localStorage.setItem(SEENALL_KEY, seenAll); } catch (_) {} render(); }
 // 設定

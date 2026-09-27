@@ -583,6 +583,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 </style>
 </head>
 <body>
+<div id="boardBack" style="display:none;background:#0f2540;color:#fff;font-size:13px;padding:7px 12px;text-align:center"><a href="https://somnus-vet.github.io/anesthesia-record/admin/" style="color:#fff;font-weight:800;text-decoration:none">‹ 振り返り 進捗ボードに戻る</a></div>
 
 <!-- ========== CASES SCREEN ========== -->
 <div id="casesScreen" class="screen">
@@ -9454,7 +9455,10 @@ function rvDeepLink(c) {
 }
 function rvHandleDeepLink() {
   let id = '', view = '';
-  try { const p = new URLSearchParams(location.search); id = p.get('case') || ''; view = p.get('view') || ''; } catch (_) { return; }
+  let from = '';
+  try { const p = new URLSearchParams(location.search); id = p.get('case') || ''; view = p.get('view') || ''; from = p.get('from') || ''; } catch (_) { return; }
+  // 進捗ボードから来た時は、画面の一番上に「ボードに戻る」バーを出す(症例を見た後に戻れないため)
+  if (from === 'board') { try { const b = document.getElementById('boardBack'); if (b) b.style.display = ''; } catch (_) {} }
   if (!id) return;
   try { history.replaceState(null, '', location.pathname); } catch (_) {}
   let tries = 0;
