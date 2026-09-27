@@ -7333,6 +7333,12 @@ const PROC_MASTER = [
   { name:'前十字靭帯断裂整復', type:'surg' }, { name:'TPLO', type:'surg' }, { name:'橈尺骨骨折整復', type:'surg' }, { name:'骨折整復', type:'surg' },
   { name:'眼科手術', type:'surg' }, { name:'耳道手術', type:'surg' }, { name:'抜歯', type:'surg' }, { name:'生検', type:'surg' },
 ];
+// 病院ごとに先頭へ出す手技(施設コードで判定。個人版は端末の施設設定に従う)
+const PROC_FIRST_BY_FACILITY = {
+  FAH: ['橈尺骨骨折整復', 'TPLO', '膝蓋骨脱臼整復', 'CT'],   // フクナガ
+  ANG: ['CT'],                                             // 姉ヶ崎
+  MZR: ['CT'],                                             // 舞鶴
+};
 const PROC_EXAM_RE = /CT|MRI|内視鏡|エコー|検査|X線|レントゲン|造影|透視/i;
 // 種別の決め方: 症例での指定(current.procTypes) → この端末で覚えた指定 → マスタ → 語で推定 → 手術
 const PROC_TYPE_LS = 'vet_demo_proc_types';
@@ -7392,6 +7398,8 @@ function procSuggestList(q) {
   const all = [];
   const seen = new Set();
   hist.forEach(n => { if (!seen.has(n)) { seen.add(n); all.push({ name:n, hist:true }); } });
+  const _first = PROC_FIRST_BY_FACILITY[(sheetsConfig && sheetsConfig.facility) || ''] || [];
+  _first.forEach(n => { if (!seen.has(n)) { seen.add(n); all.push({ name:n, hist:false }); } });
   PROC_MASTER.forEach(p => { if (!seen.has(p.name)) { seen.add(p.name); all.push({ name:p.name, hist:false }); } });
   const qq = String(q || '').trim().toLowerCase();
   const cur = new Set(procTokens(getVal('f_procedure')));
