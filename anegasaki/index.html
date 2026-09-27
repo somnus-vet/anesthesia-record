@@ -427,6 +427,10 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .tl-from{flex-basis:36px}
   .tl-kind{font-size:11px;padding:3px 5px}
   .tl-flow-lbl,.tl-unit-sm{font-size:10px}
+  /* 薬剤行: 薬剤名が切れないよう 1行目=時刻＋薬剤名(残り全部)、2行目=用量・単位・経路・✕(右寄せ) */
+  .tl-row.tl-drug .tl-drug-name{flex:1 1 60%;min-width:140px;font-size:15px}
+  .tl-row.tl-drug .tl-drug-dose{flex:0 0 64px;margin-left:auto}
+  .tl-row.tl-drug .tl-drug-route{flex:0 0 56px}
 }
 
 /* TOAST */
@@ -1270,7 +1274,7 @@ body.board-mode .screen{inset:32px 0 0 0!important}
           <div style="font-size:12px;color:var(--muted);margin:12px 0 6px">💊 薬剤を記録 <span style="opacity:.7">— タップで用量を選んで記録</span></div>
           <div id="quickDoseBar" class="qdose-bar"></div>
           <div style="display:flex;gap:6px;margin-top:6px">
-            <button class="btn-add-row" onclick="openDrugPick()" style="margin-top:0;flex:1;border-style:solid;border-color:var(--blue);color:var(--blue);font-weight:700">💊 薬剤一覧から選んで記録</button>
+            <button class="btn-add-row" onclick="openDrugPick()" style="margin-top:0;flex:1;border-style:solid;border-color:var(--blue);color:var(--blue);font-weight:700">💊 薬剤一覧から選ぶ</button>
             <button class="btn-add-row" onclick="addDrugLogRow()" style="margin-top:0;flex:1">＋ 手入力の行</button>
           </div>
           <div style="font-size:12px;color:var(--muted);font-weight:700;margin:14px 0 5px">📋 記録（時刻順）</div>
