@@ -6285,7 +6285,7 @@ function renderTimelineList() {
         }).join('') + `</div>`;
       }
       return `<div class="tl-row tl-event"${mixSub ? ' style="flex-wrap:wrap"' : ''}>
-        <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
+        <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
         <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
@@ -6427,7 +6427,7 @@ function renderTimelineList() {
       }
       // メモ: 自由記載
       return `<div class="tl-row tl-memo">
-        <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" autocomplete="off">
+        <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
         <span class="tl-kind tl-kind-memo">メモ</span>
         <input class="fin tl-text-in" type="text" value="${esc(en.text)}" placeholder="メモ内容…" oninput="editFreeNote(${en.idx},'text',this.value)" autocomplete="off">
         <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
@@ -6446,7 +6446,7 @@ function renderTimelineList() {
         `<button type="button" class="tl-opt-btn${o === _cur ? ' on' : ''}" onclick="setDrugOpt(${en.idx},'${_drugOptOpen.which}','${o}')">${o}</button>`).join('') + `</div>`;
     }
     return `<div class="tl-row tl-drug" data-drugidx="${en.idx}"${_optLine ? ' style="flex-wrap:wrap"' : ''}>
-      <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
+      <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
       ${en.mix ? `<span class="tl-mixbadge m${en.mix}">混${({1:'①',2:'②',3:'③'})[en.mix] || en.mix}</span>` : ''}<input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
       <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" onfocus="tapClear(this)" oninput="editDrugLogDose(${en.idx},this.value)" onblur="tapClearRestoreDrug(this,${en.idx})" autocomplete="off">
       ${_dd ? `<button type="button" class="tl-opt-chip" title="単位を変更" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit)}</button>
