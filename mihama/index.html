@@ -581,7 +581,13 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 </style>
 </head>
 <body>
-<div id="boardBack" style="display:none;background:#0f2540;color:#fff;font-size:13px;padding:7px 12px;text-align:center"><a href="https://somnus-vet.github.io/anesthesia-record/admin/" style="color:#fff;font-weight:800;text-decoration:none">‹ 振り返り 進捗ボードに戻る</a></div>
+<div id="boardBack" style="display:none"><a href="https://somnus-vet.github.io/anesthesia-record/admin/">‹ 振り返り 進捗ボードに戻る</a></div>
+<style>
+/* 進捗ボードから開いた時の「戻る」バー: 画面(.screen は position:fixed)の上に固定し、画面側を同じ分だけ下げる */
+#boardBack{position:fixed;left:0;right:0;top:0;z-index:3500;height:32px;background:#0f2540;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center}
+#boardBack a{color:#fff;font-weight:800;text-decoration:none;padding:6px 14px}
+body.board-mode .screen{inset:32px 0 0 0!important}
+</style>
 
 <!-- ========== CASES SCREEN ========== -->
 <div id="casesScreen" class="screen">
@@ -9378,7 +9384,7 @@ function rvHandleDeepLink() {
   let from = '';
   try { const p = new URLSearchParams(location.search); id = p.get('case') || ''; view = p.get('view') || ''; from = p.get('from') || ''; } catch (_) { return; }
   // 進捗ボードから来た時は、画面の一番上に「ボードに戻る」バーを出す(症例を見た後に戻れないため)
-  if (from === 'board') { try { const b = document.getElementById('boardBack'); if (b) b.style.display = ''; } catch (_) {} }
+  if (from === 'board') { try { const b = document.getElementById('boardBack'); if (b) b.style.display = ''; document.body.classList.add('board-mode'); } catch (_) {} }
   if (!id) return;
   try { history.replaceState(null, '', location.pathname); } catch (_) {}
   let tries = 0;
