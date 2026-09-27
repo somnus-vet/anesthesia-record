@@ -441,7 +441,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .tl-row.tl-vent .tl-time-in,.tl-row.tl-flow .tl-time-in,.tl-row.tl-event .tl-time-in{flex-basis:64px;font-size:12.5px;padding:6px 0}
   .tl-row.tl-vent .tl-kind,.tl-row.tl-flow .tl-kind{font-size:10px;padding:3px 3px}
   .tl-row.tl-vent .tl-vmode{font-size:11px;padding:6px 5px}
-  .tl-row.tl-vent .tl-to-in,.tl-row.tl-vent .tl-rr-in{flex-basis:38px;width:38px;font-size:13px;padding:6px 1px}
+  .tl-row.tl-vent .tl-to-in,.tl-row.tl-vent .tl-rr-in{flex-basis:36px;width:36px;font-size:13px;padding:6px 1px}
   .tl-row.tl-flow .tl-to-in{flex-basis:44px;width:44px;font-size:13px;padding:6px 1px}
   .tl-row .tl-unit-sm,.tl-row .tl-flow-lbl,.tl-row.tl-event .tl-unit{font-size:9.5px;padding:0}
   .tl-row.tl-event .tl-tube-in{flex-basis:38px;font-size:12px;padding:6px 1px}
@@ -6305,7 +6305,7 @@ function renderTimelineList() {
         }
         return `<div class="tl-row tl-vent">
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
-          <span class="tl-kind tl-kind-vent">呼吸管理</span>
+          ${_compact && (vmode === 'PCV' || vmode === 'VCV') ? '' : '<span class="tl-kind tl-kind-vent">呼吸管理</span>'}
           ${modeBtns}
           ${vdetail}
           <span class="tl-spacer"></span>
