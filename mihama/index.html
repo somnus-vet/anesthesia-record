@@ -4758,7 +4758,7 @@ function renderDrugRow(d) {
       <div class="drug-inputs" onclick="event.stopPropagation()">
         <input class="fdose" type="text" inputmode="decimal"
           id="ddose_${d.key}" placeholder="0.0"
-          oninput="onDoseInput('${d.key}',this.value)" autocomplete="off">
+          onfocus="tapClear(this)" oninput="onDoseInput('${d.key}',this.value)" onblur="onDoseBlur('${d.key}',this)" autocomplete="off">
         <span class="unit">${d.unit}</span>
         <span class="dose-calc" id="dcalc_${d.key}"></span>
         ${(d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) ? `<span class="ml-wrap"><span class="tl-arrow">→</span><input class="fdose fml" type="text" inputmode="decimal" id="dml_${d.key}" placeholder="mL" onfocus="tapClear(this)" oninput="onMlInput('${d.key}',this.value)" onblur="onMlBlur('${d.key}',this)" autocomplete="off"><span class="unit">mL</span></span>` : ''}
@@ -5718,6 +5718,11 @@ function onMlInput(key, val) {
   updateCalc(key, r.dose, current.weight, d.unit);
   try { renderMixSummary(); renderQuickDoseBar(); } catch (_) {}
   autoSave();
+}
+// 麻酔PLの用量欄: タップで空になりすぐ打てる。空のまま離れたら元の値に戻す
+function onDoseBlur(key, el) {
+  if (el.value === '' && el.dataset.prev) { el.value = el.dataset.prev; onDoseInput(key, el.value); }
+  el.dataset.prev = '';
 }
 function onMlBlur(key, el) {
   // 空のまま離れたら用量から計算した値に戻す
