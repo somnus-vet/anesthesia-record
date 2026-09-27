@@ -6864,8 +6864,8 @@ function renderQuickDoseBar() {
     // バッジは回数のみ。時刻まで載せるとボタンが横に伸びて折り返し、縦に積み上がるため。
     const badge = hits.length ? `<span class="qdose-badge">×${hits.length}</span>` : '';
     const laterTag = (DRUG_GROUPS.addon.some(x => x.key === d.key) ? '<span class="later-tag">追加</span>' : '') + (allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : '');
-    const _ml = plannedMl(d);
-    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${_ml ? `<span class="qml">${_ml}</span>` : ''}${laterTag}${badge}</button>`;
+    // 薬剤ボタンには薬液量(mL)を出さない(ユーザー要望: 選択済みの薬のボタンには不要。mLは用量シートで確認)
+    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${laterTag}${badge}</button>`;
   }).join('');
 }
 
