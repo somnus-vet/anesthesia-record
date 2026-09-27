@@ -436,6 +436,19 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .tl-row.tl-drug .btn-del{padding:2px;font-size:16px}
   .tl-row.tl-drug .tl-mixbadge{font-size:9.5px;padding:2px 3px}
   .tl-row.tl-drug[style*="flex-wrap: wrap"],.tl-row.tl-drug[style*="flex-wrap:wrap"]{flex-wrap:wrap!important}
+  /* 呼吸管理・O2/Air・挿管の行も1行に(欄と文字を縮小) */
+  .tl-row.tl-vent,.tl-row.tl-flow,.tl-row.tl-event{flex-wrap:nowrap;gap:4px}
+  .tl-row.tl-vent .tl-time-in,.tl-row.tl-flow .tl-time-in,.tl-row.tl-event .tl-time-in{flex-basis:64px;font-size:12.5px;padding:6px 0}
+  .tl-row.tl-vent .tl-kind,.tl-row.tl-flow .tl-kind{font-size:10px;padding:3px 3px}
+  .tl-row.tl-vent .tl-vmode{font-size:11px;padding:6px 5px}
+  .tl-row.tl-vent .tl-to-in,.tl-row.tl-vent .tl-rr-in{flex-basis:38px;width:38px;font-size:13px;padding:6px 1px}
+  .tl-row.tl-flow .tl-to-in{flex-basis:44px;width:44px;font-size:13px;padding:6px 1px}
+  .tl-row .tl-unit-sm,.tl-row .tl-flow-lbl,.tl-row.tl-event .tl-unit{font-size:9.5px;padding:0}
+  .tl-row.tl-event .tl-tube-in{flex-basis:38px;font-size:12px;padding:6px 1px}
+  .tl-row.tl-event .tl-diff{font-size:11px;padding:6px 5px}
+  .tl-row.tl-event .tl-name{font-size:13px}
+  .tl-row.tl-vent .btn-del,.tl-row.tl-flow .btn-del,.tl-row.tl-event .btn-del{padding:2px;font-size:16px}
+  .tl-row.tl-vent .tl-spacer,.tl-row.tl-flow .tl-spacer,.tl-row.tl-event .tl-spacer{flex:1 1 0;min-width:0}
 }
 
 /* TOAST */
@@ -6257,7 +6270,7 @@ function renderTimelineList() {
       if (en.key === 'intubationTime') {
         extra = `<input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(current.tubeSize||'')}" placeholder="-" oninput="editIntubField('tubeSize',this.value)" autocomplete="off"><span class="tl-unit">mm</span>`
           + `<input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(current.tubeSizeFr||'')}" placeholder="-" oninput="editIntubField('tubeSizeFr',this.value)" autocomplete="off"><span class="tl-unit">Fr</span>`
-          + `<button type="button" class="tl-diff${current.intubationDifficult?' on':''}" onclick="toggleIntubDifficult()">挿管困難 ${current.intubationDifficult?'有':'無'}</button>`;
+          + `<button type="button" class="tl-diff${current.intubationDifficult?' on':''}" onclick="toggleIntubDifficult()">${window.innerWidth <= 430 ? '困難' : '挿管困難'} ${current.intubationDifficult?'有':'無'}</button>`;
       }
       return `<div class="tl-row tl-event">
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
@@ -6272,6 +6285,11 @@ function renderTimelineList() {
       if (k === 'vent') {
         const vmode = en.mode || '';
         const mbtn = (m, lbl) => `<button type="button" class="tl-vmode${vmode===m?' on':''}" onclick="setVentMode(${en.idx},'${m}')">${lbl||m}</button>`;
+        // スマホ幅: モード選択済みなら現在のモード1つだけ表示(タップで4択に展開)。1行に収めるため
+        const _compact = (window.innerWidth <= 430) && !!vmode && _ventModesOpen !== en.idx;
+        const modeBtns = _compact
+          ? `<button type="button" class="tl-vmode on" onclick="_ventModesOpen=${en.idx};renderTimelineList()">${vmode === 'SPONT' ? '自発' : vmode}</button>`
+          : `${mbtn('PCV')}${mbtn('VCV')}${mbtn('OFF')}${mbtn('SPONT','自発')}`;
         let vdetail = '';
         if (vmode === 'PCV' || vmode === 'VCV') {
           const us = vmode === 'VCV' ? 'mL' : 'cmH₂O';
@@ -6279,16 +6297,16 @@ function renderTimelineList() {
           vdetail = `<span class="tl-io"><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${us}</span></span>`
             + `<span class="tl-io"><input class="fin tl-rr-in" type="text" inputmode="decimal" value="${esc(en.rr || '')}" placeholder="RR" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'rr',this.value)" onblur="tapClearRestore(this,${en.idx},'rr')" autocomplete="off"><span class="tl-unit-sm">回/分</span></span>`;
         } else if (vmode === 'OFF') {
-          vdetail = `<span class="tl-vent-off">換気OFF</span>`;
+          vdetail = _compact ? '' : `<span class="tl-vent-off">換気OFF</span>`;
         } else if (vmode === 'SPONT') {
-          vdetail = `<span class="tl-vent-off">自発呼吸</span>`;
+          vdetail = _compact ? '' : `<span class="tl-vent-off">自発呼吸</span>`;
         } else {
           vdetail = `<span class="tl-vent-hint">←モード選択</span>`;
         }
         return `<div class="tl-row tl-vent">
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-vent">呼吸管理</span>
-          ${mbtn('PCV')}${mbtn('VCV')}${mbtn('OFF')}${mbtn('SPONT','自発')}
+          ${modeBtns}
           ${vdetail}
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
@@ -6431,7 +6449,7 @@ function renderTimelineList() {
     return `<div class="tl-row tl-drug" data-drugidx="${en.idx}"${_optLine ? ' style="flex-wrap:wrap"' : ''}>
       <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
       ${en.mix ? `<span class="tl-mixbadge m${en.mix}">混${({1:'①',2:'②',3:'③'})[en.mix] || en.mix}</span>` : ''}<input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
-      <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" oninput="editDrugLogDose(${en.idx},this.value)" autocomplete="off">
+      <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" onfocus="tapClear(this)" oninput="editDrugLogDose(${en.idx},this.value)" onblur="tapClearRestoreDrug(this,${en.idx})" autocomplete="off">
       ${_dd ? `<button type="button" class="tl-opt-chip" title="単位を変更" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit)}</button>
       <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" title="経路を変更" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`
             : `<button type="button" class="tl-opt-chip${_unit ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit) || '単位'}</button>
@@ -6661,8 +6679,10 @@ function setSutureCount(idx, delta) {
 }
 
 // 呼吸管理の換気モード(PCV/VCV/OFF)を切替。行の構造が変わるので再描画する。
+let _ventModesOpen = null;  // スマホ幅で4択に展開中の呼吸管理行
 function setVentMode(idx, mode) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
+  _ventModesOpen = null;
   const n = current.freeNotes[idx];
   n.mode = (n.mode === mode) ? '' : mode;
   if (n.mode === 'OFF' || n.mode === 'SPONT') { n.to = ''; n.rr = ''; }
@@ -6721,6 +6741,14 @@ function editFreeNote(idx, field, val) {
 function tapClear(el) {
   el.dataset.prev = el.value;
   if (el.value !== '') el.value = '';
+}
+// 薬剤の用量欄: 空のまま離れたら元の値に戻す(誤タップで消えない)
+function tapClearRestoreDrug(el, idx) {
+  if (el.value === '' && el.dataset.prev) {
+    el.value = el.dataset.prev;
+    editDrugLogDose(idx, el.value);
+  }
+  el.dataset.prev = '';
 }
 function tapClearRestore(el, idx, field) {
   if (el.value === '' && el.dataset.prev) {
