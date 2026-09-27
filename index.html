@@ -238,7 +238,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .block-inputs .unit{font-size:11px}
 .block-note{width:100%;margin-top:5px;font-size:14px;padding:7px 9px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;min-height:38px}
 .block-note:focus{outline:none;border-color:var(--blue);background:#fff}
-.dose-calc{font-size:13px;color:var(--blue);font-weight:700;min-width:70px;white-space:nowrap}
+.dose-calc{display:none}
 .ml-wrap{display:inline-flex;align-items:center;gap:4px}
 .fdose.fml{width:62px;color:var(--navy);font-weight:700}
 .rgrp{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
@@ -5685,7 +5685,7 @@ function updateCalc(key, dose, weight, unit) {
     const totalStr = `${total % 1 === 0 ? total : total.toFixed(2)} ${dispUnit}`;
     // 薬液量: mL欄へ(規格がある薬のみ)。手で直した mL(drugs[key].ml)があればそれを優先。編集中の欄は触らない
     const drug = Object.values(DRUG_GROUPS).flat().find(dr => dr.key === key);
-    el.textContent = `= ${totalStr}`;
+    el.textContent = '';  // 総量(= 60.50 µg 等)は表示しない(ユーザー要望: 用量と薬液量だけで十分)
     const mlEl = document.getElementById('dml_' + key);
     if (mlEl && document.activeElement !== mlEl && drug && drug.conc && drug.conc > 0 && !unit.includes('/hr') && !unit.includes('/min')) {
       const stored = current && current.drugs && current.drugs[key] && current.drugs[key].ml;
