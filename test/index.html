@@ -1545,6 +1545,16 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="premedModal" onclick="if(event.target===this)closePremedSheet()">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-hdr"><span>💉 前投薬を記録 <span id="premedNow" style="font-weight:400;font-size:12px;opacity:.85"></span></span><button class="modal-close" onclick="closePremedSheet()">×</button></div>
+    <div class="modal-body" style="padding-top:8px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">タップした薬がその時刻で記録されます。あとで打つ薬はそのまま残し、外側をタップして閉じてください（「前投薬」ボタンから再び開けます）</div>
+      <div id="premedItems"></div>
+      <button type="button" class="btn-add-row" style="margin-top:8px;padding:8px" onclick="premedTimeOnly()">⏱ 時刻だけ記録（薬は後で）</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="drugPickModal" onclick="if(event.target===this)closeDrugPick()">
   <div class="modal-box" style="max-width:520px">
     <div class="modal-hdr"><span>💊 薬剤一覧から選んで記録</span><button class="modal-close" onclick="closeDrugPick()">×</button></div>
@@ -5513,6 +5523,61 @@ function updateHospDefNote() {
   else el.style.display = 'none';
 }
 
+// ── 前投薬シート: 「前投薬」を押すとプランの前投薬(混注①②③・単剤)がボタンで出て、押したものがその時刻で記録される ──
+function premedLogged(label) { return ((current && current.drugLog) || []).some(r => r && !r.deleted && r.drug === label && (r.time || '').trim()); }
+function premedItems() {
+  if (!current || !current.drugs) return [];
+  const items = [];
+  [1, 2, 3].forEach(n => {
+    const mem = mixMembers(n); if (!mem.length) return;
+    items.push({ kind: 'mix', n, label: MIX_LABELS[n], detail: mem.map(({ d }) => d.label).join('＋'), done: !!((current.procEvents || {})['pe_mix' + n] || '').trim() });
+  });
+  DRUG_GROUPS.premeds.forEach(d => {
+    const dd = current.drugs[d.key]; if (!dd || !dd.use || dd.mix) return;
+    const pk = parseFloat(dd.dose);
+    items.push({ kind: 'drug', key: d.key, label: d.label, detail: `${dd.dose ? dd.dose + d.unit : '用量未設定'}${plannedMl(d) ? ' ' + plannedMl(d) : ''} ${dd.route || d.def || ''}`, done: premedLogged(d.label), noDose: isNaN(pk) });
+  });
+  return items;
+}
+function premedPending() { return premedItems().filter(x => !x.done); }
+function openPremedSheet() {
+  if (!current) return;
+  renderPremedSheet();
+  document.getElementById('premedModal').classList.add('on');
+}
+function closePremedSheet() { document.getElementById('premedModal').classList.remove('on'); }
+function renderPremedSheet() {
+  const box = document.getElementById('premedItems'); if (!box) return;
+  const now = document.getElementById('premedNow'); if (now) now.textContent = nowTime();
+  const items = premedItems();
+  box.innerHTML = items.map(it => {
+    const cls = it.kind === 'mix' ? ('ev-mix' + it.n) : '';
+    return `<button type="button" class="dose-opt ${cls}" ${it.done ? 'disabled style="opacity:.45"' : ''} onclick="premedRecord('${it.kind}','${it.kind === 'mix' ? it.n : it.key}')">
+      <span class="dose-opt-label">${esc(it.label)}<span class="dose-opt-perkg">${esc(it.detail)}</span></span>
+      <span class="dose-opt-val">${it.done ? '記録済' : 'タップで記録'}</span></button>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px">プランに前投薬がありません</div>';
+}
+function premedRecord(kind, id) {
+  if (!current) return;
+  if (kind === 'mix') {
+    recordEvent('pe_mix' + id);  // 構成薬をまとめて記録。前投薬時刻が空なら同時刻を入れる
+  } else {
+    const d = findDrugDef(id); if (!d) return;
+    const dd = current.drugs[id] || {};
+    const pk = parseFloat(dd.dose);
+    if (isNaN(pk)) { closePremedSheet(); quickDose(id); return; }  // 用量が無い薬は用量シートへ
+    warnIfAllergyDrug(d.label);
+    const t = nowTime();
+    if (!Array.isArray(current.drugLog)) current.drugLog = [];
+    current.drugLog.push({ drug: d.label, dose: formatDose(d, pk), route: dd.route || d.def || '', time: t, uid: genUid() });
+    if (!(current.anesthStart || '').trim()) { current.anesthStart = t; setVal('f_anesthStart', t); updateDurations(); }
+    renderTimeline(); autoSave(); pushCurrentToSheets();
+    showToast(`✅ ${d.label} を ${t} に記録`);
+  }
+  if (premedPending().length) renderPremedSheet(); else closePremedSheet();
+}
+function premedTimeOnly() { closePremedSheet(); if (!(current.anesthStart || '').trim()) recordEvent('anesthStart'); else showToast('前投薬の時刻は記録済みです'); }
+
 function toggleDrug(key, event) {
   if (!current) return;
   if (isDrugBanned(key)) { showToast('⚠️ 猫にはアセトアミノフェンは使用できません（禁忌）'); return; }
@@ -5992,6 +6057,7 @@ function renderEventButtons() {
   const _pe = k => ((current.procEvents[k] || '').trim());
   const unset = shown.filter(e => {
     if (e.ps) return true;  // 手技の開始/終了は procSegEvents が状態込みで作っている
+    if (e.key === 'anesthStart') return !((current.anesthStart || '').trim()) || premedPending().length > 0;  // 未記録の前投薬が残っていれば出し続ける
     if (e.laHasSide) {
       // 側付き局麻: 両側 / 左右両方 / (旧データ)側なし が記録済みならボタンを消す。
       // PLで片側(R/L)を指定している場合は、その側を記録した時点で消える
@@ -6048,6 +6114,7 @@ function renderEventButtons() {
   // 片側記録済みなら残りの側だけを選択肢に出す。
   const laBtn = e => {
     if (e.ps) return `<button type="button" class="qdose-btn ${e.cls}" data-n="${escA(e.ps.name)}" data-p="${e.ps.phase}" onclick="recordProcSeg(this.dataset.n,this.dataset.p)">${esc(e.label)}</button>`;
+    if (e.key === 'anesthStart' && premedPending().length) return `<button type="button" class="qdose-btn" onclick="openPremedSheet()">前投薬<span class="qdose-badge">${premedPending().length}</span></button>`;
     if (!e.laHasSide) return `<button type="button" class="qdose-btn${e.cls ? ' ' + e.cls : ''}" onclick="recordEvent('${e.key}')">${e.label}</button>`;
     if (window._laOpen !== e.key) {
       return `<button type="button" class="qdose-btn" onclick="window._laOpen='${e.key}';renderEventButtons()">${e.label}</button>`;
