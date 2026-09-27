@@ -113,7 +113,8 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 [id^="drugList_"] .drug-row:not(.on) .drug-ref,
 [id^="drugList_"] .drug-row:not(.on) .drug-dilution,
 [id^="drugList_"] .drug-row:not(.on) .drug-inputs,
-[id^="drugList_"] .drug-row:not(.on) .rgrp{display:none}
+[id^="drugList_"] .drug-row:not(.on) .rgrp,
+[id^="drugList_"] .drug-row:not(.on) .mixgrp{display:none}
 [id^="drugList_"] .drug-row:not(.on) .drug-content{opacity:1;pointer-events:none}
 [id^="drugList_"] .drug-row:not(.on) .drug-name{font-size:13px;font-weight:500;color:var(--text);margin:0}
 
@@ -162,6 +163,49 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 /* DRUG ROWS */
 .drug-row{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid #f0f4f8}
 .drug-row:last-child{border-bottom:none}
+.addon-del{margin-top:6px;padding:4px 9px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:11px;color:var(--muted);cursor:pointer}
+.proc-box{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.proc-box .fin{flex:1;min-width:0}
+.proc-del{width:36px;height:36px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--muted);font-size:15px;cursor:pointer;flex-shrink:0}
+.proc-type{font-size:10px;font-weight:700;border-radius:5px;padding:2px 5px;flex-shrink:0;border:none;font-family:inherit;cursor:pointer;min-height:26px}
+.proc-type.exam{background:#e0f2fe;color:#075985}.proc-type.surg{background:#fee2e2;color:#991b1b}
+.proc-suggest{margin:-2px 0 8px 0;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.10);-webkit-overflow-scrolling:touch}
+.proc-suggest .bs-i{padding:10px 12px;font-size:14px;color:var(--text);cursor:pointer;border-bottom:1px solid #eef2f6;display:flex;align-items:center;gap:8px}
+.proc-suggest .bs-i:last-child{border-bottom:none}.proc-suggest .bs-i:active{background:#eef4ff}
+.proc-suggest .bs-hdr{font-size:11px;color:var(--muted);padding:6px 12px 2px;font-weight:700}
+.ev-proc{background:#fef2f2!important;border-color:#dc2626!important;color:#b91c1c!important}
+.ev-proc-end{background:#dc2626!important;border-color:#dc2626!important;color:#fff!important}
+.ev-proc.exam{background:#f0f9ff!important;border-color:#0284c7!important;color:#075985!important}
+.ev-proc-end.exam{background:#0284c7!important;border-color:#0284c7!important;color:#fff!important}
+.tl-row.tl-proc{border-left-color:#dc2626}
+.tl-kind-proc{background:#fee2e2;color:#991b1b}
+.tl-surg-tag{font-size:10.5px;font-weight:800;color:#fff;background:#1e3a5f;border-radius:6px;padding:2px 6px;margin-left:6px;white-space:nowrap}
+.alg-box{border:1.5px solid #f3b4b4;border-radius:10px;background:#fff7f7;padding:9px 10px;margin:4px 0 8px}
+.alg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.alg-title{font-weight:800;color:#b91c1c;font-size:13.5px;white-space:nowrap}
+.alg-seg{flex:1;min-width:230px}
+.alg-seg .seg-i.on-none{background:#15803d;color:#fff;font-weight:700}
+.alg-seg .seg-i.on-yes{background:#b91c1c;color:#fff;font-weight:700}
+.alg-seg .seg-i.on-unk{background:#b45309;color:#fff;font-weight:700}
+.alg-item{background:#fff;border:1.5px solid #fecaca;border-radius:9px;padding:8px 9px;margin-bottom:7px}
+.alg-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.alg-row:last-child{margin-bottom:0}
+.alg-chip{padding:5px 10px;border:1.5px solid var(--border);border-radius:14px;background:#f8fafc;font-size:12px;font-weight:700;cursor:pointer;min-height:32px;-webkit-user-select:none;color:var(--text)}
+.alg-chip.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.alg-chip.sev-mild.on{background:#ca8a04;border-color:#ca8a04}.alg-chip.sev-mod.on{background:#ea580c;border-color:#ea580c}.alg-chip.sev-severe.on{background:#b91c1c;border-color:#b91c1c}
+.alg-lbl{font-size:11px;color:var(--muted);font-weight:700;min-width:34px}
+.alg-name{flex:1;min-width:140px}
+.alg-del{width:32px;height:32px;border:1.5px solid var(--border);border-radius:8px;background:#fff;color:var(--muted);cursor:pointer;margin-left:auto}
+.alg-past{font-size:12px;color:#9a3412;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:6px 9px;margin-bottom:7px;line-height:1.5}
+.alg-banner{padding:7px 12px;font-size:13px;font-weight:800;line-height:1.4;display:flex;gap:8px;align-items:center}
+.alg-banner.yes{background:#b91c1c;color:#fff}
+.alg-banner.past{background:#f59e0b;color:#111}
+.alg-banner.unk{background:#fef3c7;color:#92400e;font-weight:700;font-size:12px}
+.alg-banner .alg-b-body{flex:1;min-width:0;white-space:normal}
+.case-alg-badge{background:#b91c1c;color:#fff;font-size:10px;font-weight:800;border-radius:5px;padding:1px 5px;margin-left:5px;white-space:nowrap}
+.drug-alg-badge{background:#b91c1c;color:#fff;font-size:10px;font-weight:800;border-radius:5px;padding:1px 5px;margin-left:6px;white-space:nowrap}
+.alg-suggest{margin:0 0 6px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.10)}
+.alg-suggest .bs-i{padding:9px 12px;font-size:13.5px;cursor:pointer;border-bottom:1px solid #eef2f6}
 .drug-toggle{width:36px;height:36px;border:2px solid var(--border);border-radius:8px;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:4px;transition:all .12s;font-size:0;-webkit-user-select:none}
 .drug-row.on .drug-toggle{background:var(--blue);border-color:var(--blue);font-size:16px;color:#fff}
 .drug-row.on .drug-toggle::after{content:'✓';font-weight:800}
@@ -198,6 +242,25 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .rgrp{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
 .rbtn{padding:5px 10px;border:1.5px solid var(--border);border-radius:5px;background:#f8fafc;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;min-height:32px;-webkit-user-select:none}
 .rbtn.on{background:var(--navy);border-color:var(--navy);color:#fff}
+/* 前投薬の投与区分(混注①②③ / 後で投与) */
+.mixgrp{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px}
+.mix-lbl{font-size:11px;color:var(--muted);font-weight:700}
+.mbtn{padding:5px 10px;border:1.5px solid var(--border);border-radius:14px;background:#f8fafc;font-size:12px;font-weight:700;cursor:pointer;min-height:32px;-webkit-user-select:none;color:var(--text)}
+.mbtn.on[data-mix="1"]{background:#f59e0b;border-color:#f59e0b;color:#fff}
+.mbtn.on[data-mix="2"]{background:#0d9488;border-color:#0d9488;color:#fff}
+.mbtn.on[data-mix="3"]{background:#7c3aed;border-color:#7c3aed;color:#fff}
+.drug-row.mix-1{box-shadow:inset 4px 0 0 #f59e0b}.drug-row.mix-2{box-shadow:inset 4px 0 0 #0d9488}.drug-row.mix-3{box-shadow:inset 4px 0 0 #7c3aed}
+.mix-summary{width:100%;order:3;margin-top:8px;display:flex;flex-direction:column;gap:5px}
+.mix-sum-row{font-size:12.5px;line-height:1.5;padding:7px 10px;border-radius:8px;background:#fff7ed;border:1px solid #fdba74}
+.mix-sum-row.g2{background:#f0fdfa;border-color:#5eead4}.mix-sum-row.g3{background:#f5f3ff;border-color:#c4b5fd}
+.mix-sum-row b{font-weight:800}
+.tl-mixbadge{font-size:10.5px;font-weight:800;color:#fff;border-radius:6px;padding:2px 5px;margin-right:2px;white-space:nowrap}
+.tl-mixbadge.m1{background:#f59e0b}.tl-mixbadge.m2{background:#0d9488}.tl-mixbadge.m3{background:#7c3aed}
+.qdose-btn.dp-unplanned{background:#fff;color:var(--navy);border-color:var(--border)}
+.qdose-btn .later-tag{font-size:10px;background:#64748b;color:#fff;border-radius:5px;padding:1px 4px}
+.ev-mix1{background:#fff7ed!important;border-color:#f59e0b!important;color:#b45309!important}
+.ev-mix2{background:#f0fdfa!important;border-color:#0d9488!important;color:#0f766e!important}
+.ev-mix3{background:#f5f3ff!important;border-color:#7c3aed!important;color:#6d28d9!important}
 
 /* PRESET BUTTONS */
 .preset-bar{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px}
@@ -328,6 +391,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .dose-opt:active{background:var(--blue-bg);border-color:var(--blue)}
 .dose-opt-label{font-size:15px;font-weight:700;color:var(--text)}
 .dose-opt-val{font-size:12px;color:var(--muted);text-align:right}
+.dose-opt-perkg{font-size:12px;color:var(--muted);margin-left:7px;font-weight:600}
+.dose-opt-ml{display:block;font-size:17px;color:var(--navy);font-weight:800;line-height:1.2}
+.qdose-btn .qml{font-size:10.5px;color:var(--muted);font-weight:600;margin-left:2px}
 
 /* 狭い画面（iPhone等）では薬剤ログ表をカード式に */
 @media (max-width:600px){
@@ -474,6 +540,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .rv-hbtn.rv-submit.arm{background:#c0392b;border-color:#c0392b;animation:rvblink .6s steps(2) infinite}
 .rv-hbtn:disabled{opacity:.6}
 @keyframes rvblink{50%{opacity:.7}}
+.case-rv-badge{display:inline-block;margin-left:6px;background:#fdf6e3;color:#8a6d0b;border:1px solid #f1d98a;border-radius:9px;padding:0 7px;font-size:11px;font-weight:700;vertical-align:1px}
+.case-rv-badge.new{background:#fff3c4;border-color:#f0b429;color:#7a4b00}
+.case-rv-badge.done{background:#eafaf1;border-color:#a9dfbf;color:#1e8449}
 .case-cm-badge{display:inline-block;margin-left:6px;background:#eef6fc;color:var(--blue);border:1px solid #bcd7ee;border-radius:9px;padding:0 7px;font-size:11px;font-weight:700;vertical-align:1px}
 .case-cm-badge.new{background:var(--orange);color:#fff;border-color:var(--orange)}
 .rv-cm{border:1px solid var(--line, #e3e8ee);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#fbfcfe}
@@ -560,6 +629,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     <div class="hdr-date" id="hDate"></div>
     <div class="weight-pill" id="weightPill">—kg</div>
   </div>
+  <div id="algBanner" class="alg-banner" style="display:none" onclick="switchTab(0);setTimeout(()=>{const b=document.getElementById('algBox'); if(b) b.scrollIntoView({block:'center'});},50)"></div>
   <nav class="tab-bar">
     <div class="tab on" onclick="switchTab(0)"><span class="ti">🐶</span>患者/術前</div>
     <div class="tab" onclick="switchTab(1)"><span class="ti">🔧</span>手術/器材</div>
@@ -660,7 +730,19 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           </div>
           <div class="frow">
             <div class="chk-item" onclick="toggleChk(this,'seizures')"><div class="chk-box"></div><span class="chk-label">発作歴</span></div>
-            <div class="chk-item" onclick="toggleChk(this,'allergies')"><div class="chk-box"></div><span class="chk-label">アレルギー</span></div>
+          </div>
+          <div class="alg-box" id="algBox">
+            <div class="alg-head">
+              <span class="alg-title">⚠️ アレルギー</span>
+              <div class="seg alg-seg" id="algSeg">
+                <div class="seg-i" data-st="" onclick="setAllergyState('')">未確認</div>
+                <div class="seg-i" data-st="none" onclick="setAllergyState('none')">なし（確認済）</div>
+                <div class="seg-i" data-st="yes" onclick="setAllergyState('yes')">あり</div>
+              </div>
+            </div>
+            <div id="algPast"></div>
+            <div id="algItems"></div>
+            <button type="button" class="btn-add-row" id="algAddBtn" onclick="addAllergyItem()" style="margin-top:2px;padding:8px;display:none">＋ 項目を追加</button>
           </div>
           <div class="frow">
             <span class="flabel flabel-w">事前投与中薬剤</span>
@@ -733,15 +815,13 @@ input.fin[readonly]{background:#fff;cursor:pointer}
             <span class="flabel flabel-w">診断名</span>
             <input class="fin" type="text" id="f_diagnosis" placeholder="診断名" oninput="autoSave();renderEventButtons()">
           </div>
-          <div class="frow">
-            <span class="flabel flabel-w">術式</span>
-            <input class="fin" type="text" id="f_procedure" placeholder="術式" oninput="autoSave();renderEventButtons()">
-          </div>
-          <div class="qdose-bar" style="margin:6px 0 2px">
-            <button type="button" class="qdose-btn" onclick="setProcedure('CAST')">CAST</button>
-            <button type="button" class="qdose-btn" onclick="setProcedure('SPAY')">SPAY</button>
-            <button type="button" class="qdose-btn" onclick="setProcedure('CT')">CT</button>
-            <button type="button" class="qdose-btn" onclick="setProcedure('歯科処置')">歯科処置</button>
+          <div class="frow" style="align-items:flex-start">
+            <span class="flabel flabel-w" style="padding-top:10px">術式</span>
+            <div style="flex:1;min-width:0">
+              <div id="procBoxes"></div>
+              <button type="button" class="btn-add-row" id="procAddBtn" onclick="addProcBox()" style="margin-top:2px;padding:7px">＋ 手技を追加（CT→手術、内視鏡→開腹 など）</button>
+              <input type="hidden" id="f_procedure">
+            </div>
           </div>
           <div class="frow">
             <span class="flabel flabel-w">術者</span>
@@ -770,6 +850,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           </div>
 
           <div class="sec-title">予想される合併症と対応</div>
+          <div id="hospDefNote" style="font-size:11px;color:#075985;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:5px 9px;margin:2px 0 8px;display:none"></div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:8px">⚠️ 体重を入力すると、各対応の用量が自動計算されます</div>
 
           <!-- 低血圧 -->
@@ -952,6 +1033,14 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 
           </div></div>
 
+          <div class="sub-acc" data-sub="addon">
+          <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>追加投与 <span class="sub-en">Add-on（CT後など）</span><span class="sub-sum" id="ssum_addon"></span></div>
+          <div class="sub-body">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">前投薬とは別に、検査後（CT後など）や術中に投与する予定の薬を、薬剤一覧から選んで入れます。用量・経路を入れておくと術中タブの薬剤ボタンに「追加」タグ付きで出ます</div>
+          <div id="drugList_addon"></div>
+          <select id="addonSelect" class="fin" style="margin-top:8px;font-size:13px" onchange="addAddonDrug(this.value)"><option value="">＋ 薬剤を選んで追加…</option></select>
+          </div></div>
+
           <div class="sub-acc" data-sub="maint">
           <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>維持 <span class="sub-en">Maintenance</span><span class="sub-sum" id="ssum_maint"></span></div>
           <div class="sub-body">
@@ -1124,12 +1213,12 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div class="dur-box" id="durBoxSurg">
             <span class="dur-lbl">手術時間</span>
             <span class="dur-val" id="durValSurg">—</span>
-            <span class="dur-sub">手術開始から</span>
+            <span class="dur-sub" id="durSubSurg">手術開始から</span>
           </div>
           <div class="dur-box" id="durBoxGlove">
             <span class="dur-lbl">グローブ</span>
             <span class="dur-val" id="durValGlove">—</span>
-            <span class="dur-sub">交換から</span>
+            <span class="dur-sub" id="durSubGlove">交換から</span>
           </div>
         </div>
       </div>
@@ -1173,7 +1262,10 @@ input.fin[readonly]{background:#fff;cursor:pointer}
           <div id="sutureBtnBar" class="qdose-bar"></div>
           <div style="font-size:12px;color:var(--muted);margin:12px 0 6px">💊 薬剤を記録 <span style="opacity:.7">— タップで用量を選んで記録</span></div>
           <div id="quickDoseBar" class="qdose-bar"></div>
-          <button class="btn-add-row" onclick="addDrugLogRow()" style="margin-top:6px">＋ 薬剤行を追加</button>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn-add-row" onclick="openDrugPick()" style="margin-top:0;flex:1;border-style:solid;border-color:var(--blue);color:var(--blue);font-weight:700">💊 薬剤一覧から選んで記録</button>
+            <button class="btn-add-row" onclick="addDrugLogRow()" style="margin-top:0;flex:1">＋ 手入力の行</button>
+          </div>
           <div style="font-size:12px;color:var(--muted);font-weight:700;margin:14px 0 5px">📋 記録（時刻順）</div>
           <div id="timelineList"></div>
           <button class="btn-add-row" onclick="renderTimelineList()" style="margin-top:9px">⏱ 時刻順に整列</button>
@@ -1452,6 +1544,35 @@ input.fin[readonly]{background:#fff;cursor:pointer}
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="algModal" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-hdr" style="background:#b91c1c">⚠️ アレルギーあり
+      <button class="modal-close" onclick="document.getElementById('algModal').classList.remove('on')">✕</button></div>
+    <div class="modal-body" id="algModalBody" style="font-size:15px;font-weight:700;line-height:1.7;color:#b91c1c"></div>
+    <div class="modal-footer">
+      <button class="btn-save" style="width:100%;background:#b91c1c" onclick="document.getElementById('algModal').classList.remove('on')">確認した</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="premedModal" onclick="if(event.target===this)closePremedSheet()">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-hdr"><span>💉 前投薬を記録 <span id="premedNow" style="font-weight:400;font-size:12px;opacity:.85"></span></span><button class="modal-close" onclick="closePremedSheet()">×</button></div>
+    <div class="modal-body" style="padding-top:8px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">タップした薬がその時刻で記録されます。あとで打つ薬はそのまま残し、外側をタップして閉じてください（「前投薬」ボタンから再び開けます）</div>
+      <div id="premedItems"></div>
+      <button type="button" class="btn-add-row" style="margin-top:8px;padding:8px" onclick="premedTimeOnly()">⏱ 時刻だけ記録（薬は後で）</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="drugPickModal" onclick="if(event.target===this)closeDrugPick()">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-hdr"><span>💊 薬剤一覧から選んで記録</span><button class="modal-close" onclick="closeDrugPick()">×</button></div>
+    <div class="modal-body" style="padding-top:8px">
+      <input class="fin" id="drugPickSearch" type="text" placeholder="薬剤名で検索（例: ブト）" oninput="renderDrugPick(this.value)" autocomplete="off" style="margin-bottom:8px">
+      <div id="drugPickBody" style="max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="gauzeModal">
   <div class="modal-box" style="max-width:420px">
     <div class="modal-hdr" style="background:#c0392b">⚠️ 抜管前チェック
@@ -1620,6 +1741,11 @@ const DRUG_GROUPS = {
     { key:'propofol',       label:'プロポフォール',   unit:'mg/kg', dog:'4〜6',  cat:'6〜8',  routes:['IV'],      def:'IV', conc:10 },
     { key:'alfaxalone_i',   label:'アルファキサロン', unit:'mg/kg', dog:'2〜3',  cat:'2〜5',  routes:['IV','IM'], def:'IV', conc:10 },
   ],
+  // 追加投与: 前投薬とは別に術中/検査後(CT後など)に投与する薬。前投薬欄にしか無かった
+  // メデトミジン/ニカルジピンを、前投薬として扱わずに計画・記録できるようにする
+  // 既定の薬は置かない。症例ごとに選んだ薬(current.addonKeys)から syncAddonDefs() が
+  // 仮想定義(key='a_'+元キー、他は元の定義を流用)を入れる
+  addon: [],
   antibiotics: [
     { key:'cefazolin',      label:'セファゾリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:200, dilutionNote:'1000mg(1V)を注射用水5mLに溶解 → 200mg/mL' },
     { key:'ampicillin',     label:'アンピシリン',     unit:'mg/kg', dog:'20〜30', cat:'20〜30', routes:['IV'], def:'IV', conc:100, dilutionNote:'1000mg(1V)を注射用水10mLに溶解 → 100mg/mL' },
@@ -1669,6 +1795,12 @@ const DRUG_GROUPS = {
     { key:'famotidine',      label:'ファモチジン',         unit:'mg/kg', dog:'0.5〜1', cat:'0.5〜1', routes:['IV'],      def:'IV', conc:10 },
     { key:'methylprednisolone_acetate', label:'メチルプレドニゾロン酢酸エステル', unit:'mg/kg', dog:'1', cat:'1', routes:['SC'], def:'SC', conc:20 },
     { key:'lipid20',         label:'20%脂肪乳剤(イントラリポス)', unit:'mL/kg', dog:'1.5', cat:'1.5', routes:['IV'], def:'IV', dilutionNote:'リピッドレスキュー: 1.5mL/kg を1分でボーラス → 0.25mL/kg/min 持続' },
+    { key:'dantrolene',      label:'ダントロレン',         unit:'mg/kg', dog:'1〜3',  cat:'1〜3',  routes:['IV'], def:'IV', conc:0.333, dilutionNote:'1バイアル(20mg)を注射用水60mLに溶解 → 0.33mg/mL。溶けにくいのでよく振る' },
+    { key:'dexamethasone',   label:'デキサメタゾン',       unit:'mg/kg', dog:'0.1〜0.2', cat:'0.1〜0.2', routes:['IV'], def:'IV', conc:4 },
+    // 緊急薬(早見表と同じ2用量)。ラベルは同じ「アドレナリン」で、sub で心拍動時/心停止時を区別する
+    { key:'adrenaline_low',    label:'アドレナリン', sub:'心拍動時', unit:'μg/kg', dog:'1',  cat:'1',  routes:['IV','IM'], def:'IV', conc:10, dilution:'100倍希釈', dilutionNote:'原液(1mg/mL) 0.1mL を生食で 10mL にメスアップ → 10μg/mL。mLは希釈液での量' },
+    { key:'adrenaline_arrest', label:'アドレナリン', sub:'心停止時', unit:'μg/kg', dog:'10', cat:'10', routes:['IV'],      def:'IV', conc:1000, dilutionNote:'原液(1mg/mL)のまま。mLは原液での量' },
+    { key:'glucose20',       label:'20%ブドウ糖',          unit:'mL/kg', dog:'1',     cat:'1',     routes:['IV'], def:'IV', dilutionNote:'1mL/kg をゆっくりIV' },
   ],
 };
 
@@ -2381,11 +2513,8 @@ async function loadPresetsFromSheets() {
       if (!key) return;
       if (!presets[key]) presets[key] = { label: r['表示名'] || key, drugs: {} };
       if (r['薬剤キー'] === '__extras__') {
-        // 拡張項目(維持薬・濃度・O₂・Air・輸液)はJSONで「用量」列に格納
-        try {
-          const ex = JSON.parse(r['用量'] || '{}');
-          EXTRA_PRESET_FIELDS.forEach(f => { if (ex[f] !== undefined) presets[key][f] = ex[f]; });
-        } catch(_) {}
+        // 拡張項目はJSONで「用量」列に格納(維持薬・輸液・病院の既定 comps・薬剤ごとの混注 drugMix)
+        try { presets[key].__ex = JSON.parse(r['用量'] || '{}') || {}; } catch(_) {}
       } else if (r['薬剤キー']) {
         presets[key].drugs[r['薬剤キー']] = {
           dose: r['用量'] || '',
@@ -2393,14 +2522,22 @@ async function loadPresetsFromSheets() {
         };
       }
     });
-    // Sheets未保存の拡張項目は localStorage キャッシュで補完（Sheets値が優先）
+    // __extras__ を各プリセットへ展開(薬剤行との順序に依存しない)
+    Object.values(presets).forEach(p => {
+      const ex = p.__ex || {}; delete p.__ex;
+      Object.keys(ex).forEach(f => { if (f === 'drugMix') return; p[f] = ex[f]; });
+      if (ex.drugMix && typeof ex.drugMix === 'object') Object.entries(ex.drugMix).forEach(([dk, m]) => { if (p.drugs[dk]) p.drugs[dk].mix = m; });
+    });
+    // Sheets未保存の拡張項目(GAS更新前に保存した混注番号・病院の既定など)は localStorage キャッシュで補完（Sheets値が優先）
     try {
       const cached = JSON.parse(localStorage.getItem('vet_ang_presets') || '{}');
-      Object.keys(presets).forEach(k => {
-        if (!cached[k]) return;
-        EXTRA_PRESET_FIELDS.forEach(f => {
+      Object.keys(cached).forEach(k => {
+        if (k === '__hospital__' && !presets[k]) { presets[k] = cached[k]; return; }
+        if (!presets[k]) return;
+        EXTRA_PRESET_FIELDS.concat(['comps', 'savedAt']).forEach(f => {
           if (presets[k][f] === undefined && cached[k][f] !== undefined) presets[k][f] = cached[k][f];
         });
+        Object.entries(cached[k].drugs || {}).forEach(([dk, st]) => { if (st && st.mix && presets[k].drugs[dk] && !presets[k].drugs[dk].mix) presets[k].drugs[dk].mix = st.mix; });
       });
     } catch(e) {}
     return Object.keys(presets).length > 0 ? presets : null;
@@ -2457,8 +2594,9 @@ async function loadPresets() {
     }
   }
   // プリセットが空のときだけデフォルトを投入（ユーザーの削除を尊重）
-  if (!userPresets || typeof userPresets !== 'object' || Object.keys(userPresets).length === 0) {
-    userPresets = JSON.parse(JSON.stringify(DRUG_PRESETS));
+  if (!userPresets || typeof userPresets !== 'object') userPresets = {};
+  if (!Object.keys(userPresets).some(k => k.indexOf('__') !== 0)) {
+    Object.assign(userPresets, JSON.parse(JSON.stringify(DRUG_PRESETS)));  // 通常プリセットが無い時だけ既定を投入(病院の既定 __hospital__ は保持)
   }
   renderPresetBar();
 }
@@ -2471,7 +2609,7 @@ function savePresetsToStorage() {
 function renderPresetBar() {
   const bar = document.getElementById('presetBar');
   if (!bar || !userPresets) return;
-  bar.innerHTML = Object.entries(userPresets).map(([key, preset]) => {
+  bar.innerHTML = Object.entries(userPresets).filter(([key]) => key.indexOf('__') !== 0).map(([key, preset]) => {
     const desc = PRESET_DESC[key] || '';
     return `<button class="preset-btn" type="button" onclick="applyPreset('${key}')">
       <div class="preset-label">${esc(preset.label)}</div>
@@ -2488,7 +2626,7 @@ function applyPreset(key) {
   if (hasDrugs && !confirm(`現在の薬剤選択を「${preset.label}」で上書きします。よろしいですか？`)) return;
   current.drugs = {};
   Object.entries(preset.drugs).forEach(([k, s]) => {
-    current.drugs[k] = { use:true, dose:s.dose, route:s.route };
+    current.drugs[k] = { use:true, dose:s.dose, route:s.route, mix: s.mix || '' };
   });
   // 維持薬（プリセットに設定があれば反映）
   if (preset.maint !== undefined) {
@@ -2522,10 +2660,10 @@ async function openPresetEditor() {
   editingPreset = JSON.parse(JSON.stringify(userPresets || {}));
   // セレクト初期化
   const sel = document.getElementById('presetSelect');
-  sel.innerHTML = Object.entries(editingPreset).map(([k, p]) =>
+  sel.innerHTML = Object.entries(editingPreset).filter(([k]) => k.indexOf('__') !== 0).map(([k, p]) =>
     `<option value="${k}">${esc(p.label)}</option>`
   ).join('');
-  sel.value = Object.keys(editingPreset)[0];
+  sel.value = Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0)[0];
   document.getElementById('presetModal').classList.add('on');
   renderPresetEditor();
 }
@@ -2573,13 +2711,13 @@ function renderPresetEditor() {
         <input class="fdose" type="text" inputmode="decimal" value="${esc(settings.dose||'')}"
                oninput="setPresetDrugDose('${drugKey}', this.value)" placeholder="0.0">
         <button class="preset-drug-del" type="button" onclick="removeDrugFromPreset('${drugKey}')" title="削除">×</button>
-        <div class="preset-drug-controls">${routeBtns}</div>
+        <div class="preset-drug-controls">${routeBtns}${isPremedKey(drugKey) ? `<span style="margin-left:8px;font-size:11px;color:var(--muted);font-weight:700">投与:</span>` + ['1','2','3'].map(m => `<button class="mbtn${String(settings.mix || '') === m ? ' on' : ''}" data-mix="${m}" type="button" onclick="setPresetDrugMix('${drugKey}',${m})">${MIX_LABELS[m]}</button>`).join('') : ''}</div>
       </div>`;
     }).join('');
   }
 
   // 追加ドロップダウン（既に追加済みは除外）
-  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
+  const groupNames = {premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
   const sel = document.getElementById('addDrugSelect');
   sel.innerHTML = '<option value="">+ 薬剤を選択して追加…</option>' +
     Object.entries(DRUG_GROUPS).map(([gk, drugs]) => {
@@ -2602,6 +2740,15 @@ function setPresetDrugDose(drugKey, val) {
   if (editingPreset[key]?.drugs[drugKey]) editingPreset[key].drugs[drugKey].dose = val;
 }
 
+// プリセットの前投薬に混注①②③を指定(同じ番号を再タップで解除)。適用時に current.drugs[key].mix へ入る
+function setPresetDrugMix(drugKey, val) {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  const s = editingPreset[key] && editingPreset[key].drugs && editingPreset[key].drugs[drugKey];
+  if (!s) return;
+  s.mix = (String(s.mix || '') === String(val)) ? '' : val;
+  renderPresetEditor();
+}
 function setPresetDrugRoute(drugKey, route, el) {
   if (!editingPreset) return;
   const key = document.getElementById('presetSelect').value;
@@ -2692,13 +2839,13 @@ function deletePreset() {
   if (!editingPreset) return;
   const sel = document.getElementById('presetSelect');
   const key = sel.value;
-  if (Object.keys(editingPreset).length <= 1) { showToast('プリセットは1つ以上必要です'); return; }
+  if (Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0).length <= 1) { showToast('プリセットは1つ以上必要です'); return; }
   if (!confirm(`プリセット「${editingPreset[key].label}」を削除しますか？`)) return;
   delete editingPreset[key];
-  sel.innerHTML = Object.entries(editingPreset).map(([k, p]) =>
+  sel.innerHTML = Object.entries(editingPreset).filter(([k]) => k.indexOf('__') !== 0).map(([k, p]) =>
     `<option value="${k}">${esc(p.label)}</option>`
   ).join('');
-  sel.value = Object.keys(editingPreset)[0];
+  sel.value = Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0)[0];
   renderPresetEditor();
 }
 
@@ -3860,7 +4007,7 @@ function renderCasesList() {
     return `<div class="case-card${isToday ? ' case-today' : ''}" onclick="openCase('${c.id}')">
       <div class="case-icon">${sp}</div>
       <div class="case-info">
-        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${progressBadge}${rvCommentBadge(c)}</div>
+        <div class="case-name">${esc(name)}${isToday ? '<span class="case-today-badge">本日</span>' : ''}${algState(c) === 'yes' ? '<span class="case-alg-badge">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}${progressBadge}${rvProgressBadge(c)}${rvCommentBadge(c)}</div>
         <div class="case-meta">${esc(c.date)} ${c.caseNo ? '| No.'+esc(c.caseNo) : ''} | ${esc(diag)}</div>
       </div>
       <button class="case-del" onclick="event.stopPropagation();deleteCase('${c.id}')" title="削除">🗑</button>
@@ -3874,6 +4021,7 @@ function esc(s) {
 
 function newCase() {
   current = makeCase();
+  try { applyHospitalDefaults(current); } catch (_) {}
   cases.push(current);
   saveStorage();
   openForm();
@@ -3924,6 +4072,7 @@ function onNcsIdInput() {
 function newCaseWithId() {
   const raw = String((document.getElementById('ncsId') || {}).value || '').trim();
   current = makeCase();
+  try { applyHospitalDefaults(current); } catch (_) {}
   if (raw) { current.caseNo = raw; current.patientId = raw; }
   cases.push(current);
   saveStorage();
@@ -4029,12 +4178,13 @@ function openPastPreview(id) {
   const esc2 = v => esc(String(v || ''));
   const _tube = [c.tubeSize ? esc2(c.tubeSize) + 'mm' : '', c.tubeSizeFr ? esc2(c.tubeSizeFr) + 'Fr' : ''].filter(Boolean).join(' / ');
   let base = `${esc2(c.procedure || c.diagnosis || '術式未記載')} ／ ${esc2(c.weight || '—')}kg`
-    + (_tube ? ` ／ ET ${_tube}` : '') + (c.intubationDifficult ? ' ／ <b style="color:#c0392b">⚠️挿管困難</b>' : '');
+    + (_tube ? ` ／ ET ${_tube}` : '') + (c.intubationDifficult ? ' ／ <b style="color:#c0392b">⚠️挿管困難</b>' : '')
+    + (algState(c) === 'yes' ? `<div style="margin-top:4px;color:#b91c1c;font-weight:800">⚠️ アレルギー: ${esc2(allergySummaryText(c))}</div>` : (algState(c) === 'none' ? '<div style="margin-top:4px;color:var(--muted)">アレルギー: なし（確認済）</div>' : ''));
   const phases = [['導入', c.phaseFlagInd, c.phaseNoteInd], ['維持', c.phaseFlagMaint, c.phaseNoteMaint], ['覚醒', c.phaseFlagWake, c.phaseNoteWake], ['術後', c.phaseFlagPost, c.phaseNotePost]]
     .filter(x => x[1] || (x[2] || '').trim())
     .map(x => `<div>${x[1] ? '<b style="color:#c0392b">⚠️' : '<b>'}${x[0]}</b>: ${esc2(x[2] || '(メモなし)')}</div>`).join('');
   // 麻酔プラン: チェック済み薬剤(用量/経路)・維持・輸液・局所麻酔ブロック
-  const _gn = { premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
+  const _gn = { premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
   const planParts = [];
   Object.entries(DRUG_GROUPS).forEach(([gk, defs]) => {
     const on = defs.filter(d => c.drugs && c.drugs[d.key] && c.drugs[d.key].use)
@@ -4128,7 +4278,7 @@ function renderPatientHistory() {
     const proc = c.procedure || c.diagnosis || '術式未記載';
     const wt = c.weight ? ` / ${esc(c.weight)}kg` : '';
     const tube = c.tubeSize ? ` / ET${esc(c.tubeSize)}` : '';
-    const diff = c.intubationDifficult ? ' / ⚠️挿管困難' : '';
+    const diff = (c.intubationDifficult ? ' / ⚠️挿管困難' : '') + (algState(c) === 'yes' ? ` / <b style="color:#b91c1c">⚠️ｱﾚﾙｷﾞｰ: ${esc(allergySummaryText(c))}</b>` : '');
     const tr = caseTroubles(c);
     const badges = tr.map(x => `<span style="background:#ffe1e1;color:#c0392b;font-weight:800;font-size:10.5px;border-radius:5px;padding:1px 5px;margin-left:3px;white-space:nowrap">⚠️${x.ph}</span>`).join('');
     const noteLine = tr.filter(x => x.note).map(x => `${x.ph}: ${esc(x.note)}`).join(' ／ ');
@@ -4153,11 +4303,18 @@ function copyCaseAsNew(id) {
   const src = cases.find(c => c.id === id);
   if (!src) return;
   const c = makeCase();
+  try { applyHospitalDefaults(c); } catch (_) {}
   ['caseNo','patientId','ownerName','patientName','species','breed','birthdate',
    'ageY','ageM','sex','weight','bcs','staff',
    'tubeSize','tubeSizeFr','intubationDifficult'].forEach(k => {
     if (src[k] !== undefined && src[k] !== null) c[k] = src[k];
   });
+  // アレルギーは命に関わるので必ず引き継ぐ(項目は複製し、この症例で再確認できる状態にする)
+  if (algState(src) === 'yes') {
+    c.allergyState = 'yes';
+    c.allergyItems = algItems(src).map(it => ({ uid: genUid(), cat: it.cat || '薬剤', name: it.name || '', route: it.route || '', reactions: algReactions(it), severity: it.severity || '' }));
+    c.allergies = true; c.allergyDetail = src.allergyDetail || '';
+  } else if (algState(src) === 'none') { c.allergyState = ''; }  // 「なし」は今回あらためて確認する(未確認に戻す)
   // patientIdとcaseNoは常に同期(片方だけの旧データ対策)
   if (!c.patientId && c.caseNo) c.patientId = c.caseNo;
   if (!c.caseNo && c.patientId) c.caseNo = c.patientId;
@@ -4553,6 +4710,11 @@ function renderDrugRow(d) {
     `<button class="rbtn" data-route="${r}" onclick="toggleRoute('${d.key}','${r}',this)">${r}</button>`
   ).join('');
   const concInfo = d.conc ? ` <span style="color:var(--muted);font-size:11px">| 規格 ${d.conc < 1 ? d.conc : (d.unit.startsWith('μg') ? (d.conc>=1000 ? d.conc/1000+'mg/mL' : d.conc+'μg/mL') : d.conc+'mg/mL')}${d.dilution ? '（'+d.dilution+'）' : ''}</span>` : '';
+  const mixGrp = isPremedKey(d.key)
+    ? `<div class="mixgrp" onclick="event.stopPropagation()"><span class="mix-lbl">投与:</span>`
+      + ['1','2','3'].map(m => `<button type="button" class="mbtn" data-mix="${m}" onclick="setDrugMix('${d.key}',${m})">${MIX_LABELS[m]}</button>`).join('')
+      + `</div>`
+    : '';
   return `<div class="drug-row" id="drow_${d.key}" onclick="toggleDrug('${d.key}',event)">
     <div class="drug-toggle" id="dtog_${d.key}"></div>
     <div class="drug-content">
@@ -4569,6 +4731,7 @@ function renderDrugRow(d) {
       <div class="rgrp" onclick="event.stopPropagation()" id="rgrp_${d.key}">
         ${routeBtns}
       </div>
+      ${mixGrp}
     </div>
   </div>`;
 }
@@ -4650,6 +4813,7 @@ function populateForm() {
     .forEach(k => { current[k] = true; });
 
   // Drugs
+  try { renderAddonRows(); } catch (_) {}  // 追加投与枠(症例ごとの薬)を先に描く
   Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
     drugs.forEach(d => {
       const drugData = current.drugs[d.key] || {};
@@ -4674,6 +4838,10 @@ function populateForm() {
     });
   });
 
+  try { refreshMixChips(); renderMixSummary(); } catch (_) {}
+  try { renderProcBoxes(); } catch (_) {}
+  try { renderAllergyBox(); updateAllergyBanner(); refreshAllergyDrugBadges(); } catch (_) {}
+  try { updateHospDefNote(); } catch (_) {}
   // 猫×アセトアミノフェン禁忌の行状態を反映
   try { applyAcetaminophenBan(); } catch(_) {}
 
@@ -4876,6 +5044,549 @@ function applyAcetaminophenBan() {
   }
 }
 
+// ── 前投薬の投与区分: 混注①②③ / 後で投与 ──────────────────────────
+// current.drugs[key].mix = 1|2|3|'' 。同じ番号の薬は1本の混注として扱い、
+// 術中タブに「混注①」ボタンが出て、タップで構成薬剤をまとめて薬剤ログに記録する。
+const MIX_LABELS = { 1:'混注①', 2:'混注②', 3:'混注③' };
+function isPremedKey(key) { return DRUG_GROUPS.premeds.some(d => d.key === key); }
+function mixOf(key) { const dd = current && current.drugs && current.drugs[key]; return dd ? (dd.mix || '') : ''; }
+function setDrugMix(key, val) {
+  if (!current) return;
+  if (!current.drugs[key]) current.drugs[key] = { use:true, dose:'', route:'' };
+  const cur = current.drugs[key].mix || '';
+  current.drugs[key].mix = (String(cur) === String(val)) ? '' : val;
+  current.drugs[key].use = true;
+  const row = document.getElementById('drow_' + key);
+  if (row) row.classList.add('on');
+  refreshMixChips();
+  renderMixSummary();
+  try { renderEventButtons(); renderQuickDoseBar(); updateSubSums(); } catch (_) {}
+  autoSave();
+}
+function refreshMixChips() {
+  DRUG_GROUPS.premeds.forEach(d => {
+    const row = document.getElementById('drow_' + d.key); if (!row) return;
+    const m = String(mixOf(d.key) || '');
+    row.classList.remove('mix-1','mix-2','mix-3');
+    if (m && row.classList.contains('on')) row.classList.add('mix-' + m);
+    row.querySelectorAll('.mbtn').forEach(b => b.classList.toggle('on', b.dataset.mix === m));
+  });
+}
+function mixMembers(n) { // n: 1|2|3 → [{d, dd}] (チェック済みのみ)
+  if (!current || !current.drugs) return [];
+  return DRUG_GROUPS.premeds
+    .filter(d => { const dd = current.drugs[d.key]; return dd && dd.use && String(dd.mix || '') === String(n); })
+    .map(d => ({ d, dd: current.drugs[d.key] }));
+}
+function mixVolumeMl(d, perKg) {
+  const w = parseFloat(current && current.weight);
+  if (!w || !d.conc || isNaN(perKg)) return null;
+  return perKg * w / d.conc;
+}
+function renderMixSummary() {
+  const list = document.getElementById('drugList_premeds'); if (!list || !current) return;
+  let box = document.getElementById('mixSummary');
+  if (!box) { box = document.createElement('div'); box.id = 'mixSummary'; box.className = 'mix-summary'; list.appendChild(box); }
+  const rows = [];
+  [1, 2, 3].forEach(n => {
+    const mem = mixMembers(n); if (!mem.length) return;
+    let total = 0, allVol = true;
+    const parts = mem.map(({ d, dd }) => {
+      const pk = parseFloat(dd.dose); const v = mixVolumeMl(d, pk);
+      if (v == null) allVol = false; else total += v;
+      return `${esc(d.label)} ${dd.dose ? esc(dd.dose) + esc(d.unit) : '<span style="color:var(--red)">用量未入力</span>'}${v != null ? ' (' + v.toFixed(2) + 'mL)' : ''}`;
+    });
+    const routes = Array.from(new Set(mem.map(({ d, dd }) => dd.route || d.def).filter(Boolean)));
+    rows.push(`<div class="mix-sum-row g${n}"><b>${MIX_LABELS[n]}</b>　${parts.join(' ＋ ')}`
+      + (allVol ? `　＝ <b>合計 ${total.toFixed(2)}mL</b>` : '')
+      + (routes.length ? '　' + routes.join('/') : '')
+      + (routes.length > 1 ? ' <span style="color:var(--red)">⚠ 経路が混在</span>' : '')
+      + `<br><span style="color:var(--muted)">術中タブの「${MIX_LABELS[n]}」ボタンで、構成薬剤をその時刻でまとめて記録</span></div>`);
+  });
+  box.innerHTML = rows.join('');
+  box.style.display = rows.length ? '' : 'none';
+}
+function mixEventList() { return [1, 2, 3].filter(n => mixMembers(n).length).map(n => ({ key: 'pe_mix' + n, label: MIX_LABELS[n], cls: 'ev-mix' + n })); }
+function mixLabelOfKey(key) { const m = String(key).match(/^pe_mix([123])$/); return m ? MIX_LABELS[+m[1]] : ''; }
+// 振り返り/報告用: 前投薬を「混注①(A＋B)」「後で投与: C」に分けて文字列化
+function premedGroupText(c, fmt) {
+  const dz = (c && c.drugs) || {};
+  const on = DRUG_GROUPS.premeds.filter(d => dz[d.key] && dz[d.key].use);
+  const byMix = n => on.filter(d => String(dz[d.key].mix || '') === String(n)).map(fmt);
+  const parts = [1, 2, 3].map(n => { const a = byMix(n); return a.length ? `${MIX_LABELS[n]}(${a.join('＋')})` : ''; }).filter(Boolean)
+    .concat(on.filter(d => !dz[d.key].mix).map(fmt));
+  return { premed: parts };
+}
+
+// ── 追加投与(Add-on)枠: 症例ごとに薬剤マスタから選んで入れる ──────────────
+// current.addonKeys = ['medetomidine', ...](元の定義キー)。DRUG_GROUPS.addon には
+// 仮想定義 {…元定義, key:'a_'+元キー} を入れて、薬剤ボタン/報告書/用量計算を他グループと同じ経路で動かす。
+const ADDON_GROUP_NAMES = { premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
+function addonBaseDef(baseKey) {
+  for (const [gk, arr] of Object.entries(DRUG_GROUPS)) {
+    if (gk === 'addon') continue;
+    const d = arr.find(x => x.key === baseKey);
+    if (d) return d;
+  }
+  return null;
+}
+function syncAddonDefs(c) {
+  DRUG_GROUPS.addon.length = 0;
+  ((c && c.addonKeys) || []).forEach(k => {
+    const b = addonBaseDef(k);
+    if (b) DRUG_GROUPS.addon.push(Object.assign({}, b, { key: 'a_' + k, baseKey: k }));
+  });
+}
+function restoreDrugRowState(d) {
+  const drugData = (current.drugs && current.drugs[d.key]) || {};
+  const row = document.getElementById('drow_' + d.key); if (!row) return;
+  row.classList.toggle('on', !!drugData.use);
+  const doseEl = document.getElementById('ddose_' + d.key); if (doseEl) doseEl.value = drugData.dose || '';
+  updateCalc(d.key, drugData.dose, current.weight, d.unit);
+  const route = drugData.route || d.def;
+  const rgrp = document.getElementById('rgrp_' + d.key);
+  if (rgrp) rgrp.querySelectorAll('.rbtn').forEach(btn => btn.classList.toggle('on', btn.dataset.route === route));
+}
+function renderAddonRows() {
+  if (!current) return;
+  syncAddonDefs(current);
+  const el = document.getElementById('drugList_addon'); if (!el) return;
+  el.innerHTML = DRUG_GROUPS.addon.map(d => renderDrugRow(d)).join('');
+  DRUG_GROUPS.addon.forEach(d => {
+    restoreDrugRowState(d);
+    const row = document.getElementById('drow_' + d.key);
+    const content = row && row.querySelector('.drug-content');
+    if (content) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'addon-del'; b.textContent = '✕ この枠から外す';
+      b.onclick = (ev) => { ev.stopPropagation(); removeAddonDrug(d.baseKey); };
+      content.appendChild(b);
+    }
+  });
+  const sel = document.getElementById('addonSelect');
+  if (sel) {
+    const have = new Set(current.addonKeys || []);
+    sel.innerHTML = '<option value="">＋ 薬剤を選んで追加…</option>' +
+      Object.entries(DRUG_GROUPS).map(([gk, arr]) => {
+        if (gk === 'addon') return '';
+        const opts = arr.filter(d => !have.has(d.key)).map(d => `<option value="${d.key}">${esc(d.label)} (${esc(d.unit)})</option>`).join('');
+        return opts ? `<optgroup label="${esc(ADDON_GROUP_NAMES[gk] || gk)}">${opts}</optgroup>` : '';
+      }).join('');
+  }
+}
+function addAddonDrug(baseKey) {
+  if (!current || !baseKey) return;
+  const b = addonBaseDef(baseKey); if (!b) return;
+  if (!Array.isArray(current.addonKeys)) current.addonKeys = [];
+  if (current.addonKeys.indexOf(baseKey) < 0) current.addonKeys.push(baseKey);
+  if (!current.drugs) current.drugs = {};
+  const ak = 'a_' + baseKey;
+  if (!current.drugs[ak]) current.drugs[ak] = { use: true, dose: '', route: b.def || '' };
+  else current.drugs[ak].use = true;
+  renderAddonRows();
+  try { renderQuickDoseBar(); updateSubSums(); } catch (_) {}
+  autoSave();
+  const inp = document.getElementById('ddose_' + ak); if (inp) inp.focus();
+}
+function removeAddonDrug(baseKey) {
+  if (!current) return;
+  current.addonKeys = (current.addonKeys || []).filter(k => k !== baseKey);
+  if (current.drugs) delete current.drugs['a_' + baseKey];
+  renderAddonRows();
+  try { renderQuickDoseBar(); updateSubSums(); } catch (_) {}
+  autoSave();
+}
+
+// ─────────────────────────────────────────────────
+// アレルギー: 命に関わるので3状態(未確認/なし(確認済)/あり)＋項目で記録し、
+// ヘッダーに常時表示・過去症例から警告・再麻酔コピーで引き継ぎ・薬剤名一致で警告する。
+//   current.allergyState = '' | 'none' | 'yes'
+//   current.allergyItems = [{uid, cat, name, reaction, severity}]
+//   互換: current.allergies(真偽) / current.allergyDetail(要約文) も同期して旧画面・振り返り・SomLogで使えるようにする
+// ─────────────────────────────────────────────────
+const ALG_CATS = ['薬剤', '食物', '造影剤', 'ワクチン', 'その他'];
+const ALG_REACTIONS = ['発疹・かゆみ', '顔面腫脹', '嘔吐', '下痢・軟便', '呼吸困難', 'アナフィラキシー', '低血圧', 'その他'];
+const ALG_ROUTES = ['IV', 'IM', 'SC', 'PO'];
+const ALG_ROUTE_CATS = ['薬剤', '造影剤', 'ワクチン'];
+function algReactions(it) { return Array.isArray(it.reactions) ? it.reactions : (it.reaction ? [it.reaction] : []); }
+const ALG_SEV = [['mild', '軽度'], ['mod', '中等度'], ['severe', '重度']];
+function algItems(c) { c = c || current; return (c && Array.isArray(c.allergyItems)) ? c.allergyItems.filter(x => x && !x.deleted) : []; }
+// 名称が入った項目だけ(バナー/ポップアップ/要約用。編集欄には空行も出す)
+function algItemsNamed(c) { return algItems(c).filter(x => (x.name || '').trim()); }
+function algState(c) {
+  c = c || current; if (!c) return '';
+  if (typeof c.allergyState === 'string') return (c.allergyState === 'none' || c.allergyState === 'yes') ? c.allergyState : '';
+  // 旧データ(allergyState未設定): チェックだけ/記載だけ → あり
+  if (c.allergies || (c.allergyDetail || '').trim() || algItems(c).length) return 'yes';
+  return '';
+}
+function algItemText(it) {
+  const sev = (ALG_SEV.find(s => s[0] === it.severity) || [])[1] || '';
+  const parts = [it.name || '(名称未入力)'];
+  const sub = [it.cat && it.cat !== '薬剤' ? it.cat : '', it.route ? it.route : '', algReactions(it).join('・'), sev].filter(Boolean).join('・');
+  return parts[0] + (sub ? `（${sub}）` : '');
+}
+function allergySummaryText(c) {
+  c = c || current; if (!c) return '';
+  if (algState(c) !== 'yes') return '';
+  const items = algItemsNamed(c).map(algItemText);
+  if (!items.length && (c.allergyDetail || '').trim()) return c.allergyDetail.trim();
+  if (!items.length) return '（項目未入力）';
+  return items.join('、');
+}
+function syncAllergyLegacy() {
+  if (!current) return;
+  const st = algState(current);
+  current.allergies = (st === 'yes');
+  if (st === 'yes') {
+    const items = algItemsNamed(current).map(algItemText);
+    if (items.length) current.allergyDetail = items.join('、');
+  } else if (st === 'none') {
+    current.allergyDetail = '';
+  }
+}
+function setAllergyState(st) {
+  if (!current) return;
+  current.allergyState = st;
+  if (st === 'yes' && !algItems(current).length) {
+    if (!Array.isArray(current.allergyItems)) current.allergyItems = [];
+    current.allergyItems.push({ uid: genUid(), cat: '薬剤', name: '', reaction: '', severity: '' });
+  }
+  syncAllergyLegacy();
+  renderAllergyBox();
+  updateAllergyBanner();
+  autoSave();
+  if (st === 'yes') { const inp = document.querySelector('#algItems .alg-name'); if (inp) inp.focus(); }
+}
+function addAllergyItem() {
+  if (!current) return;
+  if (!Array.isArray(current.allergyItems)) current.allergyItems = [];
+  current.allergyItems.push({ uid: genUid(), cat: '薬剤', name: '', reaction: '', severity: '' });
+  current.allergyState = 'yes';
+  syncAllergyLegacy(); renderAllergyBox(); updateAllergyBanner(); autoSave();
+  const inps = document.querySelectorAll('#algItems .alg-name'); if (inps.length) inps[inps.length - 1].focus();
+}
+function removeAllergyItem(uid) {
+  if (!current || !Array.isArray(current.allergyItems)) return;
+  const it = current.allergyItems.find(x => x && x.uid === uid);
+  if (it) it.deleted = true;  // 同期unionで復活しないよう墓標
+  syncAllergyLegacy(); renderAllergyBox(); updateAllergyBanner(); autoSave();
+}
+function setAllergyField(uid, field, val) {
+  if (!current) return;
+  const it = algItems(current).find(x => x.uid === uid); if (!it) return;
+  if (field === 'reaction') {
+    const arr = algReactions(it).slice(); const i = arr.indexOf(val);
+    if (i >= 0) arr.splice(i, 1); else arr.push(val);
+    it.reactions = arr; delete it.reaction;  // 複数選択(同じチップ再タップで解除)
+  } else if (field === 'severity' || field === 'cat' || field === 'route') {
+    it[field] = (it[field] === val && field !== 'cat') ? '' : val;  // 同じチップ再タップで解除(区分は常に1つ)
+  } else it[field] = val;
+  touchEv(it);
+  syncAllergyLegacy();
+  if (field !== 'name') renderAllergyBox();
+  updateAllergyBanner();
+  try { refreshAllergyDrugBadges(); renderQuickDoseBar(); } catch (_) {}
+  autoSave();
+}
+// 過去症例(同じ患者)の情報。renderPatientHistory と同じ照合(ID一致 → 名前＋動物種)
+function patientPastCases() {
+  if (!current) return [];
+  const fac = (sheetsConfig && sheetsConfig.facility) || '';
+  const pid = String(getVal('f_patientId') || current.patientId || current.caseNo || '').trim();
+  const nm = String(getVal('f_patientName') || current.patientName || '').trim();
+  return cases.filter(c => {
+    if (c.id === current.id) return false;
+    if (fac && c.facility && c.facility !== fac) return false;
+    if (pid) return String(c.caseNo || '').trim() === pid || String(c.patientId || '').trim() === pid;
+    if (nm) return String(c.patientName || '').trim() === nm && c.species === current.species;
+    return false;
+  }).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+}
+function pastAllergyInfo() {
+  const hits = patientPastCases().filter(c => algState(c) === 'yes');
+  if (!hits.length) return null;
+  const names = [];
+  hits.forEach(c => { const t = allergySummaryText(c); if (t && names.indexOf(t) < 0) names.push(t); });
+  return { count: hits.length, latest: hits[0].date || '', text: names.join('／') };
+}
+// 過去症例の項目をこの症例へ取り込む(再確認を促す)
+function importPastAllergies() {
+  if (!current) return;
+  const hits = patientPastCases().filter(c => algState(c) === 'yes');
+  if (!Array.isArray(current.allergyItems)) current.allergyItems = [];
+  const have = new Set(algItems(current).map(x => (x.name || '').trim()));
+  let n = 0;
+  hits.forEach(c => algItems(c).forEach(it => {
+    const nm = (it.name || '').trim();
+    if (!nm || have.has(nm)) return;
+    have.add(nm); n++;
+    current.allergyItems.push({ uid: genUid(), cat: it.cat || '薬剤', name: nm, route: it.route || '', reactions: algReactions(it), severity: it.severity || '' });
+  }));
+  if (!n && hits.length) {
+    // 旧データ(記載文のみ)の場合は文をそのまま1項目に
+    hits.forEach(c => { const t = (c.allergyDetail || '').trim(); if (t && !have.has(t)) { have.add(t); n++; current.allergyItems.push({ uid: genUid(), cat: 'その他', name: t, reaction: '', severity: '' }); } });
+  }
+  current.allergyState = 'yes';
+  syncAllergyLegacy(); renderAllergyBox(); updateAllergyBanner(); autoSave();
+  showToast(n ? `過去の記録から ${n} 件を取り込みました。内容を再確認してください` : '取り込める項目がありませんでした');
+}
+function drugNameSuggestions(q) {
+  const qq = String(q || '').trim().toLowerCase(); if (!qq) return [];
+  const seen = new Set(), out = [];
+  Object.values(DRUG_GROUPS).flat().forEach(d => { if (d.label.toLowerCase().indexOf(qq) >= 0 && !seen.has(d.label)) { seen.add(d.label); out.push(d.label); } });
+  return out.slice(0, 6);
+}
+function algNameInput(uid, el) {
+  setAllergyField(uid, 'name', el.value);
+  const box = document.getElementById('algSug_' + uid); if (!box) return;
+  const it = algItems(current).find(x => x.uid === uid);
+  const list = (it && it.cat === '薬剤') ? drugNameSuggestions(el.value).filter(n => n !== el.value) : [];
+  if (!list.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = list.map(n => `<div class="bs-i" onmousedown="event.preventDefault();algPickName('${uid}',this.dataset.n)" data-n="${escA(n)}">${esc(n)}</div>`).join('');
+  box.style.display = '';
+}
+function algPickName(uid, name) {
+  const inp = document.querySelector(`#algItems .alg-name[data-uid="${uid}"]`); if (inp) inp.value = name;
+  const box = document.getElementById('algSug_' + uid); if (box) { box.style.display = 'none'; }
+  setAllergyField(uid, 'name', name);
+}
+function renderAllergyBox() {
+  const seg = document.getElementById('algSeg'), items = document.getElementById('algItems'), add = document.getElementById('algAddBtn'), past = document.getElementById('algPast');
+  if (!seg || !items || !current) return;
+  const st = algState(current);
+  seg.querySelectorAll('.seg-i').forEach(el => {
+    el.classList.remove('on', 'on-none', 'on-yes', 'on-unk');
+    if (el.dataset.st === st) el.classList.add('on', st === 'none' ? 'on-none' : st === 'yes' ? 'on-yes' : 'on-unk');
+  });
+  // 過去症例からの警告(この症例で「あり」以外の時に出す。「あり」なら項目の下に控えめに)
+  const pa = pastAllergyInfo();
+  if (past) {
+    past.innerHTML = pa ? `<div class="alg-past">🕘 過去の麻酔記録にアレルギーあり（${esc(pa.latest)}${pa.count > 1 ? ' 他' + (pa.count - 1) + '件' : ''}）: <b>${esc(pa.text)}</b>`
+      + (st !== 'yes' || !algItems(current).length ? ` <button type="button" class="alg-chip" style="margin-left:6px" onclick="importPastAllergies()">この症例に取り込む</button>` : '') + `</div>` : '';
+  }
+  if (st !== 'yes') { items.innerHTML = ''; if (add) add.style.display = 'none'; return; }
+  const rows = algItems(current);
+  items.innerHTML = rows.map(it => `<div class="alg-item">
+      <div class="alg-row"><span class="alg-lbl">区分</span>${ALG_CATS.map(c => `<button type="button" class="alg-chip${it.cat === c ? ' on' : ''}" onclick="setAllergyField('${it.uid}','cat','${c}')">${c}</button>`).join('')}
+        <button type="button" class="alg-del" onclick="removeAllergyItem('${it.uid}')" title="この項目を削除">✕</button></div>
+      <div class="alg-row"><span class="alg-lbl">名称</span><input class="fin alg-name" type="text" data-uid="${it.uid}" value="${escA(it.name || '')}" placeholder="${it.cat === '薬剤' ? '薬剤名（例: セファゾリン）' : '原因物質'}" oninput="algNameInput('${it.uid}',this)" onblur="setTimeout(()=>{const b=document.getElementById('algSug_${it.uid}'); if(b) b.style.display='none';},150)" autocomplete="off"></div>
+      <div class="alg-suggest" id="algSug_${it.uid}" style="display:none"></div>
+      ${ALG_ROUTE_CATS.indexOf(it.cat || '薬剤') >= 0 ? `<div class="alg-row"><span class="alg-lbl">経路</span>${ALG_ROUTES.map(r => `<button type="button" class="alg-chip${it.route === r ? ' on' : ''}" onclick="setAllergyField('${it.uid}','route','${r}')">${r}</button>`).join('')}</div>` : ''}
+      <div class="alg-row"><span class="alg-lbl">反応</span>${ALG_REACTIONS.map(r => `<button type="button" class="alg-chip${algReactions(it).indexOf(r) >= 0 ? ' on' : ''}" onclick="setAllergyField('${it.uid}','reaction','${r}')">${r}</button>`).join('')}<span style="font-size:10.5px;color:var(--muted)">複数可</span></div>
+      <div class="alg-row"><span class="alg-lbl">重症度</span>${ALG_SEV.map(s => `<button type="button" class="alg-chip sev-${s[0]}${it.severity === s[0] ? ' on' : ''}" onclick="setAllergyField('${it.uid}','severity','${s[0]}')">${s[1]}</button>`).join('')}</div>
+    </div>`).join('');
+  if (add) add.style.display = '';
+}
+function updateAllergyBanner() {
+  const b = document.getElementById('algBanner'); if (!b || !current) return;
+  const st = algState(current);
+  const pa = pastAllergyInfo();
+  b.className = 'alg-banner';
+  if (st === 'yes') {
+    b.classList.add('yes');
+    b.innerHTML = `<span>⚠️</span><span class="alg-b-body">アレルギー: ${esc(allergySummaryText(current))}</span>`;
+    b.style.display = '';
+  } else if (pa) {
+    b.classList.add('past');
+    b.innerHTML = `<span>⚠️</span><span class="alg-b-body">過去の麻酔記録にアレルギーあり: ${esc(pa.text)}（今回は${st === 'none' ? '「なし」と記録' : '未確認'}。タップして確認）</span>`;
+    b.style.display = '';
+  } else if (st === '') {
+    b.classList.add('unk');
+    b.innerHTML = `<span>❔</span><span class="alg-b-body">アレルギー未確認 — 術前タブで「なし（確認済）」か「あり」を記録してください</span>`;
+    b.style.display = '';
+  } else {
+    b.style.display = 'none';
+  }
+}
+// 薬剤名がアレルギー項目と一致(部分一致)するか
+function allergyMatchForDrug(label) {
+  if (!current || algState(current) !== 'yes' || !label) return null;
+  const l = String(label).toLowerCase();
+  return algItems(current).find(it => { const n = (it.name || '').trim().toLowerCase(); return n && (l.indexOf(n) >= 0 || n.indexOf(l) >= 0); }) || null;
+}
+function refreshAllergyDrugBadges() {
+  document.querySelectorAll('#formScreen .drug-row').forEach(row => {
+    const nameEl = row.querySelector('.drug-name'); if (!nameEl) return;
+    const old = nameEl.querySelector('.drug-alg-badge'); if (old) old.remove();
+    const key = row.id.replace(/^drow_/, '');
+    const d = findDrugDef(key); if (!d) return;
+    if (allergyMatchForDrug(d.label)) nameEl.insertAdjacentHTML('beforeend', '<span class="drug-alg-badge">⚠️アレルギー</span>');
+  });
+}
+function warnIfAllergyDrug(label) {
+  const it = allergyMatchForDrug(label);
+  if (it) { try { showToast(`⚠️ アレルギー登録薬です: ${algItemText(it)}`); } catch (_) {} }
+  return !!it;
+}
+
+const _algPopShown = {};  // 症例id → 表示済み(この画面を開いている間)
+function showAllergyPopup(force) {
+  if (!current || algState(current) !== 'yes') return;
+  if (!force && _algPopShown[current.id]) return;
+  _algPopShown[current.id] = true;
+  const body = document.getElementById('algModalBody'); if (!body) return;
+  const items = algItemsNamed(current);
+  body.innerHTML = (items.length ? items.map(it => `<div>・${esc(algItemText(it))}</div>`).join('') : `<div>${esc(allergySummaryText(current))}</div>`)
+    + `<div style="font-size:12.5px;font-weight:600;color:#555;margin-top:10px">該当薬にはプランと薬剤ボタンに ⚠️ が付きます。麻酔プランを組む前に確認してください</div>`;
+  document.getElementById('algModal').classList.add('on');
+}
+// ── 術中タブ: 薬剤一覧から選んで記録(プランに無い薬も用量シートで記録できる) ──
+function openDrugPick() {
+  const s = document.getElementById('drugPickSearch'); if (s) s.value = '';
+  renderDrugPick('');
+  document.getElementById('drugPickModal').classList.add('on');
+  setTimeout(() => { if (s) s.focus(); }, 80);
+}
+function closeDrugPick() { document.getElementById('drugPickModal').classList.remove('on'); }
+function renderDrugPick(q) {
+  const box = document.getElementById('drugPickBody'); if (!box) return;
+  const qq = String(q || '').trim().toLowerCase();
+  const gn = { premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他' };
+  const used = new Set(Object.values(DRUG_GROUPS).flat().filter(d => current && current.drugs && current.drugs[d.key] && current.drugs[d.key].use).map(d => d.key));
+  // 術中タブ上部の「⚡緊急薬」早見と同じ顔ぶれ(蘇生薬＋ダントロレン)に揃える
+  const EMERG = ['adrenaline_low', 'adrenaline_arrest', 'atropine_v', 'diphenhydramine', 'dexamethasone', 'dantrolene', 'lipid20', 'glucose20'];
+  const chip = d => `<button type="button" class="qdose-btn${used.has(d.key) ? '' : ' dp-unplanned'}" onclick="closeDrugPick();quickDose('${d.key}')">${esc(d.label)}${d.sub ? `<span style="font-size:10.5px;font-weight:800;color:#b91c1c">${esc(d.sub)} ${esc(d.dog)}${esc(d.unit)}</span>` : ''}<span style="font-size:10px;opacity:.7">${d.sub ? '' : esc(d.unit)}</span>${plannedMl(d) ? `<span class="qml">${plannedMl(d)}</span>` : ''}${allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}</button>`;
+  const emerg = EMERG.map(k => findDrugDef(k)).filter(d => d && (!qq || d.label.toLowerCase().indexOf(qq) >= 0));
+  const emergHtml = emerg.length ? `<div style="font-size:11px;font-weight:800;color:#b91c1c;margin:4px 0 4px">🚨 緊急薬</div><div class="qdose-bar">${emerg.map(chip).join('')}</div>` : '';
+  const html = emergHtml + Object.entries(DRUG_GROUPS).map(([gk, arr]) => {
+    if (gk === 'addon') return '';
+    const list = arr.filter(d => !qq || d.label.toLowerCase().indexOf(qq) >= 0);
+    if (!list.length) return '';
+    return `<div style="font-size:11px;font-weight:800;color:var(--muted);margin:8px 0 4px">${gn[gk] || gk}</div><div class="qdose-bar">`
+      + list.map(chip).join('')
+      + `</div>`;
+  }).join('');
+  box.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">該当する薬剤がありません。「＋ 手入力の行」で記録してください</div>';
+}
+
+// 薬剤をチェックした時の初期用量: この病院の直近症例(同じ動物種を優先) → プリセット → 参考範囲の下限
+function defaultDoseFor(key) {
+  const d = findDrugDef(key); if (!d || !current) return null;
+  const fac = (sheetsConfig && sheetsConfig.facility) || '';
+  const usable = c => c && c.id !== current.id && (!fac || !c.facility || c.facility === fac) && c.drugs && c.drugs[key] && c.drugs[key].use && String(c.drugs[key].dose || '').trim();
+  const hist = (cases || []).filter(usable).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const same = hist.find(c => c.species === current.species) || hist[0];
+  if (same) return { dose: String(same.drugs[key].dose).trim(), src: '前回 ' + (same.date || '') };
+  for (const p of Object.values(userPresets || (typeof DRUG_PRESETS !== 'undefined' ? DRUG_PRESETS : {}) || {})) {
+    const s = p && p.drugs && p.drugs[key];
+    if (s && String(s.dose || '').trim()) return { dose: String(s.dose).trim(), src: 'プリセット ' + (p.label || '') };
+  }
+  const ref = String(current.species === 'cat' ? (d.cat || '') : (d.dog || ''));
+  const m = ref.match(/([\d.]+)/);
+  return m ? { dose: m[1], src: '参考範囲の下限' } : null;
+}
+
+// ── 病院の既定: 予想される合併症と対応・準備器材(機材は病院ごとに固定なので覚えておく) ──
+// プリセットの内部キー __hospital__ に comps として保存(Sheetsの __extras__ 行 → 端末間で共有)。
+const HOSP_DEFAULT_KEYS = [
+  'expectedHypotension','hpot_miniFluid','hpot_atropine','hpot_ephedrine','hpot_norad','hpot_notes',
+  'expectedHypothermia','hthm_warmAir','hthm_warmMat','hthm_warmWater','hthm_notes',
+  'expectedHypovent','hvent_pcv','hvent_pcvPIP','hvent_pcvRR','hvent_vcv','hvent_vcvVT','hvent_vcvRR','hvent_manual','hvent_notes',
+  'expectedAnaphylaxis','anaphy_notes','expectedMH','mh_notes','expectedLAST','last_notes','expectedHypo','hypoTx',
+  'equipTemp','equipECG','equipHR','equipRR','equipEtCO2','equipSpO2','equipABP','equipGas','equipOscillo','equipDoppler','equipArterial',
+];
+function getHospitalDefaults() { const h = userPresets && userPresets.__hospital__; return (h && h.comps && typeof h.comps === 'object') ? h : null; }
+// ボタン無しで覚える: この病院の直近5症例の設定を多数決(チェック)・直近の非空(数値/メモ)で既定にする
+function derivedHospitalDefaults() {
+  const fac = (sheetsConfig && sheetsConfig.facility) || '';
+  const hist = (cases || []).filter(c => c && (!current || c.id !== current.id) && (!fac || !c.facility || c.facility === fac) && (c.caseNo || c.patientName))
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 5);
+  if (!hist.length) return null;
+  const comps = {};
+  HOSP_DEFAULT_KEYS.forEach(k => {
+    const vals = hist.map(c => c[k]).filter(v => v !== undefined && v !== null);
+    if (!vals.length) return;
+    if (typeof vals[0] === 'boolean') comps[k] = vals.filter(Boolean).length * 2 >= vals.length;
+    else { const nz = vals.find(v => String(v).trim() !== ''); if (nz !== undefined) comps[k] = nz; }
+  });
+  return { comps, src: `直近${hist.length}症例の設定` };
+}
+function saveHospitalDefaults() {
+  if (!current) return;
+  collectForm();
+  const comps = {};
+  HOSP_DEFAULT_KEYS.forEach(k => { if (current[k] !== undefined) comps[k] = current[k]; });
+  if (!userPresets || typeof userPresets !== 'object') userPresets = {};
+  userPresets.__hospital__ = { label: '（病院の既定）', drugs: {}, comps, savedAt: nowIsoStr() };
+  // 通常プリセットがまだ無ければ既定を補う(プリセットバーが空にならないように)
+  if (!Object.keys(userPresets).some(k => k.indexOf('__') !== 0)) Object.assign(userPresets, JSON.parse(JSON.stringify(DRUG_PRESETS)));
+  savePresetsToStorage();
+  try { renderPresetBar(); } catch (_) {}
+  pushPresetsToSheets().then(ok => { if (ok === false) showToast('端末には保存しました（Sheetsへの共有は同期ON時に）'); });
+  updateHospDefNote();
+  showToast('🏥 合併症と対応・準備器材を病院の既定として保存しました。新規症例に自動で入ります');
+}
+function applyHospitalDefaults(c, manual) {
+  if (!c) return false;
+  const h = getHospitalDefaults() || derivedHospitalDefaults();  // 明示保存があればそれ、無ければ直近症例から
+  if (!h) return false;
+  Object.keys(h.comps).forEach(k => { c[k] = h.comps[k]; });
+  c._compsAutoSrc = h.src || ('保存済みの既定 ' + String(h.savedAt || '').slice(5, 16));
+  if (manual) { populateForm(); autoSave(); showToast('病院の既定を読み込みました'); }
+  return true;
+}
+function updateHospDefNote() {
+  const el = document.getElementById('hospDefNote'); if (!el || !current) return;
+  if (current._compsAutoSrc) { el.textContent = `🏥 ${current._compsAutoSrc}から自動で入っています（変えれば次回以降に反映）`; el.style.display = ''; }
+  else el.style.display = 'none';
+}
+
+// ── 前投薬シート: 「前投薬」を押すとプランの前投薬(混注①②③・単剤)がボタンで出て、押したものがその時刻で記録される ──
+function premedLogged(label) { return ((current && current.drugLog) || []).some(r => r && !r.deleted && r.drug === label && (r.time || '').trim()); }
+function premedItems() {
+  if (!current || !current.drugs) return [];
+  const items = [];
+  [1, 2, 3].forEach(n => {
+    const mem = mixMembers(n); if (!mem.length) return;
+    items.push({ kind: 'mix', n, label: MIX_LABELS[n], detail: mem.map(({ d }) => d.label).join('＋'), done: !!((current.procEvents || {})['pe_mix' + n] || '').trim() });
+  });
+  DRUG_GROUPS.premeds.forEach(d => {
+    const dd = current.drugs[d.key]; if (!dd || !dd.use || dd.mix) return;
+    const pk = parseFloat(dd.dose);
+    items.push({ kind: 'drug', key: d.key, label: d.label, detail: `${dd.dose ? dd.dose + d.unit : '用量未設定'}${plannedMl(d) ? ' ' + plannedMl(d) : ''} ${dd.route || d.def || ''}`, done: premedLogged(d.label), noDose: isNaN(pk) });
+  });
+  return items;
+}
+function premedPending() { return premedItems().filter(x => !x.done); }
+function openPremedSheet() {
+  if (!current) return;
+  renderPremedSheet();
+  document.getElementById('premedModal').classList.add('on');
+}
+function closePremedSheet() { document.getElementById('premedModal').classList.remove('on'); }
+function renderPremedSheet() {
+  const box = document.getElementById('premedItems'); if (!box) return;
+  const now = document.getElementById('premedNow'); if (now) now.textContent = nowTime();
+  const items = premedItems();
+  box.innerHTML = items.map(it => {
+    const cls = it.kind === 'mix' ? ('ev-mix' + it.n) : '';
+    return `<button type="button" class="dose-opt ${cls}" ${it.done ? 'disabled style="opacity:.45"' : ''} onclick="premedRecord('${it.kind}','${it.kind === 'mix' ? it.n : it.key}')">
+      <span class="dose-opt-label">${esc(it.label)}<span class="dose-opt-perkg">${esc(it.detail)}</span></span>
+      <span class="dose-opt-val">${it.done ? '記録済' : 'タップで記録'}</span></button>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px">プランに前投薬がありません</div>';
+}
+function premedRecord(kind, id) {
+  if (!current) return;
+  if (kind === 'mix') {
+    recordEvent('pe_mix' + id);  // 構成薬をまとめて記録。前投薬時刻が空なら同時刻を入れる
+  } else {
+    const d = findDrugDef(id); if (!d) return;
+    const dd = current.drugs[id] || {};
+    const pk = parseFloat(dd.dose);
+    if (isNaN(pk)) { closePremedSheet(); quickDose(id); return; }  // 用量が無い薬は用量シートへ
+    warnIfAllergyDrug(d.label);
+    const t = nowTime();
+    if (!Array.isArray(current.drugLog)) current.drugLog = [];
+    current.drugLog.push({ drug: d.label, dose: formatDose(d, pk), route: dd.route || d.def || '', time: t, uid: genUid() });
+    if (!(current.anesthStart || '').trim()) { current.anesthStart = t; setVal('f_anesthStart', t); updateDurations(); }
+    renderTimeline(); autoSave(); pushCurrentToSheets();
+    showToast(`✅ ${d.label} を ${t} に記録`);
+  }
+  if (premedPending().length) renderPremedSheet(); else closePremedSheet();
+}
+function premedTimeOnly() { closePremedSheet(); if (!(current.anesthStart || '').trim()) recordEvent('anesthStart'); else showToast('前投薬の時刻は記録済みです'); }
+
 function toggleDrug(key, event) {
   if (!current) return;
   if (isDrugBanned(key)) { showToast('⚠️ 猫にはアセトアミノフェンは使用できません（禁忌）'); return; }
@@ -4884,8 +5595,21 @@ function toggleDrug(key, event) {
   if (event.target.closest('.drug-inputs') || event.target.closest('.rgrp')) return;
   if (!current.drugs[key]) current.drugs[key] = { use:false, dose:'', route:'' };
   current.drugs[key].use = !current.drugs[key].use;
+  if (current.drugs[key].use) { const _dd = findDrugDef(key); if (_dd) warnIfAllergyDrug(_dd.label); }
+  // チェックした時点で用量を入れておく(この病院の直近症例の用量 → プリセット → 参考範囲の下限)。入力欄で変更できる
+  if (current.drugs[key].use && !String(current.drugs[key].dose || '').trim()) {
+    const _df = defaultDoseFor(key);
+    if (_df && _df.dose) {
+      current.drugs[key].dose = _df.dose;
+      const _el = document.getElementById('ddose_' + key); if (_el) _el.value = _df.dose;
+      const _d2 = findDrugDef(key);
+      if (_d2) { updateCalc(key, _df.dose, current.weight, _d2.unit); showToast(`${_d2.label} ${_df.dose}${_d2.unit}（${_df.src}）を入れました。変更できます`); }
+      try { renderQuickDoseBar(); } catch (_) {}
+    }
+  }
   const row = document.getElementById('drow_' + key);
   if (row) row.classList.toggle('on', current.drugs[key].use);
+  try { refreshMixChips(); renderMixSummary(); } catch (_) {}
   // CRI薬剤のチェック状態を術中タイムラインの動的ボタンに即反映（タブ切替を待たずに）
   try { renderEventButtons(); } catch (_) {}
   autoSave();
@@ -4903,6 +5627,7 @@ function onDoseInput(key, val) {
   let unit = 'mg/kg';
   Object.values(DRUG_GROUPS).flat().forEach(d => { if (d.key === key) unit = d.unit; });
   updateCalc(key, val, current.weight, unit);
+  try { renderMixSummary(); } catch (_) {}
   autoSave();
 }
 
@@ -4912,6 +5637,7 @@ function toggleRoute(key, route, el) {
   current.drugs[key].route = route;
   const rgrp = document.getElementById('rgrp_' + key);
   if (rgrp) rgrp.querySelectorAll('.rbtn').forEach(b => b.classList.toggle('on', b.dataset.route === route));
+  try { renderMixSummary(); } catch (_) {}
   autoSave();
 }
 
@@ -5177,6 +5903,17 @@ function updateLiveTimers() {
   setTimerBox('Surg', current.surgStart, current.surgEnd, now);
   // グローブ交換から: 最後のグローブ交換時刻（無ければ手術開始）→手術終了で停止
   setTimerBox('Glove', latestGloveTime(), current.surgEnd, now);
+  // 手技の内訳: 進行中の手術手技名と経過分を手術時間の下に、グローブは起点(交換/手術開始)と歯科中の停止を表示
+  try {
+    const _ss = document.getElementById('durSubSurg'), _gs = document.getElementById('durSubGlove'), _gv = document.getElementById('durValGlove');
+    const _segs = procSegments(current);
+    const _act = _segs.filter(s => s.type === 'surg' && s.start && !s.end).slice(-1)[0];
+    if (_ss) _ss.textContent = _act ? `${_act.name} 進行中 ${calcMinutesBetween(_act.start, now) ?? '—'}分` : '手術開始から';
+    if (_gs) {
+      if (procDentalActive(current)) { _gs.textContent = '歯科中は対象外'; if (_gv) _gv.textContent = '—'; }
+      else _gs.textContent = (current.freeNotes || []).some(n => n && !n.deleted && n.kind === 'gloveChange' && n.time) ? '交換から' : '手術開始から';
+    }
+  } catch (_) {}
 }
 
 // 最後のグローブ交換時刻。freeNotes の kind==='gloveChange' の最新時刻。
@@ -5311,6 +6048,16 @@ function renderEventButtons() {
       }
     });
   }
+  // 術式(手技)が入っていれば、全体の「手術開始/終了」ボタンは出さず、手技ごとの「○○ 開始/終了」に置き換える
+  const _ptok = procTokens(getVal('f_procedure') || current.procedure || '');
+  if (_ptok.length) {
+    const _ps = procSegEvents(_ptok), _out = [];
+    baseEvents.forEach(e => { if (e.key === 'surgStart') _ps.forEach(x => _out.push(x)); else if (e.key === 'surgEnd') return; else _out.push(e); });
+    baseEvents = _out;
+  }
+  // 混注①②③(プランで区分した前投薬)は「前投薬」ボタンの直後に並べる
+  const _mixEv = mixEventList();
+  if (_mixEv.length) { const _i = baseEvents.findIndex(e => e.key === 'anesthStart'); baseEvents = baseEvents.slice(0, _i + 1).concat(_mixEv, baseEvents.slice(_i + 1)); }
   const all = baseEvents.concat(getActiveProcEvents());
   // 粘稠度(有り/無し)は2ボタン直列でなく「粘稠度」1ボタン→タップで選択式にする
   const VISC_KEYS = ['pe_knee_visc_yes', 'pe_knee_visc_no'];
@@ -5318,6 +6065,8 @@ function renderEventButtons() {
   const shown = all.filter(e => VISC_KEYS.indexOf(e.key) === -1);
   const _pe = k => ((current.procEvents[k] || '').trim());
   const unset = shown.filter(e => {
+    if (e.ps) return true;  // 手技の開始/終了は procSegEvents が状態込みで作っている
+    if (e.key === 'anesthStart') return !((current.anesthStart || '').trim()) || premedPending().length > 0;  // 未記録の前投薬が残っていれば出し続ける
     if (e.laHasSide) {
       // 側付き局麻: 両側 / 左右両方 / (旧データ)側なし が記録済みならボタンを消す。
       // PLで片側(R/L)を指定している場合は、その側を記録した時点で消える
@@ -5373,7 +6122,9 @@ function renderEventButtons() {
   // 側のあるブロックはタップで 右/左/両側 の選択に展開（膝の粘稠度と同方式）。
   // 片側記録済みなら残りの側だけを選択肢に出す。
   const laBtn = e => {
-    if (!e.laHasSide) return `<button type="button" class="qdose-btn" onclick="recordEvent('${e.key}')">${e.label}</button>`;
+    if (e.ps) return `<button type="button" class="qdose-btn ${e.cls}" data-n="${escA(e.ps.name)}" data-p="${e.ps.phase}" onclick="recordProcSeg(this.dataset.n,this.dataset.p)">${esc(e.label)}</button>`;
+    if (e.key === 'anesthStart' && premedPending().length) return `<button type="button" class="qdose-btn" onclick="openPremedSheet()">前投薬<span class="qdose-badge">${premedPending().length}</span></button>`;
+    if (!e.laHasSide) return `<button type="button" class="qdose-btn${e.cls ? ' ' + e.cls : ''}" onclick="recordEvent('${e.key}')">${e.label}</button>`;
     if (window._laOpen !== e.key) {
       return `<button type="button" class="qdose-btn" onclick="window._laOpen='${e.key}';renderEventButtons()">${e.label}</button>`;
     }
@@ -5435,7 +6186,12 @@ function renderTimelineList() {
   // 描画のたびに時刻順で計算し直し、常に直前の行の値と一致させる（保存値も同時に更新）。
   try { recomputeFreeNotesFroms(); } catch (_) {}
   const entries = [];
+  const _derive = procDeriveMode();
+  // 混注①②③の時刻がそのまま前投薬時刻になっている時は、前投薬の行を別に出さず混注の行に「前投薬」タグを付ける
+  const _mixIsPremed = ['pe_mix1', 'pe_mix2', 'pe_mix3'].some(k => (current.procEvents[k] || '').trim() && current.procEvents[k] === (current.anesthStart || ''));
   INTRAOP_EVENTS.forEach(e => {
+    if (_derive && procSurgNotesExist() && (e.key === 'surgStart' || e.key === 'surgEnd')) return;  // 手技の開始/終了から自動で決まる
+    if (_mixIsPremed && e.key === 'anesthStart') return;  // 混注の行に統合
     if ((current[e.key] || '').trim()) entries.push({ type:'event', key:e.key, label:e.label, time:current[e.key] });
   });
   Object.entries(current.procEvents).forEach(([key, t]) => {
@@ -5443,13 +6199,14 @@ function renderTimelineList() {
   });
   current.drugLog.forEach((d, i) => {
     if (!d || d.deleted) return; // 削除墓標は表示しない
-    entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'' });
+    entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'', mix:d.mix||'' });
   });
   current.freeNotes.forEach((n, i) => {
     if (!n || n.deleted) return; // 削除墓標は表示しない
     entries.push({
       type:'free', idx:i,
       kind: n.kind || 'memo',
+      name: n.name || '', phase: n.phase || '',
       text: n.text || '',
       time: n.time || '',
       from: n.from || '',
@@ -5488,7 +6245,7 @@ function renderTimelineList() {
       }
       return `<div class="tl-row tl-event">
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" autocomplete="off">
-        <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>
+        <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
       </div>`;
@@ -5537,6 +6294,16 @@ function renderTimelineList() {
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind ${kindCls}">${lbl}</span>
           <span class="tl-io"><span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${unitStr}</span></span>
+          <span class="tl-spacer"></span>
+          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+        </div>`;
+      }
+      // 手技の開始/終了（術式ボックスごと）。手術種別の最初の開始/最後の終了には「手術開始/終了」タグ
+      if (k === 'proc') {
+        const _tag = procSegTag(en);
+        return `<div class="tl-row tl-proc">
+          <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
+          <span class="tl-kind tl-kind-proc">${esc(en.name)} ${en.phase === 'end' ? '終了' : '開始'}</span>${_tag ? `<span class="tl-surg-tag">${_tag}</span>` : ''}
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
@@ -5646,7 +6413,7 @@ function renderTimelineList() {
     }
     return `<div class="tl-row tl-drug" data-drugidx="${en.idx}"${_optLine ? ' style="flex-wrap:wrap"' : ''}>
       <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" autocomplete="off">
-      <input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
+      ${en.mix ? `<span class="tl-mixbadge m${en.mix}">混${({1:'①',2:'②',3:'③'})[en.mix] || en.mix}</span>` : ''}<input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
       <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" oninput="editDrugLogDose(${en.idx},this.value)" autocomplete="off">
       ${_dd ? `<button type="button" class="tl-opt-chip" title="単位を変更" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit)}</button>
       <input class="fin tl-drug-route" type="text" value="${esc(en.route)}" placeholder="経路" oninput="editDrugLog(${en.idx},'route',this.value)" autocomplete="off">`
@@ -5773,7 +6540,7 @@ function sutureLabel(key) { const t = SUTURE_TYPES.find(x => x.key === key); ret
 function addFreeNote(kind, opts) {
   if (!current) return;
   if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
-  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange','suture'];
+  const valid = ['memo','position','fluid','vent','spont','cri','gas','ventOff','flow','tubeChange','gloveChange','suture','proc'];
   const k = valid.indexOf(kind) >= 0 ? kind : 'memo';
   // opts.time があればその時刻で追加（挿管後の自動入力で数秒ずらすため）。無ければ現在時刻。
   const entry = { time: (opts && opts.time) ? opts.time : nowTime(), kind: k, uid: genUid() };
@@ -5954,6 +6721,7 @@ function removeFreeNote(idx) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
   current.freeNotes[idx].deleted = true;
   recomputeFreeNotesFroms();
+  try { recomputeSurgTimes(); } catch (_) {}
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
@@ -6009,6 +6777,7 @@ function flushTimelineRender() {
 }
 function onFreeNoteFinalize() {
   recomputeFreeNotesFroms();
+  try { recomputeSurgTimes(); } catch (_) {}
   autoSave();
   setTimeout(flushTimelineRender, 80);
 }
@@ -6094,7 +6863,9 @@ function renderQuickDoseBar() {
     const hits = log.filter(r => r.drug === d.label && r.time && !r.deleted);  // 削除墓標は回数に数えない
     // バッジは回数のみ。時刻まで載せるとボタンが横に伸びて折り返し、縦に積み上がるため。
     const badge = hits.length ? `<span class="qdose-badge">×${hits.length}</span>` : '';
-    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${badge}</button>`;
+    const laterTag = (DRUG_GROUPS.addon.some(x => x.key === d.key) ? '<span class="later-tag">追加</span>' : '') + (allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : '');
+    const _ml = plannedMl(d);
+    return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${_ml ? `<span class="qml">${_ml}</span>` : ''}${laterTag}${badge}</button>`;
   }).join('');
 }
 
@@ -6108,7 +6879,7 @@ function quickDose(key) {
   doseSelectKey = key;
   const drugData0 = (current.drugs && current.drugs[key]) || {};
   doseSelectRoute = drugData0.route || d.def || (d.routes && d.routes[0]) || '';
-  document.getElementById('doseSelectTitle').textContent = `${d.label} を記録`;
+  document.getElementById('doseSelectTitle').textContent = `${allergyMatchForDrug(d.label) ? '⚠️アレルギー登録薬 ' : ''}${d.label}${d.sub ? '（' + d.sub + '）' : ''} を記録`;
   const std = stdDoseOf(key);
   const body = document.getElementById('doseSelectBody');
   let html = '';
@@ -6118,6 +6889,10 @@ function quickDose(key) {
     html += `<div class="qdose-bar" id="doseRouteBar" style="margin-bottom:12px">`
       + d.routes.map(r => `<button type="button" class="qdose-btn doseroute-btn${r===doseSelectRoute?' on':''}" data-route="${esc(r)}" onclick="setDoseRoute('${esc(r)}')">${esc(r)}</button>`).join('')
       + `</div>`;
+  }
+  // 溶解・希釈の注意(ダントロレン: 注射用水60mLに溶解、アドレナリン/エフェドリン: 100倍希釈 など)を用量の前に表示
+  if (d.dilutionNote || d.dilution) {
+    html += `<div style="font-size:12.5px;font-weight:700;color:#075985;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:7px 9px;margin-bottom:10px;line-height:1.5">💧 ${d.dilution ? esc(d.dilution) + '：' : ''}${esc(d.dilutionNote || '')}</div>`;
   }
   if (!isNaN(std)) {
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">標準量 ${std}${d.unit} — 用量を選んでください</div>`;
@@ -6129,7 +6904,20 @@ function quickDose(key) {
     html += doseOptBtn(d, +(std * 2).toFixed(4), '×2');
     html += `</div>`;
   } else {
-    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">プロトコルに標準量が未設定です。用量を入力してください。</div>`;
+    // プランに用量が無い薬(一覧から選んだ薬など): 動物種の参考範囲から 下限/中央/上限 を選べる
+    const _ref = String(current.species === 'cat' ? (d.cat || '') : (d.dog || ''));
+    const _m = _ref.match(/([\d.]+)\s*[〜~\-]\s*([\d.]+)/);
+    const _one = !_m && _ref.match(/^\s*([\d.]+)\s*$/);
+    if (_m || _one) {
+      const lo = parseFloat(_m ? _m[1] : _one[1]), hi = parseFloat(_m ? _m[2] : _one[1]);
+      html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">プランに用量が無いため、参考範囲（${esc(_ref)} ${esc(d.unit)}）から選ぶか手入力してください</div>`;
+      html += `<div class="dose-opts">`;
+      if (_m) { html += doseOptBtn(d, lo, '下限'); html += doseOptBtn(d, +((lo + hi) / 2).toFixed(4), '中央'); html += doseOptBtn(d, hi, '上限'); }
+      else html += doseOptBtn(d, lo, '参考');
+      html += `</div>`;
+    } else {
+      html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">プロトコルに標準量が未設定です。用量を入力してください。</div>`;
+    }
   }
   html += `<div style="display:flex;gap:6px;margin-top:11px;align-items:center">
       <input id="doseCustomInput" class="fin" type="text" inputmode="decimal" placeholder="手入力 (${d.unit})" style="flex:1" autocomplete="off">
@@ -6147,10 +6935,25 @@ function setDoseRoute(r) {
 }
 
 function doseOptBtn(d, perKg, label) {
+  // 用量(/kg)・総量・吸う量(mL)を分けて表示。mLを一番大きく(シリンジに引く量がすぐ分かるように)
+  const w = parseFloat(current && current.weight);
+  const dispUnit = d.unit.replace('/kg', '').replace('/hr', '').replace('/min', '');
+  let total = '', ml = '';
+  if (w) {
+    const t = perKg * w;
+    total = `${t.toFixed(2)}${dispUnit}`;
+    if (d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) ml = `${(t / d.conc).toFixed(2)} mL`;
+  }
   return `<button type="button" class="dose-opt" onclick="commitDose(${perKg})">
-      <span class="dose-opt-label">${label}</span>
-      <span class="dose-opt-val">${esc(formatDose(d, perKg))}</span>
+      <span class="dose-opt-label">${label}<span class="dose-opt-perkg">${perKg}${esc(d.unit)}</span></span>
+      <span class="dose-opt-val">${total ? `<span>= ${total}</span>` : ''}${ml ? `<b class="dose-opt-ml">${ml}</b>` : ''}</span>
     </button>`;
+}
+// プランの用量から吸う量(mL)を計算(薬剤ボタン/一覧の添え書き用)
+function plannedMl(d) {
+  const w = parseFloat(current && current.weight); const pk = stdDoseOf(d.key);
+  if (!w || isNaN(pk) || !d.conc || d.unit.includes('/hr') || d.unit.includes('/min')) return '';
+  return (pk * w / d.conc).toFixed(2) + 'mL';
 }
 
 function confirmCustomDose() {
@@ -6167,6 +6970,7 @@ function commitDose(perKg) {
   collectForm();
   if (!Array.isArray(current.drugLog)) current.drugLog = [];
   const drugData = (current.drugs && current.drugs[doseSelectKey]) || {};
+  warnIfAllergyDrug(d.label);
   const t = nowTime();
   const route = doseSelectRoute || drugData.route || d.def;
   current.drugLog.push({ drug: d.label, dose: formatDose(d, perKg), route: route, time: t, uid: genUid() });
@@ -6219,9 +7023,8 @@ const PROCEDURE_EVENTS = {
     { key:'pe_deciduous_end', label:'乳歯抜歯終了' },
   ],
   CT: [
-    { key:'pe_ct_start',    label:'撮影開始' },
+    // 撮影開始/終了は手技ボタン「CT 開始/終了」に統合。造影剤投与だけ専用ボタンとして残す
     { key:'pe_ct_contrast', label:'造影剤投与' },
-    { key:'pe_ct_end',      label:'撮影終了' },
   ],
   // 整形(膝): 診断名/術式にキーワードが含まれるとき、標準グループに追加で合流する
   // （パテラ整復・膝蓋骨脱臼整復・前十字靭帯断裂・ラテラルスーチャー等は部分一致でカバー）
@@ -6247,7 +7050,7 @@ function getActiveProcEvents() {
   let evts = [];
   for (const k of Object.keys(PROCEDURE_EVENTS)) {
     if (k === 'KNEE') continue;  // KNEEは術式名でなくキーワードで判定
-    if (proc.indexOf(k) !== -1) { evts = PROCEDURE_EVENTS[k]; break; }
+    if (proc.indexOf(k) !== -1) evts = evts.concat(PROCEDURE_EVENTS[k]);  // 複数術式(CT＋SPAY等)は全部合流
   }
   const diag = (getVal('f_diagnosis') || (current && current.diagnosis) || '').toUpperCase();
   const hay = proc + ' ' + diag;
@@ -6284,6 +7087,7 @@ function laShortLabel(label) {
 }
 
 function evtLabel(key) {
+  const _ml = mixLabelOfKey(key); if (_ml) return _ml;
   // 局所麻酔ブロックイベント (pe_la_<blockKey>[_r|_l|_bi]): ブロック名＋記録時に選んだ側
   if (String(key).indexOf('pe_la_') === 0) {
     let bk = String(key).slice(6);
@@ -6316,6 +7120,16 @@ function recordEvent(key) {
     if (!current.procEvents || typeof current.procEvents !== 'object') current.procEvents = {};
     current.procEvents[key] = t;
     markProcEventMeta(key, false);
+    // 混注①②③: 構成薬剤をプランの用量・経路で同時刻に薬剤ログへ。前投薬時刻が空なら同時刻を入れる
+    const _mn = (String(key).match(/^pe_mix([123])$/) || [])[1];
+    if (_mn) {
+      if (!Array.isArray(current.drugLog)) current.drugLog = [];
+      mixMembers(+_mn).forEach(({ d, dd }) => {
+        const pk = parseFloat(dd.dose);
+        current.drugLog.push({ drug: d.label, dose: isNaN(pk) ? '' : formatDose(d, pk), route: dd.route || d.def || '', time: t, uid: genUid(), mix: +_mn });
+      });
+      if (!(current.anesthStart || '').trim()) { current.anesthStart = t; setVal('f_anesthStart', t); updateDurations(); }
+    }
     // 局所麻酔ブロックを記録しても従来の「局所麻酔」時刻(localAnesthTime)には
     // 書かない。書くとタイムラインに『局所麻酔』の行が勝手に増え、SomLogの
     // グラフ/PDFにも二重のマーカーが出るため。記録用紙の『局所麻酔』欄は
@@ -6437,8 +7251,249 @@ function setFluidType(v) {
 function setProcedure(v) {
   setVal('f_procedure', v);
   if (current) current.procedure = v;
+  renderProcBoxes();
   renderEventButtons();
   autoSave();
+}
+// ─────────────────────────────────────────────────
+// 術式(処置内容): 複数ボックス＋サジェスト。保存は従来どおり f_procedure / current.procedure に
+// 「＋」区切りの1文字列（Sheetsの術式列・SomLogの術式表示・検索はそのまま動く）。
+// 手技ごとに術中タブへ「○○ 開始」→「○○ 終了」→消える ボタンが出る（記録欄の✕で復活）。
+// 手術開始/手術終了(surgStart/surgEnd)はボタンでなく、手術種別の手技の開始/終了から自動で決まる。
+// ─────────────────────────────────────────────────
+const PROC_SEP = '＋';
+const PROC_MAX = 4;
+function procTokens(s) { return String(s || '').split(/[＋+]/).map(x => x.trim()).filter(Boolean); }
+// 手技マスタ: type = 'exam'(検査: 手術開始/終了の起点にしない) | 'surg'(手術)
+const PROC_MASTER = [
+  { name:'CAST', type:'surg' }, { name:'SPAY', type:'surg' }, { name:'歯科処置', type:'surg' },
+  { name:'CT', type:'exam' }, { name:'MRI', type:'exam' }, { name:'内視鏡', type:'exam' }, { name:'エコー', type:'exam' },
+  { name:'開腹', type:'surg' }, { name:'腫瘤切除', type:'surg' }, { name:'皮膚腫瘤切除', type:'surg' }, { name:'乳腺腫瘍切除', type:'surg' },
+  { name:'脾臓摘出', type:'surg' }, { name:'胃切開', type:'surg' }, { name:'腸切開', type:'surg' }, { name:'腸管切除吻合', type:'surg' },
+  { name:'膀胱切開', type:'surg' }, { name:'会陰ヘルニア整復', type:'surg' }, { name:'膝蓋骨脱臼整復', type:'surg' },
+  { name:'前十字靭帯断裂整復', type:'surg' }, { name:'TPLO', type:'surg' }, { name:'骨折整復', type:'surg' },
+  { name:'眼科手術', type:'surg' }, { name:'耳道手術', type:'surg' }, { name:'抜歯', type:'surg' }, { name:'生検', type:'surg' },
+];
+const PROC_EXAM_RE = /CT|MRI|内視鏡|エコー|検査|X線|レントゲン|造影|透視/i;
+// 種別の決め方: 症例での指定(current.procTypes) → この端末で覚えた指定 → マスタ → 語で推定 → 手術
+const PROC_TYPE_LS = 'vet_ang_proc_types';
+function procTypeLearned() { try { return JSON.parse(localStorage.getItem(PROC_TYPE_LS) || '{}') || {}; } catch (_) { return {}; } }
+function procType(name) {
+  const ov = current && current.procTypes && current.procTypes[name];
+  if (ov === 'exam' || ov === 'surg') return ov;
+  const lv = procTypeLearned()[name];
+  if (lv === 'exam' || lv === 'surg') return lv;
+  const m = PROC_MASTER.find(p => p.name === name);
+  if (m) return m.type;
+  return PROC_EXAM_RE.test(name) ? 'exam' : 'surg';
+}
+// ボックス横の「検査/手術」タグをタップで切替。症例に保存し、この端末でも覚える(次回から同じ判定)
+function toggleProcType(name) {
+  if (!current || !name) return;
+  const nt = procType(name) === 'exam' ? 'surg' : 'exam';
+  if (!current.procTypes || typeof current.procTypes !== 'object') current.procTypes = {};
+  current.procTypes[name] = nt;
+  try { const m = procTypeLearned(); m[name] = nt; localStorage.setItem(PROC_TYPE_LS, JSON.stringify(m)); } catch (_) {}
+  renderProcBoxes();
+  renderEventButtons();
+  try { recomputeSurgTimes(); renderTimelineList(); updateLiveTimers(); } catch (_) {}
+  autoSave();
+  showToast(`${name} を「${nt === 'exam' ? '検査' : '手術'}」扱いにしました（次回から同じ判定）`);
+}
+// 手技ごとの開始/終了/所要分 [{name,type,start,end,mins}]
+function procSegments(c) {
+  c = c || current; if (!c) return [];
+  return procTokens(c.procedure || '').map(name => {
+    const notes = (c.freeNotes || []).filter(n => n && !n.deleted && n.kind === 'proc' && n.name === name && n.time);
+    const st = notes.filter(n => n.phase === 'start').map(n => n.time).sort((a, b) => (timeToSec(a) || 0) - (timeToSec(b) || 0))[0] || '';
+    const en = notes.filter(n => n.phase === 'end').map(n => n.time).sort((a, b) => (timeToSec(b) || 0) - (timeToSec(a) || 0))[0] || '';
+    const mins = (st && en) ? calcMinutesBetween(st, en) : null;
+    return { name, type: procType(name), start: st, end: en, mins };
+  });
+}
+function procSegText(c) {
+  return procSegments(c).filter(s => s.start || s.end)
+    .map(s => `${s.name}${s.type === 'exam' ? '(検査)' : ''} ${s.start || '?'}〜${s.end || '進行中'}${s.mins !== null ? '（' + s.mins + '分）' : ''}`).join(' / ');
+}
+function procDentalActive(c) {
+  return procSegments(c).some(s => /歯科/.test(s.name) && s.start && !s.end);
+}
+function escA(s) { return esc(s).replace(/"/g, '&quot;'); }
+// この病院の過去症例で使った術式名を回数順に（サジェスト上位に出す）
+function procHistoryNames() {
+  const cnt = {};
+  (cases || []).forEach(c => {
+    if (current && c.id === current.id) return;
+    procTokens(c.procedure).forEach(t => { cnt[t] = (cnt[t] || 0) + 1; });
+  });
+  return Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
+}
+function procSuggestList(q) {
+  const hist = procHistoryNames();
+  const all = [];
+  const seen = new Set();
+  hist.forEach(n => { if (!seen.has(n)) { seen.add(n); all.push({ name:n, hist:true }); } });
+  PROC_MASTER.forEach(p => { if (!seen.has(p.name)) { seen.add(p.name); all.push({ name:p.name, hist:false }); } });
+  const qq = String(q || '').trim().toLowerCase();
+  const cur = new Set(procTokens(getVal('f_procedure')));
+  return all.filter(x => !cur.has(x.name) && (!qq || x.name.toLowerCase().indexOf(qq) >= 0)).slice(0, qq ? 10 : 8);
+}
+let _procOpen = -1;  // サジェストを開いているボックス番号
+function renderProcBoxes() {
+  const box = document.getElementById('procBoxes'); if (!box) return;
+  const toks = procTokens(getVal('f_procedure') || (current && current.procedure) || '');
+  const rows = toks.length ? toks : [''];
+  box.innerHTML = rows.map((t, i) => {
+    const ty = t ? procType(t) : '';
+    return `<div class="proc-box">
+      <input class="fin proc-in" type="text" data-i="${i}" value="${escA(t)}" placeholder="${i === 0 ? '術式（タップで候補）' : '追加の手技'}"
+        onfocus="onProcFocus(${i})" oninput="onProcInput(${i})" onblur="setTimeout(()=>closeProcSuggest(${i}),150)" autocomplete="off">
+      ${ty ? `<button type="button" class="proc-type ${ty}" data-n="${escA(t)}" onclick="toggleProcType(this.dataset.n)" title="タップで検査/手術を切替">${ty === 'exam' ? '検査' : '手術'}</button>` : ''}
+      ${(rows.length > 1 || t) ? `<button type="button" class="proc-del" onclick="removeProcBox(${i})" title="この手技を消す">✕</button>` : ''}
+    </div>
+    <div class="proc-suggest" id="procSuggest_${i}" style="display:none"></div>`;
+  }).join('');
+  const add = document.getElementById('procAddBtn');
+  if (add) add.style.display = (rows.length < PROC_MAX && rows[rows.length - 1]) ? '' : 'none';
+}
+function procBoxValues() {
+  return Array.from(document.querySelectorAll('#procBoxes .proc-in')).map(el => el.value.trim());
+}
+function syncProcFromBoxes(rerender) {
+  const toks = procBoxValues().filter(Boolean);
+  const v = toks.join(PROC_SEP);
+  setVal('f_procedure', v);
+  if (current) current.procedure = v;
+  if (rerender) renderProcBoxes();
+  updateHeaderMeta();
+  renderEventButtons();
+  try { recomputeSurgTimes(); renderTimelineList(); } catch (_) {}
+  autoSave();
+}
+function onProcFocus(i) { _procOpen = i; showProcSuggest(i, true); }
+function onProcInput(i) {
+  showProcSuggest(i);
+  // 入力中は再描画しない（フォーカス維持）。値は隠し欄へ即時反映
+  const toks = procBoxValues().filter(Boolean);
+  const v = toks.join(PROC_SEP);
+  setVal('f_procedure', v);
+  if (current) current.procedure = v;
+  updateHeaderMeta();
+  autoSave();
+}
+function showProcSuggest(i, all) {
+  const el = document.getElementById('procSuggest_' + i); if (!el) return;
+  const inp = document.querySelector(`#procBoxes .proc-in[data-i="${i}"]`);
+  const q = all ? '' : (inp ? inp.value : '');
+  const list = procSuggestList(q);
+  if (!list.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const hasHist = list.some(x => x.hist);
+  el.innerHTML = (q ? '' : `<div class="bs-hdr">${hasHist ? 'よく使う手技（この病院の記録＋定番）' : 'よく使う手技'}</div>`) +
+    list.map(x => `<div class="bs-i" onmousedown="event.preventDefault();selectProcSuggest(${i},this.dataset.n)" data-n="${escA(x.name)}">`
+      + `<span class="proc-type ${procType(x.name)}">${procType(x.name) === 'exam' ? '検査' : '手術'}</span>${esc(x.name)}${x.hist ? '<span style="margin-left:auto;font-size:11px;color:var(--muted)">履歴</span>' : ''}</div>`).join('');
+  el.style.display = '';
+}
+function closeProcSuggest(i) {
+  const el = document.getElementById('procSuggest_' + i);
+  if (el) { el.style.display = 'none'; }
+  // 手入力で確定した名前も種別タグ等を反映
+  const before = getVal('f_procedure');
+  const after = procBoxValues().filter(Boolean).join(PROC_SEP);
+  if (before !== after || document.activeElement === null || !document.activeElement.classList || !document.activeElement.classList.contains('proc-in')) syncProcFromBoxes(true);
+}
+function selectProcSuggest(i, name) {
+  const inp = document.querySelector(`#procBoxes .proc-in[data-i="${i}"]`);
+  if (inp) inp.value = name;
+  syncProcFromBoxes(true);
+}
+function addProcBox() {
+  const toks = procBoxValues().filter(Boolean);
+  if (toks.length >= PROC_MAX) return;
+  setVal('f_procedure', toks.join(PROC_SEP));
+  renderProcBoxes();
+  // 末尾に空ボックスを足してフォーカス
+  const box = document.getElementById('procBoxes');
+  const i = toks.length;
+  box.insertAdjacentHTML('beforeend', `<div class="proc-box">
+      <input class="fin proc-in" type="text" data-i="${i}" value="" placeholder="追加の手技（タップで候補）"
+        onfocus="onProcFocus(${i})" oninput="onProcInput(${i})" onblur="setTimeout(()=>closeProcSuggest(${i}),150)" autocomplete="off">
+      <button type="button" class="proc-del" onclick="removeProcBox(${i})" title="この手技を消す">✕</button>
+    </div>
+    <div class="proc-suggest" id="procSuggest_${i}" style="display:none"></div>`);
+  const add = document.getElementById('procAddBtn'); if (add) add.style.display = 'none';
+  const inp = box.querySelector(`.proc-in[data-i="${i}"]`); if (inp) inp.focus();
+}
+function removeProcBox(i) {
+  const vals = procBoxValues(); vals.splice(i, 1);
+  setVal('f_procedure', vals.filter(Boolean).join(PROC_SEP));
+  if (current) current.procedure = getVal('f_procedure');
+  renderProcBoxes();
+  syncProcFromBoxes(false);
+}
+
+// ── 手技ごとの 開始/終了 ボタンと、手術開始/終了の自動導出 ──
+function procSegNotes(name) {
+  return ((current && current.freeNotes) || []).filter(n => n && !n.deleted && n.kind === 'proc' && n.name === name);
+}
+function procSegEvents(tokens) {
+  const out = [];
+  tokens.forEach(name => {
+    const notes = procSegNotes(name);
+    const hasStart = notes.some(n => n.phase === 'start');
+    const hasEnd = notes.some(n => n.phase === 'end');
+    const ty = procType(name);
+    if (!hasStart) out.push({ key: 'ps|start|' + name, label: name + ' 開始', ps: { name, phase: 'start' }, cls: 'ev-proc' + (ty === 'exam' ? ' exam' : '') });
+    else if (!hasEnd) out.push({ key: 'ps|end|' + name, label: name + ' 終了', ps: { name, phase: 'end' }, cls: 'ev-proc-end' + (ty === 'exam' ? ' exam' : '') });
+  });
+  return out;
+}
+function procDeriveMode() { return procTokens(getVal('f_procedure') || (current && current.procedure) || '').length > 0; }
+function recordProcSeg(name, phase) {
+  if (!current || !name) return;
+  if (!Array.isArray(current.freeNotes)) current.freeNotes = [];
+  const t = nowTime();
+  current.freeNotes.push({ time: t, kind: 'proc', name, phase, text: `${name} ${phase === 'end' ? '終了' : '開始'}`, uid: genUid() });
+  recomputeSurgTimes();
+  renderTimeline();
+  autoSave();
+  pushCurrentToSheets();
+  showToast(`✅ ${name} ${phase === 'end' ? '終了' : '開始'} を ${t} に記録`);
+}
+// 手術開始 = 手術種別の手技で最初の「開始」、手術終了 = 手術種別の手技で最後の「終了」
+function recomputeSurgTimes() {
+  if (!current || !procDeriveMode()) return;
+  const toks = procTokens(getVal('f_procedure') || current.procedure || '');
+  const surgNames = new Set(toks.filter(n => procType(n) === 'surg'));
+  let s = null, e = null;
+  ((current.freeNotes) || []).forEach(n => {
+    if (!n || n.deleted || n.kind !== 'proc' || !surgNames.has(n.name)) return;
+    const sec = timeToSec(n.time); if (sec === null) return;
+    if (n.phase === 'start' && (s === null || sec < s.sec)) s = { sec, time: n.time };
+    if (n.phase === 'end' && (e === null || sec > e.sec)) e = { sec, time: n.time };
+  });
+  // 手術種別の手技の記録が1件も無ければ: 自動で入れた値だけ消し、旧ボタンで記録した値は残す
+  if (!s && !e) {
+    if (current.surgAuto) { current.surgAuto = false; current.surgStart = ''; current.surgEnd = ''; setVal('f_surgStart', ''); setVal('f_surgEnd', ''); updateDurations(); }
+    return;
+  }
+  current.surgAuto = true;
+  const ns = s ? s.time : '', ne = e ? e.time : '';
+  if ((current.surgStart || '') !== ns) { current.surgStart = ns; setVal('f_surgStart', ns); }
+  if ((current.surgEnd || '') !== ne) { current.surgEnd = ne; setVal('f_surgEnd', ne); }
+  updateDurations();
+}
+// 手術種別の手技の開始/終了が1件でも記録されているか（＝手術開始/終了が自動導出されている）
+function procSurgNotesExist() {
+  if (!current || !procDeriveMode()) return false;
+  const surg = new Set(procTokens(getVal('f_procedure') || current.procedure || '').filter(n => procType(n) === 'surg'));
+  return ((current.freeNotes) || []).some(n => n && !n.deleted && n.kind === 'proc' && surg.has(n.name));
+}
+function procSegTag(en) {
+  if (!procDeriveMode() || !en.time) return '';
+  if (procType(en.name) !== 'surg') return '';
+  if (en.phase === 'start' && en.time === current.surgStart) return '手術開始';
+  if (en.phase === 'end' && en.time === current.surgEnd) return '手術終了';
+  return '';
 }
 
 // ─────────────────────────────────────────────────
@@ -6630,6 +7685,8 @@ function switchTab(i) {
   document.querySelectorAll('.panel').forEach((p,idx) => p.classList.toggle('on', idx === i));
   // 「手術/器材」タブを開いたら、低血圧の昇圧剤一覧を最新の選択状態で再描画
   if (i === 1) renderHypotensionDrugs();
+  // 「麻酔PL」タブを開いたら、アレルギーがあれば1回だけ警告(術中タブでは出さない)
+  if (i === 2) { try { showAllergyPopup(); } catch (_) {} }
   // 「術中/薬剤」タブを開いたら、統合タイムラインを再描画
   if (i === 3) renderTimeline();
   // 「合併/回復」タブを開いたら、経過メモの高さを内容に合わせる
@@ -6851,7 +7908,7 @@ function generatePrintHTML(c) {
   const chip = (label, warn) => `<span class="p-chip${warn?' p-chip-warn':''}">${esc(label)}</span>`;
 
   // 選択された薬剤
-  const groupNames = {premeds:'前投薬', induction:'導入', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
+  const groupNames = {premeds:'前投薬', induction:'導入', addon:'追加投与', antibiotics:'抗菌薬', cri:'CRI', vasopressors:'昇圧/循環', antagonists:'拮抗薬', postAnalg:'術後鎮痛', other:'その他'};
   const selectedDrugs = [];
   Object.entries(DRUG_GROUPS).forEach(([gk, drugs]) => {
     drugs.forEach(d => {
@@ -7009,7 +8066,7 @@ function generatePrintHTML(c) {
         ${fld('BCS', c.bcs ? c.bcs+'/9' : '')}
         ${fld('意識', c.consciousness)}
         ${c.seizures ? chip('発作歴',1) : ''}
-        ${c.allergies ? chip('アレルギー',1) : ''}
+        ${algState(c) === 'yes' ? fld('⚠️アレルギー', allergySummaryText(c)) : (algState(c) === 'none' ? fld('アレルギー', 'なし（確認済）') : fld('アレルギー', '未確認'))}
         ${fld('事前投与中薬剤', c.preMeds)}
       </div>
     </div>
@@ -7204,6 +8261,7 @@ function generatePrintHTML(c) {
         ${fld('帰舎', c.returnToWard)}
         ${fld('麻酔時間', c.anesthDur ? c.anesthDur+'分':'')}
         ${fld('手術時間', c.surgDur ? c.surgDur+'分':'')}
+        ${procSegText(c) ? fld('手技の内訳', procSegText(c)) : ''}
         ${Object.entries(c.procEvents || {}).filter(([k,t]) => t && String(t).trim()).map(([k,t]) => fld(evtLabel(k), t)).join('')}
       </div>
       ${c.events ? `<div class="p-block"><span class="p-label">経過: </span><span class="p-text">${esc(c.events)}</span></div>` : ''}
@@ -7368,15 +8426,30 @@ function rvSet(key, val) {
   if (!current) return;
   current[key] = val;
   current.updated_at = nowIsoStr();
+  if (String(key).indexOf('rv') === 0 || String(key).indexOf('rec') === 0) current.rvEditedAt = nowIsoStr();  // 最終編集(進捗通知・一覧表示用)
   clearTimeout(_rvTimer);
   _rvTimer = setTimeout(rvCommit, 800);
 }
+let _rvPushTimer = null;
 function rvCommit() {
   clearTimeout(_rvTimer);
   if (!current) return;
   const idx = cases.findIndex(c => c.id === current.id);
   if (idx >= 0) cases[idx] = current;
   saveStorage();
+  // 記載が進んだら20秒後にまとめてSheetsへ(運営側の一覧・通知が「提出」前でも追従する)
+  clearTimeout(_rvPushTimer);
+  _rvPushTimer = setTimeout(() => { try { if (current && sheetsConfig.enabled) pushToSheets(current, { skipFollowupSync: true }); } catch (_) {} }, 20000);
+}
+// 一覧カードの振り返りバッジ: 提出済 / 進捗率(＋24時間以内の編集は「更新」)
+function rvProgressBadge(c) {
+  if (!c) return '';
+  if (c.rvSubmittedAt) return `<span class="case-rv-badge done">📤 提出済</span>`;
+  const p = c.rvProgress; if (!p || typeof p.pct !== 'number') return '';
+  let recent = false;
+  try { const t = parseSheetTs(c.rvEditedAt || p.at); recent = !!t && (Date.now() - t) < 24 * 3600 * 1000; } catch (_) {}
+  const when = String(c.rvEditedAt || p.at || '').slice(5, 16);
+  return `<span class="case-rv-badge${recent ? ' new' : ''}" title="振り返り 記載 ${p.total - p.missing}/${p.total} 項目 最終編集 ${esc(when)}">📝 ${p.pct}%${recent ? ' 更新' : ''}</span>`;
 }
 function rvToggle(key, el) {
   if (!current) return;
@@ -7951,6 +9024,15 @@ function rvMissUpd(el) {
 }
 function rvMissCount() {
   const n = document.querySelectorAll('#rvReport .rv-miss').length;
+  // 進捗率(記載済み/必須)を症例に保存 → Sheets経由で運営側の一覧に「振り返り 60%」と出る
+  try {
+    const total = document.querySelectorAll('#rvReport .rv-reqf').length;
+    if (current && total) {
+      const pct = Math.round(100 * (total - n) / total);
+      const prev = current.rvProgress || {};
+      if (prev.pct !== pct || prev.total !== total) { current.rvProgress = { pct, total, missing: n, at: nowIsoStr() }; rvCommit(); }
+    }
+  } catch (_) {}
   const bar = document.getElementById('rvMissBar');
   if (!bar) return n;
   if (n) bar.innerHTML = `⚠️ 未記載 <b>${n}</b> 項目（赤枠）<button type="button" class="rv-missbtn" onclick="rvNextMiss()">次の未記載へ ›</button>`;
@@ -8048,7 +9130,10 @@ function rvDraftRationale() {
   const lines = [];
   lines.push(`${c.ageY ? c.ageY + '歳' : ''}${c.sex ? c.sex : ''}${sp}、ASA-PS ${c.asaps || '?'}${c.asapsE ? 'E' : ''}${c.rvAsaReason ? '（' + c.rvAsaReason + '）' : ''}。${c.procedure || '手術'}で予想疼痛は${pain || '?'}。`);
   const g = (keys) => keys.map(k => { const d = findDrugDef(k); const dd = (c.drugs || {})[k]; if (!d || !dd || !dd.use) return ''; return `${d.label}${P[k] ? '(' + P[k] + ')' : ''}`; }).filter(Boolean);
-  const pre = g(DRUG_GROUPS.premeds.map(d => d.key)); if (pre.length) lines.push(`前投薬は${pre.join('＋')}を選択。`);
+  const _pg = premedGroupText(c, d => `${d.label}${P[d.key] ? '(' + P[d.key] + ')' : ''}`);
+  if (algState(c) === 'yes') lines.push(`⚠️アレルギー: ${allergySummaryText(c)}。`);
+  if (_pg.premed.length) lines.push(`前投薬は${_pg.premed.join('＋')}を選択。`);
+  { const _pst = procSegText(c); if (_pst) lines.push(`手技: ${_pst}。`); }
   const ind = g(DRUG_GROUPS.induction.map(d => d.key)); if (ind.length) lines.push(`導入は${ind.join('＋')}。`);
   const mt = []; if (c.maintIsoflurane) mt.push('イソフルラン'); if (c.maintSevoflurane) mt.push('セボフルラン'); if (c.maintPropofol) mt.push('プロポフォールCRI');
   if (mt.length) lines.push(`維持は${mt.join('/')}${c.maintConc ? ' ' + c.maintConc + '%' : ''}${P.maint ? '(' + P.maint + ')' : ''}。`);
@@ -8099,7 +9184,7 @@ function renderReviewReport() {
   if (st) rvAutoFillComps(st);
   const autoComp = c.rvAutoComp || {};
   const purpose = c.rvPurpose || {};
-  const miss = v => rvIsEmpty(v) ? ' rv-miss' : '';
+  const miss = v => ' rv-reqf' + (rvIsEmpty(v) ? ' rv-miss' : '');  // rv-reqf=必須項目の目印(進捗率の分母)
   const f = (label, val, unit) => `<span class="rv-f"><span class="rv-k">${label}</span><span class="rv-v">${!rvIsEmpty(val) ? esc(String(val)) + (unit || '') : ''}</span></span>`;
   // 必須テキスト入力（空なら赤枠）
   const fi = (label, key, unit, o) => { o = o || {}; return `<span class="rv-f"><span class="rv-k">${label}</span><input class="rv-in rv-req${miss(c[key])}" type="text" ${o.num ? 'inputmode="decimal"' : ''} style="width:${o.w || 72}px" value="${rvAttr(c[key] || '')}" placeholder="${rvAttr(o.ph || '')}" oninput="rvSet('${key}', this.value);rvMissUpd(this)">${unit ? `<span class="rv-k">${unit}</span>` : ''}</span>`; };
@@ -8134,12 +9219,12 @@ function renderReviewReport() {
   const pushDrug = (grp, d, dd) => {
     drugRows.push({ grp, name: d.label + (d.dilution ? `（${d.dilution}）` : ''), dose: dd.dose ? `${dd.dose} ${d.unit}` : '', route: dd.route || d.def || '', pkey: d.key, opts: RV_PURPOSE_OPTS[d.key] || [] });
   };
-  const grpOf = { premeds: '麻酔前投薬', induction: '麻酔導入薬', antibiotics: '抗菌薬', cri: '術中鎮痛/CRI', vasopressors: '事前準備(循環作動薬)', antagonists: '拮抗薬', postAnalg: '術後鎮痛薬', other: 'その他' };
-  ['premeds', 'induction'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
+  const grpOf = { premeds: '麻酔前投薬', induction: '麻酔導入薬', addon: '追加投与(CT後など)', antibiotics: '抗菌薬', cri: '術中鎮痛/CRI', vasopressors: '事前準備(循環作動薬)', antagonists: '拮抗薬', postAnalg: '術後鎮痛薬', other: 'その他' };
+  ['premeds', 'induction'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g] + (g === 'premeds' && dd.mix ? '（' + (MIX_LABELS[dd.mix] || dd.mix) + '）' : ''), d, dd); }));
   const maint = [];
   if (c.maintIsoflurane) maint.push('イソフルラン'); if (c.maintSevoflurane) maint.push('セボフルラン'); if (c.maintPropofol) maint.push('プロポフォール(CRI)');
   if (maint.length) drugRows.push({ grp: '麻酔維持薬', name: maint.join(' / '), dose: c.maintConc ? `${c.maintConc}%` : '', route: maint.some(m => /フルラン/.test(m)) ? '吸入' : 'IV', pkey: 'maint', opts: ['麻酔維持'] });
-  ['cri', 'antibiotics'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
+  ['addon', 'cri', 'antibiotics'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
   ['postAnalg', 'vasopressors', 'antagonists', 'other'].forEach(g => (DRUG_GROUPS[g] || []).forEach(d => { const dd = (c.drugs || {})[d.key]; if (dd && dd.use) pushDrug(grpOf[g], d, dd); }));
   const pin = (pkey, opts) => {
     const cur = String(purpose[pkey] || '').split('・').map(x => x.trim());
@@ -8308,6 +9393,7 @@ function renderReviewReport() {
       <span class="rv-f"><span class="rv-k">麻酔時間（導入〜抜管）</span>${anesthIE !== null ? `<span class="rv-v">${anesthIE} 分</span>` : missNote('未算出: 術中タブで導入/抜管の時刻を記録')}</span>
       ${anesthAll !== null ? f('（前投薬〜帰舎）', anesthAll + ' 分') : ''}
       <span class="rv-f"><span class="rv-k">手術時間</span>${surgMin !== null ? `<span class="rv-v">${surgMin} 分</span>` : missNote('未算出: 手術開始/終了の時刻を記録')}</span>
+      ${procSegText(c) ? f('手技の内訳', procSegText(c)) : ''}
     </div>
     <div class="rv-kv" style="margin-top:4px">
       ${f('前投薬', c.anesthStart)} ${f('導入', c.inductionTime)} ${f('挿管', c.intubationTime)} ${f('手術開始', c.surgStart)} ${f('手術終了', c.surgEnd)} ${f('抜管', c.extubation)} ${f('帰舎', c.returnToWard)}
