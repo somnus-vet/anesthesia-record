@@ -427,10 +427,15 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .tl-from{flex-basis:36px}
   .tl-kind{font-size:11px;padding:3px 5px}
   .tl-flow-lbl,.tl-unit-sm{font-size:10px}
-  /* 薬剤行: 薬剤名が切れないよう 1行目=時刻＋薬剤名(残り全部)、2行目=用量・単位・経路・✕(右寄せ) */
-  .tl-row.tl-drug .tl-drug-name{flex:1 1 60%;min-width:140px;font-size:15px}
-  .tl-row.tl-drug .tl-drug-dose{flex:0 0 64px;margin-left:auto}
-  .tl-row.tl-drug .tl-drug-route{flex:0 0 56px}
+  /* 薬剤行: 時系列を崩さないため1行のまま、文字と欄を小さくして薬剤名の幅を確保 */
+  .tl-row.tl-drug{flex-wrap:nowrap;gap:4px}
+  .tl-row.tl-drug .tl-time-in{flex-basis:64px;font-size:12.5px;padding:6px 0}
+  .tl-row.tl-drug .tl-drug-name{font-size:13px;padding:6px 6px;min-width:0}
+  .tl-row.tl-drug .tl-drug-dose{flex-basis:44px;font-size:13px;padding:6px 4px}
+  .tl-row.tl-drug .tl-opt-chip{font-size:11px;padding:6px 5px}
+  .tl-row.tl-drug .btn-del{padding:2px;font-size:16px}
+  .tl-row.tl-drug .tl-mixbadge{font-size:9.5px;padding:2px 3px}
+  .tl-row.tl-drug[style*="flex-wrap: wrap"],.tl-row.tl-drug[style*="flex-wrap:wrap"]{flex-wrap:wrap!important}
 }
 
 /* TOAST */
@@ -6416,8 +6421,9 @@ function renderTimelineList() {
     const _unit = _dd ? _dd.unit : ((String(en.dose || '').match(/^\s*[\d.]*\s*([^\s=\d.][^\s=]*)/) || [, ''])[1] || '');
     // 追加薬剤(定義なし)の単位/経路: チップをタップで行の下に選択ボタンを展開
     let _optLine = '';
-    if (_drugOptOpen && _drugOptOpen.idx === en.idx && (!_dd || _drugOptOpen.which === 'unit')) {
-      const _opts = _drugOptOpen.which === 'unit' ? unitOptsForDrug(en.drug) : MANUAL_ROUTE_OPTS;
+    if (_drugOptOpen && _drugOptOpen.idx === en.idx) {
+      const _routeOpts = Array.from(new Set(((_dd && _dd.routes) || []).concat(MANUAL_ROUTE_OPTS)));
+      const _opts = _drugOptOpen.which === 'unit' ? unitOptsForDrug(en.drug) : _routeOpts;
       const _cur = _drugOptOpen.which === 'unit' ? _unit : en.route;
       _optLine = `<div class="tl-opt-line">` + _opts.map(o =>
         `<button type="button" class="tl-opt-btn${o === _cur ? ' on' : ''}" onclick="setDrugOpt(${en.idx},'${_drugOptOpen.which}','${o}')">${o}</button>`).join('') + `</div>`;
@@ -6427,7 +6433,7 @@ function renderTimelineList() {
       ${en.mix ? `<span class="tl-mixbadge m${en.mix}">混${({1:'①',2:'②',3:'③'})[en.mix] || en.mix}</span>` : ''}<input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
       <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" oninput="editDrugLogDose(${en.idx},this.value)" autocomplete="off">
       ${_dd ? `<button type="button" class="tl-opt-chip" title="単位を変更" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit)}</button>
-      <input class="fin tl-drug-route" type="text" value="${esc(en.route)}" placeholder="経路" oninput="editDrugLog(${en.idx},'route',this.value)" autocomplete="off">`
+      <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" title="経路を変更" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`
             : `<button type="button" class="tl-opt-chip${_unit ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit) || '単位'}</button>
       <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`}
       <button class="btn-del" onclick="removeDrugLog(${en.idx})">✕</button>
