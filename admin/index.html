@@ -97,7 +97,7 @@ main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 <script>
 // 病院一覧（アプリの各ビルドと同じ GAS / URL）
 const HOSPITALS = [
-  { key:'BDY', name:'個人（BDY）', app:'https://somnus-vet.github.io/anesthesia-record/', url:'https://script.google.com/macros/s/AKfycbwQ_Oqtsl4ptT2g2JNpCyjsnl_hqpGd2CYQf7S7Uzbf4WmJkSG6aIOVTpgbGFjrkK9Z/exec' },
+  { key:'BDY', name:'個人シート（BUDDY・たむら・舞鶴 等）', app:'https://somnus-vet.github.io/anesthesia-record/', url:'https://script.google.com/macros/s/AKfycbwQ_Oqtsl4ptT2g2JNpCyjsnl_hqpGd2CYQf7S7Uzbf4WmJkSG6aIOVTpgbGFjrkK9Z/exec' },
   { key:'FAH', name:'フクナガ', app:'https://somnus-vet.github.io/anesthesia-record/fukunaga/', url:'https://script.google.com/macros/s/AKfycbwIVEjIEQvnI3k39H992jRwGnBXEYAbc0jRvixcUNua0fI_J9MY89XAa0tudp9vmMfR/exec' },
   { key:'ANG', name:'姉ヶ崎', app:'https://somnus-vet.github.io/anesthesia-record/anegasaki/', url:'https://script.google.com/macros/s/AKfycbx3LKoMw0pXFjombv7nl0X_45opzCfmUSzNKO5g5Aw_NdkYjNQGA-DuE3XD7D38161h/exec' },
   { key:'MHM', name:'みはま', app:'https://somnus-vet.github.io/anesthesia-record/mihama/', url:'https://script.google.com/macros/s/AKfycbwuIfxG0MogJ4VG5aw5AhRX7MRiXvbXzj_gO8tGqO7aITYfG8fSV8D5j92x4sG_QHj0pQ/exec' },
@@ -138,9 +138,20 @@ function rel(ms) {
   return `${Math.round(s / 86400)}日前`;
 }
 
+const FAC_NAMES = { BDY:'BUDDY', TAC:'たむら', ANG:'姉ヶ崎', FAH:'フクナガ', MHM:'みはま', CKE:'クッキー', FDC:'福岡犬猫歯科', KSN:'くすの木', HDM:'ひだまり', MZR:'舞鶴', YDG:'淀川中央', KUU:'クウ' };
+let _facNames = Object.assign({}, FAC_NAMES);
+async function loadFacNames(h, token) {
+  // 個人用シートの「病院マスタ」(コード/病院名)を1回読んで表示名に使う(失敗しても固定表に戻る)
+  try {
+    const res = await fetch(`${h.url}?action=read&sheet=${encodeURIComponent('病院マスタ')}&token=${encodeURIComponent(token)}&_=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    parseCSV((await res.text()).replace(/^\uFEFF/, '')).forEach(r => { if (r['コード'] && r['病院名']) _facNames[r['コード']] = String(r['病院名']).replace(/動物病院|どうぶつ病院|動物クリニック|動物医療センター/g, '').trim() || r['病院名']; });
+  } catch (_) {}
+}
 async function fetchHospital(h) {
   const token = (cfg[h.key] && cfg[h.key].token) || '';
   if (!token || (cfg[h.key] && cfg[h.key].off)) return [];
+  if (h.key === 'BDY') await loadFacNames(h, token);
   const url = `${h.url}?action=read&sheet=${encodeURIComponent('症例予約')}&token=${encodeURIComponent(token)}&_=${Date.now()}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`${h.name}: HTTP ${res.status}`);
@@ -158,8 +169,10 @@ async function fetchHospital(h) {
     const submitted = tsOf(d.rvSubmittedAt);
     const cms = Array.isArray(d.rvComments) ? d.rvComments.filter(x => x && !x.deleted) : [];
     const caseDate = tsOf((r['日付'] || d.date || '') + ' 00:00');
+    const fac = String(r['施設コード'] || d.facility || h.key).trim();
     return {
-      hosp: h, id: r['内部ID'] || d.id || '', date: r['日付'] || d.date || '', caseDate,
+      hosp: h, fac, facName: (h.key === 'BDY' ? (_facNames[fac] || fac) : h.name),
+      id: r['内部ID'] || d.id || '', date: r['日付'] || d.date || '', caseDate,
       name: r['患者名'] || d.patientName || '', proc: r['術式'] || d.procedure || '', staff: r['担当'] || d.staff || '',
       pct: p && typeof p.pct === 'number' ? p.pct : null, total: p ? p.total : 0, missing: p ? p.missing : 0, rvFilled,
       edited, submitted, submittedBy: d.rvSubmittedBy || '', comments: cms.length,
@@ -178,7 +191,7 @@ async function refreshAll() {
   // 通知: 前回の読み込み後に新しく「新着」になった症例
   const fresh = rows.filter(isNew).filter(x => !prevNew.has(x.hosp.key + '|' + x.id));
   if (fresh.length && _notifyOn && 'Notification' in window && Notification.permission === 'granted') {
-    fresh.slice(0, 3).forEach(x => { try { new Notification(`${x.hosp.name}: ${x.name || '患者名なし'} 振り返り ${x.pct != null ? x.pct + '%' : ''}${x.submitted ? '（提出）' : ''}`, { body: `${x.date} ${x.proc}${x.staff ? ' ／ ' + x.staff : ''}`, tag: x.hosp.key + x.id }); } catch (_) {} });
+    fresh.slice(0, 3).forEach(x => { try { new Notification(`${x.facName || x.hosp.name}: ${x.name || '患者名なし'} 振り返り ${x.pct != null ? x.pct + '%' : ''}${x.submitted ? '（提出）' : ''}`, { body: `${x.date} ${x.proc}${x.staff ? ' ／ ' + x.staff : ''}`, tag: x.hosp.key + x.id }); } catch (_) {} });
   }
   try { document.title = (rows.filter(isNew).length ? `(${rows.filter(isNew).length}) ` : '') + '振り返り 進捗ボード'; } catch (_) {}
 }
@@ -213,7 +226,7 @@ function render() {
     const last = Math.max(x.edited, x.submitted);
     const link = `${x.hosp.app}?case=${encodeURIComponent(x.id)}&view=review`;
     return `<div class="card${isNew(x) ? ' new' : ''}" onclick="openCase('${esc(x.hosp.key)}','${esc(x.id)}','${link}')">
-      <span class="hosp">${esc(x.hosp.name)}</span>
+      <span class="hosp">${esc(x.facName || x.hosp.name)}</span>
       <div><div class="who">${esc(x.name || '（患者名なし）')}${isNew(x) ? '<span class="badge new">新着</span>' : ''}${x.submitted ? '<span class="badge sub">📤 提出済</span>' : ''}${x.comments ? `<span class="badge cm">💬${x.comments}</span>` : ''}</div>
         <div class="meta">${esc(x.date)} ／ ${esc(x.proc || '術式未記載')}${x.staff ? ' ／ 記載: ' + esc(x.staff) : ''}${x.submittedBy ? ' ／ 提出: ' + esc(x.submittedBy) : ''}</div></div>
       <div class="right">${x.pct != null ? `<span class="pct">${x.pct}%</span><span class="bar"><i class="${x.submitted ? 'done' : ''}" style="width:${x.pct}%"></i></span><div class="when">記載 ${x.total - x.missing}/${x.total} 項目</div>` : `<span class="when">${x.rvFilled ? '記載 ' + x.rvFilled + ' 項目（進捗率は新版アプリから）' : '進捗 未計測'}</span>`}
