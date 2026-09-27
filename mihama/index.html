@@ -7331,12 +7331,13 @@ function procTokens(s) { return String(s || '').split(/[＋+]/).map(x => x.trim(
 // 手技マスタ: type = 'exam'(検査: 手術開始/終了の起点にしない) | 'surg'(手術)
 const PROC_MASTER = [
   { name:'CAST', type:'surg' }, { name:'SPAY', type:'surg' }, { name:'歯科処置', type:'surg' },
-  { name:'CT', type:'exam' }, { name:'内視鏡', type:'exam' }, { name:'エコー', type:'exam' },
-  { name:'腫瘤切除', type:'surg' }, { name:'皮膚腫瘤切除', type:'surg' }, { name:'乳腺腫瘍切除', type:'surg' },
+  { name:'CT', type:'exam' }, { name:'内視鏡', type:'exam' },
+  { name:'皮膚腫瘤切除', type:'surg' }, { name:'乳腺腫瘍切除', type:'surg' },
   { name:'脾臓摘出', type:'surg' }, { name:'胃切開', type:'surg' }, { name:'腸切開', type:'surg' }, { name:'腸管切除吻合', type:'surg' },
   { name:'膀胱切開', type:'surg' }, { name:'会陰ヘルニア整復', type:'surg' }, { name:'膝蓋骨脱臼整復', type:'surg' },
   { name:'前十字靭帯断裂整復', type:'surg' }, { name:'TPLO', type:'surg' }, { name:'橈尺骨骨折整復', type:'surg' }, { name:'骨折整復', type:'surg' },
   { name:'眼科手術', type:'surg' }, { name:'耳道手術', type:'surg' }, { name:'抜歯', type:'surg' }, { name:'生検', type:'surg' },
+  { name:'異物除去(切開)', type:'surg' }, { name:'異物除去(内視鏡)', type:'surg' }, { name:'PEG設置', type:'surg' }, { name:'胆嚢摘出', type:'surg' }, { name:'SUB', type:'surg' },
 ];
 // 病院ごとに先頭へ出す手技(施設コードで判定。個人版は端末の施設設定に従う)
 const PROC_FIRST_BY_FACILITY = {
