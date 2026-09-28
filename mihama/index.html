@@ -245,10 +245,17 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .dose-calc{display:none}
 .ml-wrap{display:inline-flex;align-items:center;gap:4px}
 .cri-sum{font-size:12px;color:#1a5478;background:#eaf4fb;border:1px solid #b9d9ee;border-radius:7px;padding:5px 8px;margin-top:6px;line-height:1.5;cursor:pointer}
-.cri-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
-.cri-lbl{font-size:12px;color:var(--muted);font-weight:700;min-width:96px}
-.cri-build{font-size:13px;line-height:1.7;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:8px 10px}
-.cri-tbl{border-collapse:collapse;margin-top:4px;font-size:12.5px}.cri-tbl th,.cri-tbl td{padding:2px 8px;border-bottom:1px solid #d9ebf5;text-align:left}.cri-tbl th{color:var(--muted);font-size:11px}
+.cri-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.cri-lbl{font-size:11px;color:var(--muted);font-weight:700;min-width:0}
+.cri-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.cri-grid>div{display:flex;flex-direction:column;gap:2px}
+.cri-grid>div .fdose{width:72px;min-height:36px;padding:5px 7px}
+.cri-grid>div .unit{font-size:11px;color:var(--muted)}
+.cri-grid>div>span.cri-lbl{order:-1}
+.cri-build{font-size:12.5px;line-height:1.45;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:6px 9px}
+.cri-build .fdose{min-height:34px;padding:4px 7px}
+.cri-tbl{border-collapse:collapse;margin-top:3px;font-size:12.5px;width:100%}.cri-tbl th,.cri-tbl td{padding:1px 6px;border-bottom:1px solid #d9ebf5;text-align:center}.cri-tbl th{color:var(--muted);font-size:11px}.cri-tbl td:first-child,.cri-tbl th:first-child{text-align:left;color:var(--muted);font-size:11px}
+#criPrepModal .modal-body{padding-top:6px;padding-bottom:6px}
 .fdose.fml{width:62px;color:var(--navy);font-weight:700}
 .rgrp{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
 .rbtn{padding:5px 10px;border:1.5px solid var(--border);border-radius:5px;background:#f8fafc;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;min-height:32px;-webkit-user-select:none}
@@ -5779,31 +5786,35 @@ function renderCriPrep(changedKey) {
     const saline = (draw !== null && vol > 0) ? vol - draw : null;
     build = `<div class="cri-build"><b>作り方</b><br>${d.label} <b>${criFmt(amount, 1)} ${mass}</b>${draw !== null ? `（原液 <b>${criFmt(draw, 2)} mL</b>）` : ''}${saline !== null ? ` ＋ 生食 <b>${criFmt(saline, 2)} mL</b>` : ''} → 合計 <b>${criFmt(vol, 1)} mL</b>（${criFmt(info.conc, 2)} ${mass}/mL）${saline !== null && saline < 0 ? '<br><span style="color:var(--red)">⚠ 原液だけで総量を超えます。総量か用量係数を見直してください</span>' : ''}</div>`;
     const oneMl = info.conc / (w * info.mult);
-    const rows = [0.5, 1, 1.5, 2].map(m => { const D = dose * m; const r = criRate(key, D, c); return isNaN(D) ? '' : `<tr><td>${m === 1 ? '<b>プラン</b>' : '×' + m}</td><td>${criFmt(D, 3)} ${d.unit}</td><td><b>${criFmt(r, 2)} mL/h</b></td></tr>`; }).join('');
+    const mults = [0.5, 1, 1.5, 2];
+    const rows = isNaN(dose) ? '' : `<tr><th></th>${mults.map(m => `<th>${m === 1 ? 'プラン' : '×' + m}</th>`).join('')}</tr>`
+      + `<tr><td>用量</td>${mults.map(m => `<td>${criFmt(dose * m, 3)}</td>`).join('')}</tr>`
+      + `<tr><td>mL/h</td>${mults.map(m => `<td><b>${criFmt(criRate(key, dose * m, c), 2)}</b></td>`).join('')}</tr>`;
     const cv = _criConv || {};
     const cvRate = cv.dose !== '' && cv.dose !== undefined ? criRate(key, cv.dose, c) : null;
     const cvDose = cv.rate !== '' && cv.rate !== undefined && !isNaN(parseFloat(cv.rate)) ? parseFloat(cv.rate) * info.conc / (w * info.mult) : null;
-    build += `<div class="cri-build" style="margin-top:8px"><b>この症例（${criFmt(w, 2)} kg）</b><br>1 mL/h ＝ <b>${criFmt(oneMl, 3)} ${d.unit}</b>${!isNaN(dose) ? `<table class="cri-tbl"><tr><th></th><th>用量</th><th>速度</th></tr>${rows}</table>` : '<br><span style="color:var(--muted)">プランに用量を入れると速度の早見が出ます</span>'}
-      <div style="margin-top:8px;font-size:12px;color:var(--muted);font-weight:700">換算（好きな値を入れる）</div>
-      <div class="cri-row" style="margin:4px 0"><input class="fdose" style="width:84px" type="text" inputmode="decimal" id="cri_convDose" value="${escA(cv.dose || '')}" placeholder="用量" onfocus="tapClear(this)" oninput="criConvert('dose', this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">${d.unit}</span><span class="tl-arrow">→</span><b id="cri_convRate" style="font-size:15px">${cvRate === null ? '—' : criFmt(cvRate, 2)} mL/h</b></div>
-      <div class="cri-row" style="margin:4px 0"><input class="fdose" style="width:84px" type="text" inputmode="decimal" id="cri_convRate2" value="${escA(cv.rate || '')}" placeholder="速度" onfocus="tapClear(this)" oninput="criConvert('rate', this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">mL/h</span><span class="tl-arrow">→</span><b id="cri_convDose2" style="font-size:15px">${cvDose === null ? '—' : criFmt(cvDose, 3)} ${d.unit}</b></div>
+    build += `<div class="cri-build" style="margin-top:6px"><b>この症例（${criFmt(w, 2)} kg）</b>　1 mL/h ＝ <b>${criFmt(oneMl, 3)} ${d.unit}</b>${!isNaN(dose) ? `<table class="cri-tbl">${rows}</table>` : '<br><span style="color:var(--muted)">プランに用量を入れると速度の早見が出ます</span>'}
+      <div style="margin-top:6px;font-size:12px;color:var(--muted);font-weight:700">換算（好きな値を入れる）</div>
+      <div class="cri-row" style="margin:3px 0"><input class="fdose" style="width:84px" type="text" inputmode="decimal" id="cri_convDose" value="${escA(cv.dose || '')}" placeholder="用量" onfocus="tapClear(this)" oninput="criConvert('dose', this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">${d.unit}</span><span class="tl-arrow">→</span><b id="cri_convRate" style="font-size:15px">${cvRate === null ? '—' : criFmt(cvRate, 2)} mL/h</b></div>
+      <div class="cri-row" style="margin:3px 0"><input class="fdose" style="width:84px" type="text" inputmode="decimal" id="cri_convRate2" value="${escA(cv.rate || '')}" placeholder="速度" onfocus="tapClear(this)" oninput="criConvert('rate', this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">mL/h</span><span class="tl-arrow">→</span><b id="cri_convDose2" style="font-size:15px">${cvDose === null ? '—' : criFmt(cvDose, 3)} ${d.unit}</b></div>
     </div>`;
   } else {
     build = `<div class="cri-build" style="color:var(--muted)">${!(w > 0) ? '体重を入力すると計算できます' : '数値を入れると作り方が出ます'}</div>`;
   }
   const html = `
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">病院の作り方に合わせて選んでください。保存すると、この病院の次の症例でも同じ作り方が最初から入ります</div>
-    <div class="seg" style="margin-bottom:10px">
+    <div class="seg" style="margin-bottom:8px">
       <div class="seg-i${c.method !== 'dil' ? ' on' : ''}" onclick="setCriDraft('method','rate')">1 mL/h ＝ 一定用量</div>
       <div class="seg-i${c.method === 'dil' ? ' on' : ''}" onclick="setCriDraft('method','dil')">希釈固定（希釈倍率）</div>
     </div>
-    <div class="cri-row"><span class="cri-lbl">シリンジ総量</span>${inp('vol', c.vol, '50')}<span class="unit">mL</span></div>
-    ${c.method === 'dil'
-      ? `<div class="cri-row"><span class="cri-lbl">希釈倍率</span>${inp('dilution', c.dilution, '10')}<span class="unit">倍</span></div>`
-      : `<div class="cri-row"><span class="cri-lbl">1 mL/h あたり</span>${inp('factor', c.factor, '1')}<span class="unit">${d.unit}</span></div>`}
-    <div class="cri-row"><span class="cri-lbl">原液の濃度</span>${inp('stock', c.stock, '')}<span class="unit">${mass}/mL</span></div>
-    ${c.method === 'dil' && info && info.conc ? `<div class="cri-row"><span class="cri-lbl">できあがり濃度</span><b style="font-size:15px">${criFmt(info.conc, 3)} ${mass}/mL</b></div>` : ''}
-    ${d.stockNote ? `<div style="font-size:11px;color:#075985;margin:-2px 0 6px">💧 ${esc(d.stockNote)}</div>` : ''}
+    <div class="cri-grid">
+      <div><span class="cri-lbl">シリンジ総量</span>${inp('vol', c.vol, '50')}<span class="unit">mL</span></div>
+      ${c.method === 'dil'
+        ? `<div><span class="cri-lbl">希釈倍率</span>${inp('dilution', c.dilution, '10')}<span class="unit">倍</span></div>`
+        : `<div><span class="cri-lbl">1 mL/h あたり</span>${inp('factor', c.factor, '1')}<span class="unit">${esc(d.unit)}</span></div>`}
+      <div><span class="cri-lbl">原液の濃度</span>${inp('stock', c.stock, '')}<span class="unit">${mass}/mL</span></div>
+    </div>
+    ${c.method === 'dil' && info && info.conc ? `<div style="font-size:13px;margin:2px 0 6px">できあがり濃度 <b style="font-size:15px">${criFmt(info.conc, 3)} ${mass}/mL</b></div>` : ''}
+    ${d.stockNote ? `<div style="font-size:11px;color:#075985;margin:0 0 6px">💧 ${esc(d.stockNote)}</div>` : ''}
     ${build}`;
   const body = document.getElementById('criPrepBody');
   if (changedKey && document.activeElement && document.activeElement.id === 'cri_' + changedKey) {
