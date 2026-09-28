@@ -479,6 +479,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
   .tl-row.tl-event .tl-diff{font-size:11px;padding:6px 5px}
   .tl-row.tl-event .tl-name{font-size:13px}
   .tl-mixsub{padding-left:68px}
+  /* CRI行: 用量とmL/hの両方を出すため、スマホでは意図的に2段(上: 時刻+薬剤名+✕ / 下: 量の変化) */
+  .tl-row.tl-cri .tl-spacer{order:1}
+  .tl-row.tl-cri .btn-del{order:2}
+  .tl-row.tl-cri .tl-io{order:3;flex-basis:100%;padding-left:2px}
+  .tl-row.tl-cri .tl-to-in{flex-basis:50px;width:50px}
   .tl-row.tl-vent .btn-del,.tl-row.tl-flow .btn-del,.tl-row.tl-event .btn-del{padding:2px;font-size:16px}
   .tl-row.tl-vent .tl-spacer,.tl-row.tl-flow .tl-spacer,.tl-row.tl-event .tl-spacer{flex:1 1 0;min-width:0}
 }
@@ -5861,13 +5866,32 @@ function refreshCriSummaries() {
     el.innerHTML = t; el.style.display = t ? '' : 'none';
   });
 }
+// 術中タブのCRI行: 用量欄の右に mL/h 欄を並べ、どちらから入力しても他方が連動する
+// (作り方が未設定の薬剤は🧪だけ出し、タップで作成補助を開く)
 function criRateHintHtml(en) {
   if (!en || !en.drugKey || !isCriKey(en.drugKey)) return '';
-  const r = criRate(en.drugKey, en.to);
   const open = `onclick="event.stopPropagation();openCriPrep('${en.drugKey}', this.closest('.tl-io').querySelector('.tl-to-in').value)"`;
-  return r === null
-    ? `<span class="tl-unit-sm cri-hint" ${open} title="CRI作成補助">🧪</span>`
-    : `<span class="tl-unit-sm cri-hint" ${open} style="color:var(--navy);font-weight:800">＝${criFmt(r, 2)} mL/h 🧪</span>`;
+  const info = criInfo(en.drugKey);
+  if (!info || !info.conc || !(info.w > 0)) return `<span class="tl-unit-sm cri-hint" ${open} title="CRI作成補助">🧪</span>`;
+  const r = criRate(en.drugKey, en.to);
+  return `<span class="tl-unit-sm" style="color:var(--navy);font-weight:800">＝</span><input class="fin tl-to-in tl-ml-in" type="text" inputmode="decimal" value="${r === null ? '' : criFmt(r, 2)}" placeholder="mL/h" onfocus="tapClear(this)" oninput="criRowMl(this,${en.idx},'${en.drugKey}',this.value)" onblur="criRowMlBlur(this,${en.idx},'${en.drugKey}')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm cri-hint" ${open} style="color:var(--navy);font-weight:800">mL/h 🧪</span>`;
+}
+function criRowDose(el, idx) {
+  const n = current && Array.isArray(current.freeNotes) ? current.freeNotes[idx] : null;
+  const io = el.closest('.tl-io'), ml = io && io.querySelector('.tl-ml-in'); if (!n || !ml) return;
+  const r = criRate(n.drugKey, el.value); ml.value = r === null ? '' : criFmt(r, 2);
+}
+function criRowMl(el, idx, key, val) {
+  const info = criInfo(key); if (!info || !info.conc || !(info.w > 0)) return;
+  const v = parseFloat(val); if (isNaN(v)) return;
+  const dose = criFmt(v * info.conc / (info.w * info.mult), 3);
+  const io = el.closest('.tl-io'), doseEl = io && io.querySelector('.tl-to-in:not(.tl-ml-in)');
+  if (doseEl) doseEl.value = dose;
+  editFreeNote(idx, 'to', dose);
+}
+function criRowMlBlur(el, idx, key) {
+  if (el.value === '') { const n = current && current.freeNotes ? current.freeNotes[idx] : null; const r = n ? criRate(key, n.to) : null; el.value = r === null ? '' : criFmt(r, 2); }
+  el.dataset.prev = '';
 }
 
 function toggleDrug(key, event) {
@@ -6637,12 +6661,12 @@ function renderTimelineList() {
           kindCls = 'tl-kind-gas'; rowCls = 'tl-gas'; unitStr = esc(en.unit || '%');
         } else {
           lbl = `${esc(en.drugLabel || 'CRI')}(CRI)`;
-          kindCls = 'tl-kind-fluid'; rowCls = 'tl-fluid'; unitStr = esc(en.unit || '');
+          kindCls = 'tl-kind-fluid'; rowCls = 'tl-fluid tl-cri'; unitStr = esc(en.unit || '');
         }
         return `<div class="tl-row ${rowCls}">
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind ${kindCls}">${lbl}</span>
-          <span class="tl-io"><span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${unitStr}</span>${k === 'cri' ? criRateHintHtml(en) : ''}</span>
+          <span class="tl-io"><span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)${k === 'cri' ? `;criRowDose(this,${en.idx})` : ''}" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${unitStr}</span>${k === 'cri' ? criRateHintHtml(en) : ''}</span>
           <span class="tl-spacer"></span>
           <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
         </div>`;
