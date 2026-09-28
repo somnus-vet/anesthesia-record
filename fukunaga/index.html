@@ -5759,7 +5759,7 @@ function criInfo(key, cfgOverride) {
   return { d, w, cfg, conc, mult, mass: criMass(d.unit), unit: d.unit };
 }
 function criRate(key, dose, cfgOverride) { const i = criInfo(key, cfgOverride); if (!i || !i.conc || !(i.w > 0)) return null; const D = parseFloat(dose); if (isNaN(D)) return null; return D * i.w * i.mult / i.conc; }
-function criFmt(x, n) { if (x === null || x === undefined || isNaN(x)) return '—'; return (+x.toFixed(n === undefined ? 2 : n)).toString(); }
+function criFmt(x, n) { x = (x === null || x === undefined || x === '') ? NaN : parseFloat(x); if (isNaN(x)) return '—'; return (+x.toFixed(n === undefined ? 2 : n)).toString(); }
 // この病院の直近症例で同じ薬に設定した作り方を引き継ぐ
 function learnedCriFor(key) {
   const fac = (sheetsConfig && sheetsConfig.facility) || '';
