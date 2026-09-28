@@ -56,6 +56,10 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .hdr-date{color:rgba(255,255,255,.75);font-size:13px;flex-shrink:0}
 
 /* WEIGHT BADGE - always visible */
+.hdr-consult{background:#f59e0b;border:none;color:#111;border-radius:16px;padding:4px 9px;font-size:14px;font-weight:800;flex-shrink:0;cursor:pointer;min-height:30px}
+.cs-chip{padding:6px 11px;border:1.5px solid var(--border);border-radius:16px;background:#f8fafc;font-size:13px;font-weight:700;cursor:pointer;min-height:36px}
+.cs-chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.cs-item{border-left:3px solid #f59e0b;background:#fffbeb;border-radius:6px;padding:6px 9px;font-size:12.5px;margin-bottom:5px}
 .weight-pill{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:16px;padding:4px 10px;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;white-space:nowrap}
 
 /* TAB BAR */
@@ -664,6 +668,7 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     </div>
     <div class="hdr-date" id="hDate"></div>
     <div class="weight-pill" id="weightPill">—kg</div>
+    <button type="button" class="hdr-consult" onclick="openConsult()" title="ソムナスに相談">💬</button>
   </div>
   <div id="algBanner" class="alg-banner" style="display:none" onclick="switchTab(0);setTimeout(()=>{const b=document.getElementById('algBox'); if(b) b.scrollIntoView({block:'center'});},50)"></div>
   <nav class="tab-bar">
@@ -1580,6 +1585,26 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     <div class="modal-body" id="algModalBody" style="font-size:15px;font-weight:700;line-height:1.7;color:#b91c1c"></div>
     <div class="modal-footer">
       <button class="btn-save" style="width:100%;background:#b91c1c" onclick="document.getElementById('algModal').classList.remove('on')">確認した</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="consultModal" onclick="if(event.target===this)closeConsult()">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-hdr" style="background:#b45309"><span>💬 ソムナスに相談</span><button class="modal-close" onclick="closeConsult()">×</button></div>
+    <div class="modal-body" style="padding-top:8px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">この症例のデータはこちらで見られるので、「誰が」だけ選んで送ればOKです。メモは任意。</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:6px 0 4px">誰が</div>
+      <div class="qdose-bar" id="consultWho"></div>
+      <input class="fin" id="consultWhoInput" type="text" placeholder="名前（上に無ければ入力）" autocomplete="off" style="margin-top:6px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px">内容（タップ・複数可）</div>
+      <div class="qdose-bar" id="consultCats"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px">メモ（任意）</div>
+      <textarea class="fin" id="consultText" rows="2" placeholder="例: 抜管後に呼吸が荒い／用量これで合ってる？" style="width:100%;resize:vertical"></textarea>
+      <div id="consultHistory" style="margin-top:10px"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">※ すぐ返せない時があります。急ぎは電話で。返信は振り返りシートの「💬 添削・コメント」に届きます。</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" style="width:100%;background:#b45309" onclick="sendConsult()">送る</button>
     </div>
   </div>
 </div>
@@ -5618,6 +5643,54 @@ function premedRecord(kind, id) {
   if (premedPending().length) renderPremedSheet(); else closePremedSheet();
 }
 function premedTimeOnly() { closePremedSheet(); if (!(current.anesthStart || '').trim()) recordEvent('anesthStart'); else showToast('前投薬の時刻は記録済みです'); }
+
+// ── ソムナスに相談(病院ビルドのみ): 誰が押したかだけ必須、メモ任意。症例に保存→Sheets同期→進捗ボードに出る ──
+let _consultWho = '';
+const CONSULT_CATS = ['呼吸', '血圧', '心拍・不整脈', '体温', '覚醒・鎮静', '痛み', '薬剤・用量', '機材・SomLog', 'その他'];
+let _consultCats = [];
+function toggleConsultCat(c) {
+  const i = _consultCats.indexOf(c); if (i >= 0) _consultCats.splice(i, 1); else _consultCats.push(c);
+  document.querySelectorAll('#consultCats .cs-chip').forEach(b => b.classList.toggle('on', _consultCats.indexOf(b.dataset.c) >= 0));
+}
+function consultNames() {
+  const names = [];
+  const add = n => { n = String(n || '').trim(); if (n && names.indexOf(n) < 0) names.push(n); };
+  try { add(localStorage.getItem(RV_CNAME_KEY)); } catch (_) {}
+  if (current) { add(current.staff); add(current.anesthMonitor); add(current.surgeon); add(current.assistant); }
+  (staffPickerListData || []).forEach(s => add(s && s.name));
+  return names.slice(0, 8);
+}
+function openConsult() {
+  if (!current) return;
+  const names = consultNames();
+  _consultWho = names[0] || '';
+  const bar = document.getElementById('consultWho');
+  bar.innerHTML = names.map(n => `<button type="button" class="cs-chip${n === _consultWho ? ' on' : ''}" data-n="${escA(n)}" onclick="pickConsultWho(this.dataset.n)">${esc(n)}</button>`).join('') || '<span style="font-size:12px;color:var(--muted)">名前を下に入力してください</span>';
+  document.getElementById('consultWhoInput').value = '';
+  document.getElementById('consultText').value = '';
+  _consultCats = [];
+  document.getElementById('consultCats').innerHTML = CONSULT_CATS.map(c => `<button type="button" class="cs-chip" data-c="${c}" onclick="toggleConsultCat(this.dataset.c)">${c}</button>`).join('');
+  const hist = (current.consults || []).filter(c => c && !c.deleted).slice(-3);
+  document.getElementById('consultHistory').innerHTML = hist.length ? '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">この症例の相談</div>' + hist.map(c => `<div class="cs-item"><b>${esc(c.by || '')}</b> <span style="color:var(--muted)">${esc(String(c.ts || '').slice(5, 16))}</span>${(c.cats || []).length ? ' <span style="color:#b45309;font-weight:700">' + esc(c.cats.join('・')) + '</span>' : ''}${c.text ? '<br>' + esc(c.text) : ''}</div>`).join('') : '';
+  document.getElementById('consultModal').classList.add('on');
+}
+function pickConsultWho(n) { _consultWho = n; document.querySelectorAll('#consultWho .cs-chip').forEach(b => b.classList.toggle('on', b.dataset.n === n)); }
+function closeConsult() { document.getElementById('consultModal').classList.remove('on'); }
+function sendConsult() {
+  if (!current) return;
+  const typed = (document.getElementById('consultWhoInput').value || '').trim();
+  const by = typed || _consultWho;
+  if (!by) { showToast('誰が相談するか、名前を選ぶか入力してください'); return; }
+  try { localStorage.setItem(RV_CNAME_KEY, by); } catch (_) {}
+  if (!Array.isArray(current.consults)) current.consults = [];
+  current.consults.push({ uid: genUid(), ts: nowIsoStr(), by, cats: _consultCats.slice(), text: (document.getElementById('consultText').value || '').trim() });
+  current.consultedAt = nowIsoStr();
+  closeConsult();
+  autoSave();
+  try { commitNow(); } catch (_) {}
+  if (sheetsConfig.enabled) pushToSheets(current, { skipFollowupSync: true });
+  showToast(`💬 ${by} さんの相談を送りました。返信は振り返りの「添削・コメント」に届きます`);
+}
 
 function toggleDrug(key, event) {
   if (!current) return;
