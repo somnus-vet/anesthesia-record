@@ -1859,7 +1859,7 @@ const DRUG_GROUPS = {
   ],
   cri: [
     { key:'fentanyl_c',     label:'フェンタニル',     unit:'μg/kg/hr',  dog:'1〜5',    cat:'1〜3',    routes:['IV'], def:'IV', stock:50 },
-    { key:'remifentanil',   label:'レミフェンタニル', unit:'μg/kg/hr',  dog:'10〜40',  cat:'10〜40',  routes:['IV'], def:'IV', stock:100, stockNote:'2mgバイアルを生食20mLで溶解＝100μg/mL(溶解量を変えたら原液濃度を直す)' },
+    { key:'remifentanil',   label:'レミフェンタニル', unit:'μg/kg/hr',  dog:'10〜40',  cat:'10〜40',  routes:['IV'], def:'IV', stock:100, vial:2, vialUnit:'mg', solve:20, stockNote:'粉末バイアル。何mLで溶解するかで原液濃度が決まる' },
     { key:'medetomidine_c', label:'メデトミジン',     unit:'μg/kg/hr',  dog:'1〜3',    cat:'1〜3',    routes:['IV'], def:'IV', stock:1000 },
     { key:'lidocaine_c',    label:'リドカイン',       unit:'mg/kg/hr',  dog:'1.5〜3',  cat:'—',       routes:['IV'], def:'IV', stock:20 },
     { key:'ketamine_c',     label:'ケタミン',         unit:'mg/kg/hr',  dog:'0.1〜0.6',cat:'0.1〜0.6',routes:['IV'], def:'IV', stock:50 },
@@ -5756,20 +5756,41 @@ function sendConsult() {
 function isCriKey(key) { return (DRUG_GROUPS.cri || []).some(x => x.key === key); }
 function criMass(unit) { return String(unit || '').indexOf('mg') === 0 ? 'mg' : 'μg'; }
 function criPerMin(unit) { return /\/min$/.test(String(unit || '')); }
+// 粉末バイアル薬(レミフェンタニル等): 「バイアル量 ÷ 溶解mL」が原液濃度。cfg.vial/solve があればそれを優先
+function criSolveStock(d, cfg) {
+  if (!d || !d.vial) return null;
+  const vial = parseFloat(cfg && cfg.vial !== undefined && cfg.vial !== '' ? cfg.vial : d.vial);
+  const solve = parseFloat(cfg && cfg.solve !== undefined && cfg.solve !== '' ? cfg.solve : d.solve);
+  if (!(vial > 0) || !(solve > 0)) return null;
+  const k = (d.vialUnit || 'mg') === 'mg' && criMass(d.unit) === 'μg' ? 1000 : 1;
+  return vial * k / solve;
+}
+// 保存済み設定に溶解量が無い(旧保存)場合、原液濃度から溶解mLを逆算して補う
+function criNormalizeCfg(d, cfg) {
+  if (!d || !d.vial || !cfg) return cfg;
+  if (cfg.vial === undefined || cfg.vial === '') cfg.vial = d.vial;
+  if (cfg.solve === undefined || cfg.solve === '') {
+    const st = parseFloat(cfg.stock), k = (d.vialUnit || 'mg') === 'mg' && criMass(d.unit) === 'μg' ? 1000 : 1;
+    cfg.solve = st > 0 ? +(parseFloat(cfg.vial) * k / st).toFixed(2) : d.solve;
+  }
+  const s = criSolveStock(d, cfg); if (s !== null) cfg.stock = +s.toFixed(4);
+  return cfg;
+}
 function criInfo(key, cfgOverride) {
   const d = findDrugDef(key); if (!d || !current) return null;
   const cfg = cfgOverride || ((current.drugs && current.drugs[key] && current.drugs[key].cri) || null);
   if (!cfg) return null;
   const w = parseFloat(current.weight), mult = criPerMin(d.unit) ? 60 : 1;
+  const solved = criSolveStock(d, cfg);
+  const stock = solved !== null ? solved : parseFloat(cfg.stock);
   let conc = null;
   if (cfg.method === 'dil') {
     let dil = parseFloat(cfg.dilution);
-    if (!(dil > 0) && parseFloat(cfg.amount) > 0 && parseFloat(cfg.vol) > 0 && parseFloat(cfg.stock) > 0) dil = parseFloat(cfg.stock) * parseFloat(cfg.vol) / parseFloat(cfg.amount);  // 旧保存(薬剤量)からの換算
-    const st = parseFloat(cfg.stock);
-    if (dil > 0 && st > 0) conc = st / dil;
+    if (!(dil > 0) && parseFloat(cfg.amount) > 0 && parseFloat(cfg.vol) > 0 && stock > 0) dil = stock * parseFloat(cfg.vol) / parseFloat(cfg.amount);  // 旧保存(薬剤量)からの換算
+    if (dil > 0 && stock > 0) conc = stock / dil;
   }
   else { const f = parseFloat(cfg.factor); if (w > 0 && f > 0) conc = f * w * mult; }
-  return { d, w, cfg, conc, mult, mass: criMass(d.unit), unit: d.unit };
+  return { d, w, cfg, conc, mult, mass: criMass(d.unit), unit: d.unit, stock };
 }
 function criRate(key, dose, cfgOverride) { const i = criInfo(key, cfgOverride); if (!i || !i.conc || !(i.w > 0)) return null; const D = parseFloat(dose); if (isNaN(D)) return null; return D * i.w * i.mult / i.conc; }
 function criFmt(x, n) { x = (x === null || x === undefined || x === '') ? NaN : parseFloat(x); if (isNaN(x)) return '—'; return (+x.toFixed(n === undefined ? 2 : n)).toString(); }
@@ -5793,7 +5814,7 @@ function openCriPrep(key, convDose) {
   const d = findDrugDef(key); if (!d) return;
   _criPrepKey = key;
   const cur = (current.drugs && current.drugs[key] && current.drugs[key].cri) || learnedCriFor(key) || { method: 'rate', vol: 50, factor: 1, dilution: 10, stock: d.stock || '' };
-  _criDraft = Object.assign({ method: 'rate', vol: 50, factor: 1, dilution: 10, stock: d.stock || '' }, cur);
+  _criDraft = criNormalizeCfg(d, Object.assign({ method: 'rate', vol: 50, factor: 1, dilution: 10, stock: d.stock || '' }, cur));
   // 術中タブの行から開いた時は、その行の現在量を換算欄に入れておく(すぐ mL/h が見える)
   _criConv = { dose: (convDose !== undefined && convDose !== null && !isNaN(parseFloat(convDose))) ? String(convDose) : '', rate: '' };
   document.getElementById('criPrepTitle').textContent = `🧪 ${d.label} CRI の作り方`;
@@ -5801,7 +5822,7 @@ function openCriPrep(key, convDose) {
   document.getElementById('criPrepModal').classList.add('on');
 }
 function closeCriPrep() { document.getElementById('criPrepModal').classList.remove('on'); }
-function setCriDraft(k, v) { if (!_criDraft) return; _criDraft[k] = v; renderCriPrep(k); }
+function setCriDraft(k, v) { if (!_criDraft) return; _criDraft[k] = v; if (k === 'vial' || k === 'solve') { const s = criSolveStock(findDrugDef(_criPrepKey), _criDraft); if (s !== null) _criDraft.stock = +s.toFixed(4); } renderCriPrep(k); }
 function renderCriPrep(changedKey) {
   const key = _criPrepKey, d = findDrugDef(key); if (!d || !_criDraft) return;
   const c = _criDraft, w = parseFloat(current.weight), mass = criMass(d.unit), perMin = criPerMin(d.unit);
@@ -5810,7 +5831,7 @@ function renderCriPrep(changedKey) {
   const info = criInfo(key, c);
   let build = '';
   if (info && info.conc) {
-    const stock = parseFloat(c.stock);
+    const stock = info.stock;
     const vol = parseFloat(c.vol);
     const amount = info.conc * vol;
     const draw = (stock > 0 && amount > 0) ? amount / stock : null;
@@ -5840,8 +5861,11 @@ function renderCriPrep(changedKey) {
       ${c.method === 'dil'
         ? `<div><span class="cri-lbl">希釈倍率</span>${inp('dilution', c.dilution, '10')}<span class="unit">倍</span></div>`
         : `<div><span class="cri-lbl">1 mL/h あたり</span>${inp('factor', c.factor, '1')}<span class="unit">${esc(d.unit)}</span></div>`}
-      <div><span class="cri-lbl">原液の濃度</span>${inp('stock', c.stock, '')}<span class="unit">${mass}/mL</span></div>
+      ${d.vial
+        ? `<div><span class="cri-lbl">バイアル</span>${inp('vial', c.vial, String(d.vial))}<span class="unit">${esc(d.vialUnit || 'mg')}</span></div><div><span class="cri-lbl">溶解量</span>${inp('solve', c.solve, String(d.solve || ''))}<span class="unit">mL</span></div>`
+        : `<div><span class="cri-lbl">原液の濃度</span>${inp('stock', c.stock, '')}<span class="unit">${mass}/mL</span></div>`}
     </div>
+    ${d.vial && info && info.stock > 0 ? `<div style="font-size:12px;color:#075985;margin:0 0 6px">💧 ${criFmt(c.vial, 2)} ${esc(d.vialUnit || 'mg')} を ${criFmt(c.solve, 1)} mL で溶解 → 原液 <b>${criFmt(info.stock, 2)} ${mass}/mL</b></div>` : ''}
 
     ${d.stockNote ? `<div style="font-size:11px;color:#075985;margin:0 0 6px">💧 ${esc(d.stockNote)}</div>` : ''}
     ${build}`;
@@ -5872,13 +5896,13 @@ function criSummaryText(key) {
   const dose = stdDoseOf(key); const r = isNaN(dose) ? null : criRate(key, dose);
   const oneMl = i.conc / (i.w * i.mult);
   // 作り方(原液を何mL引いて生食を何mL足すか)を先頭に出す
-  const vol = parseFloat(i.cfg.vol), stock = parseFloat(i.cfg.stock);
-  let recipe = '';
+  const vol = parseFloat(i.cfg.vol), stock = i.stock;
+  let recipe = i.d.vial && stock > 0 ? `${criFmt(i.cfg.vial, 2)} ${esc(i.d.vialUnit || 'mg')} を <b>${criFmt(i.cfg.solve, 1)} mL</b> で溶解（原液 ${criFmt(stock, 2)} ${i.mass}/mL）<br>` : '';
   if (vol > 0) {
     const amount = i.conc * vol;
     const draw = stock > 0 ? amount / stock : null;
     const saline = draw !== null ? vol - draw : null;
-    recipe = `<b>原液 ${draw !== null ? criFmt(draw, 2) + ' mL' : '—'}</b>${saline !== null ? ` ＋ 生食 <b>${criFmt(saline, 2)} mL</b>` : ''} → 合計 ${criFmt(vol, 1)} mL（${i.d.label} ${criFmt(amount, 1)} ${i.mass}）`
+    recipe += `<b>原液 ${draw !== null ? criFmt(draw, 2) + ' mL' : '—'}</b>${saline !== null ? ` ＋ 生食 <b>${criFmt(saline, 2)} mL</b>` : ''} → 合計 ${criFmt(vol, 1)} mL（${i.d.label} ${criFmt(amount, 1)} ${i.mass}）`
       + (saline !== null && saline < 0 ? '<br><span style="color:var(--red)">⚠ 原液だけで総量を超えます。総量か倍率を見直してください</span>' : '') + '<br>';
   }
   return `🧪 ${recipe}${i.cfg.method === 'dil' ? `${criFmt(i.cfg.dilution || (parseFloat(i.cfg.stock) / i.conc), 1)}倍希釈` : `1mL/h＝${criFmt(i.cfg.factor, 3)}${i.unit}`}（${criFmt(i.conc, 3)}${i.mass}/mL）${(i.w > 0) ? `　1mL/h＝${criFmt(oneMl, 3)}${i.unit}` : ''}${r !== null ? `　→ プラン ${criFmt(dose, 3)}${i.unit} ＝ <b>${criFmt(r, 2)} mL/h</b>` : ''}`;
@@ -5890,6 +5914,7 @@ function ensureCriCfgs() {
   (DRUG_GROUPS.cri || []).forEach(d => {
     const s = current.drugs[d.key]; if (!s || !s.use) return;
     if (!s.cri) { const lc = learnedCriFor(d.key); if (lc) s.cri = lc; }
+    if (s.cri) criNormalizeCfg(d, s.cri);
     if (!s.cri) missing.push(d.key);
   });
   return missing;
@@ -5933,7 +5958,9 @@ function renderCriInline(key) {
         ? `<label>${inp('dilution', cfg.dilution, 48)}<span>倍希釈</span></label>`
         : `<label><span>1 mL/h ＝</span>${inp('factor', cfg.factor, 48)}<span>${esc(d.unit)}</span></label>`}
       <label><span>総量</span>${inp('vol', cfg.vol, 46)}<span>mL</span></label>
-      <label><span>原液</span>${inp('stock', cfg.stock, 52)}<span>${mass}/mL</span></label>
+      ${d.vial
+        ? `<label>${inp('vial', cfg.vial, 40)}<span>${esc(d.vialUnit || 'mg')} を</span>${inp('solve', cfg.solve, 46)}<span>mL で溶解</span></label>`
+        : `<label><span>原液</span>${inp('stock', cfg.stock, 52)}<span>${mass}/mL</span></label>`}
     </div>`;
   box.innerHTML = html; box.style.display = '';
 }
@@ -5943,7 +5970,9 @@ function setCriInline(key, field, val) {
   if (!current.drugs[key]) current.drugs[key] = { use: true, dose: '', route: '' };
   const s = current.drugs[key]; s.use = true;
   if (!s.cri) s.cri = Object.assign({ method: 'rate', vol: 50, factor: 1, dilution: 10, stock: d.stock || '' }, learnedCriFor(key) || {});
+  criNormalizeCfg(d, s.cri);
   s.cri[field] = val;
+  if (field === 'vial' || field === 'solve') { const _st = criSolveStock(d, s.cri); if (_st !== null) s.cri.stock = +_st.toFixed(4); }
   const row = document.getElementById('drow_' + key); if (row) row.classList.add('on');
   if (field === 'method') renderCriInline(key);   // 入力欄の構成が変わる時だけ再描画(入力中のフォーカスを守る)
   const el = document.getElementById('crisum_' + key);
