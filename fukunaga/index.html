@@ -5780,7 +5780,7 @@ function renderCriPrep(changedKey) {
     <div style="font-size:12px;color:var(--muted);margin-bottom:6px">病院の作り方に合わせて選んでください。保存すると、この病院の次の症例でも同じ作り方が最初から入ります</div>
     <div class="seg" style="margin-bottom:10px">
       <div class="seg-i${c.method !== 'dil' ? ' on' : ''}" onclick="setCriDraft('method','rate')">1 mL/h ＝ 一定用量</div>
-      <div class="seg-i${c.method === 'dil' ? ' on' : ''}" onclick="setCriDraft('method','dil')">希釈固定（薬剤量÷総量）</div>
+      <div class="seg-i${c.method === 'dil' ? ' on' : ''}" onclick="setCriDraft('method','dil')">希釈固定（希釈倍率）</div>
     </div>
     <div class="cri-row"><span class="cri-lbl">シリンジ総量</span>${inp('vol', c.vol, '50')}<span class="unit">mL</span></div>
     ${c.method === 'dil'
