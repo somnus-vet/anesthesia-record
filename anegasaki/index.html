@@ -1605,6 +1605,8 @@ body.board-mode .screen{inset:32px 0 0 0!important}
       <div style="font-size:11px;font-weight:700;color:var(--muted);margin:6px 0 4px">誰が</div>
       <div class="qdose-bar" id="consultWho"></div>
       <input class="fin" id="consultWhoInput" type="text" placeholder="名前（上に無ければ入力）" autocomplete="off" style="margin-top:6px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px">内容（タップ・複数可）</div>
+      <div class="qdose-bar" id="consultCats"></div>
       <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px">メモ（任意）</div>
       <textarea class="fin" id="consultText" rows="2" placeholder="例: 抜管後に呼吸が荒い／用量これで合ってる？" style="width:100%;resize:vertical"></textarea>
       <div id="consultHistory" style="margin-top:10px"></div>
@@ -5653,6 +5655,12 @@ function premedTimeOnly() { closePremedSheet(); if (!(current.anesthStart || '')
 
 // ── ソムナスに相談(病院ビルドのみ): 誰が押したかだけ必須、メモ任意。症例に保存→Sheets同期→進捗ボードに出る ──
 let _consultWho = '';
+const CONSULT_CATS = ['呼吸', '血圧', '心拍・不整脈', '体温', '覚醒・鎮静', '痛み', '薬剤・用量', '機材・SomLog', 'その他'];
+let _consultCats = [];
+function toggleConsultCat(c) {
+  const i = _consultCats.indexOf(c); if (i >= 0) _consultCats.splice(i, 1); else _consultCats.push(c);
+  document.querySelectorAll('#consultCats .cs-chip').forEach(b => b.classList.toggle('on', _consultCats.indexOf(b.dataset.c) >= 0));
+}
 function consultNames() {
   const names = [];
   const add = n => { n = String(n || '').trim(); if (n && names.indexOf(n) < 0) names.push(n); };
@@ -5669,8 +5677,10 @@ function openConsult() {
   bar.innerHTML = names.map(n => `<button type="button" class="cs-chip${n === _consultWho ? ' on' : ''}" data-n="${escA(n)}" onclick="pickConsultWho(this.dataset.n)">${esc(n)}</button>`).join('') || '<span style="font-size:12px;color:var(--muted)">名前を下に入力してください</span>';
   document.getElementById('consultWhoInput').value = '';
   document.getElementById('consultText').value = '';
+  _consultCats = [];
+  document.getElementById('consultCats').innerHTML = CONSULT_CATS.map(c => `<button type="button" class="cs-chip" data-c="${c}" onclick="toggleConsultCat(this.dataset.c)">${c}</button>`).join('');
   const hist = (current.consults || []).filter(c => c && !c.deleted).slice(-3);
-  document.getElementById('consultHistory').innerHTML = hist.length ? '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">この症例の相談</div>' + hist.map(c => `<div class="cs-item"><b>${esc(c.by || '')}</b> <span style="color:var(--muted)">${esc(String(c.ts || '').slice(5, 16))}</span>${c.text ? '<br>' + esc(c.text) : ''}</div>`).join('') : '';
+  document.getElementById('consultHistory').innerHTML = hist.length ? '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">この症例の相談</div>' + hist.map(c => `<div class="cs-item"><b>${esc(c.by || '')}</b> <span style="color:var(--muted)">${esc(String(c.ts || '').slice(5, 16))}</span>${(c.cats || []).length ? ' <span style="color:#b45309;font-weight:700">' + esc(c.cats.join('・')) + '</span>' : ''}${c.text ? '<br>' + esc(c.text) : ''}</div>`).join('') : '';
   document.getElementById('consultModal').classList.add('on');
 }
 function pickConsultWho(n) { _consultWho = n; document.querySelectorAll('#consultWho .cs-chip').forEach(b => b.classList.toggle('on', b.dataset.n === n)); }
@@ -5682,7 +5692,7 @@ function sendConsult() {
   if (!by) { showToast('誰が相談するか、名前を選ぶか入力してください'); return; }
   try { localStorage.setItem(RV_CNAME_KEY, by); } catch (_) {}
   if (!Array.isArray(current.consults)) current.consults = [];
-  current.consults.push({ uid: genUid(), ts: nowIsoStr(), by, text: (document.getElementById('consultText').value || '').trim() });
+  current.consults.push({ uid: genUid(), ts: nowIsoStr(), by, cats: _consultCats.slice(), text: (document.getElementById('consultText').value || '').trim() });
   current.consultedAt = nowIsoStr();
   closeConsult();
   autoSave();

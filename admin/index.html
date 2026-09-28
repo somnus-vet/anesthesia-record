@@ -184,7 +184,7 @@ async function fetchHospital(h) {
       name: r['患者名'] || d.patientName || '', proc: r['術式'] || d.procedure || '', staff: r['担当'] || d.staff || '',
       pct: p && typeof p.pct === 'number' ? p.pct : null, total: p ? p.total : 0, missing: p ? p.missing : 0, rvFilled,
       edited, submitted, submittedBy: d.rvSubmittedBy || '', comments: cms.length,
-      consults: cons.length, consultedAt, consultBy: lastCon ? (lastCon.by || '') : '', consultText: lastCon ? (lastCon.text || '') : '',
+      consults: cons.length, consultedAt, consultBy: lastCon ? (lastCon.by || '') : '', consultText: lastCon ? ([(lastCon.cats || []).join('・'), lastCon.text || ''].filter(Boolean).join('：')) : '',
       updated: tsOf(r['updated_at'] || d.updated_at),
     };
   }).filter(x => x.caseDate >= cutoff || x.edited || x.submitted);
