@@ -37,6 +37,9 @@ main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 .badge.new{background:#fff3c4;color:#7a4b00;border:1px solid #f0b429}
 .badge.sub{background:#eafaf1;color:var(--green);border:1px solid #a9dfbf}
 .badge.cm{background:#eef6fc;color:var(--blue);border:1px solid #bcd7ee}
+.badge.con{background:#fff7ed;color:#b45309;border:1px solid #fdba74}
+.consult{margin-top:4px;font-size:12.5px;color:#7c2d12;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:4px 8px}
+.stat.con b{color:#b45309}
 .when{font-size:12px;color:var(--muted)}
 .empty{color:var(--muted);text-align:center;padding:30px 0}
 .err{background:#fff1f0;border:1px solid #f5b7b1;color:var(--red);border-radius:8px;padding:8px 10px;font-size:12.5px;margin-bottom:8px}
@@ -74,11 +77,13 @@ main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
     <div class="stat"><b id="stToday">0</b><span>今日 編集あり</span></div>
     <div class="stat"><b id="stWip">0</b><span>記載中（未提出）</span></div>
     <div class="stat"><b id="stSub">0</b><span>提出済</span></div>
+    <div class="stat con"><b id="stCon">0</b><span>🙋 相談あり</span></div>
   </div>
   <div class="filters">
     <button class="chip on" data-f="active" onclick="setFilter('active',this)">記載あり（未提出）</button>
     <button class="chip" data-f="new" onclick="setFilter('new',this)">新着だけ</button>
     <button class="chip" data-f="sub" onclick="setFilter('sub',this)">提出済</button>
+    <button class="chip" data-f="con" onclick="setFilter('con',this)">🙋 相談</button>
     <button class="chip" data-f="all" onclick="setFilter('all',this)">全症例（30日）</button>
     <span class="when" id="lastLoad" style="margin-left:auto"></span>
   </div>
@@ -168,6 +173,9 @@ async function fetchHospital(h) {
     const edited = tsOf(d.rvEditedAt) || (p ? tsOf(p.at) : 0) || (rvFilled ? tsOf(r['updated_at'] || d.updated_at) : 0);
     const submitted = tsOf(d.rvSubmittedAt);
     const cms = Array.isArray(d.rvComments) ? d.rvComments.filter(x => x && !x.deleted) : [];
+    const cons = Array.isArray(d.consults) ? d.consults.filter(x => x && !x.deleted) : [];
+    const lastCon = cons.length ? cons[cons.length - 1] : null;
+    const consultedAt = lastCon ? tsOf(lastCon.ts) : 0;
     const caseDate = tsOf((r['日付'] || d.date || '') + ' 00:00');
     const fac = String(r['施設コード'] || d.facility || h.key).trim();
     return {
@@ -176,6 +184,7 @@ async function fetchHospital(h) {
       name: r['患者名'] || d.patientName || '', proc: r['術式'] || d.procedure || '', staff: r['担当'] || d.staff || '',
       pct: p && typeof p.pct === 'number' ? p.pct : null, total: p ? p.total : 0, missing: p ? p.missing : 0, rvFilled,
       edited, submitted, submittedBy: d.rvSubmittedBy || '', comments: cms.length,
+      consults: cons.length, consultedAt, consultBy: lastCon ? (lastCon.by || '') : '', consultText: lastCon ? (lastCon.text || '') : '',
       updated: tsOf(r['updated_at'] || d.updated_at),
     };
   }).filter(x => x.caseDate >= cutoff || x.edited || x.submitted);
@@ -191,12 +200,12 @@ async function refreshAll() {
   // 通知: 前回の読み込み後に新しく「新着」になった症例
   const fresh = rows.filter(isNew).filter(x => !prevNew.has(x.hosp.key + '|' + x.id));
   if (fresh.length && _notifyOn && 'Notification' in window && Notification.permission === 'granted') {
-    fresh.slice(0, 3).forEach(x => { try { new Notification(`${x.facName || x.hosp.name}: ${x.name || '患者名なし'} 振り返り ${x.pct != null ? x.pct + '%' : ''}${x.submitted ? '（提出）' : ''}`, { body: `${x.date} ${x.proc}${x.staff ? ' ／ ' + x.staff : ''}`, tag: x.hosp.key + x.id }); } catch (_) {} });
+    fresh.slice(0, 3).forEach(x => { try { const isCon = x.consultedAt && x.consultedAt >= Math.max(x.edited, x.submitted); new Notification(isCon ? `🙋 相談 ${x.facName || x.hosp.name}: ${x.name || '患者名なし'}（${x.consultBy}）` : `${x.facName || x.hosp.name}: ${x.name || '患者名なし'} 振り返り ${x.pct != null ? x.pct + '%' : ''}${x.submitted ? '（提出）' : ''}`, { body: isCon ? (x.consultText || `${x.date} ${x.proc}`) : `${x.date} ${x.proc}${x.staff ? ' ／ ' + x.staff : ''}`, tag: x.hosp.key + x.id }); } catch (_) {} });
   }
   try { document.title = (rows.filter(isNew).length ? `(${rows.filter(isNew).length}) ` : '') + '振り返り 進捗ボード'; } catch (_) {}
 }
 function isNew(x) {
-  const last = Math.max(x.edited || 0, x.submitted || 0);
+  const last = Math.max(x.edited || 0, x.submitted || 0, x.consultedAt || 0);
   if (!last) return false;
   const s = Math.max(tsOf(seen[x.hosp.key + '|' + x.id] || ''), tsOf(seenAll));
   return last > s;
@@ -207,10 +216,12 @@ function render() {
   const err = document.getElementById('errBox');
   err.innerHTML = errors.map(e => `<div class="err">⚠️ ${esc(e)}</div>`).join('');
   const active = rows.filter(x => (x.pct != null || x.edited) && !x.submitted);
+  const consulted = rows.filter(x => x.consults);
   const subs = rows.filter(x => x.submitted);
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   document.getElementById('stNew').textContent = rows.filter(isNew).length;
-  document.getElementById('stToday').textContent = rows.filter(x => Math.max(x.edited, x.submitted) >= todayStart.getTime()).length;
+  document.getElementById('stToday').textContent = rows.filter(x => Math.max(x.edited, x.submitted, x.consultedAt) >= todayStart.getTime()).length;
+  document.getElementById('stCon').textContent = consulted.length;
   document.getElementById('stWip').textContent = active.length;
   document.getElementById('stSub').textContent = subs.length;
   const on = HOSPITALS.filter(h => cfg[h.key] && cfg[h.key].token && !cfg[h.key].off).map(h => h.name);
@@ -219,15 +230,17 @@ function render() {
   if (filter === 'active') show = active;
   else if (filter === 'new') show = rows.filter(isNew);
   else if (filter === 'sub') show = subs;
+  else if (filter === 'con') show = consulted;
   else show = rows;
-  show = show.slice().sort((a, b) => Math.max(b.edited, b.submitted, filter === 'all' ? b.caseDate : 0) - Math.max(a.edited, a.submitted, filter === 'all' ? a.caseDate : 0));
+  show = show.slice().sort((a, b) => Math.max(b.edited, b.submitted, b.consultedAt, filter === 'all' ? b.caseDate : 0) - Math.max(a.edited, a.submitted, a.consultedAt, filter === 'all' ? a.caseDate : 0));
   if (!show.length) { list.innerHTML = `<div class="empty">${on.length ? '該当する症例はありません' : '⚙ 設定から病院ごとの合言葉を入れてください'}</div>`; return; }
   list.innerHTML = show.map(x => {
-    const last = Math.max(x.edited, x.submitted);
+    const last = Math.max(x.edited, x.submitted, x.consultedAt);
     const link = `${x.hosp.app}?case=${encodeURIComponent(x.id)}&view=review`;
     return `<div class="card${isNew(x) ? ' new' : ''}" onclick="openCase('${esc(x.hosp.key)}','${esc(x.id)}','${link}')">
       <span class="hosp">${esc(x.facName || x.hosp.name)}</span>
-      <div><div class="who">${esc(x.name || '（患者名なし）')}${isNew(x) ? '<span class="badge new">新着</span>' : ''}${x.submitted ? '<span class="badge sub">📤 提出済</span>' : ''}${x.comments ? `<span class="badge cm">💬${x.comments}</span>` : ''}</div>
+      <div><div class="who">${esc(x.name || '（患者名なし）')}${isNew(x) ? '<span class="badge new">新着</span>' : ''}${x.submitted ? '<span class="badge sub">📤 提出済</span>' : ''}${x.comments ? `<span class="badge cm">💬${x.comments}</span>` : ''}${x.consults ? `<span class="badge con">🙋 相談${x.consults > 1 ? x.consults : ''}</span>` : ''}</div>
+        ${x.consults ? `<div class="consult">🙋 <b>${esc(x.consultBy)}</b> ${esc(fmt(x.consultedAt))}${x.consultText ? '：' + esc(x.consultText) : '（メモなし）'}</div>` : ''}
         <div class="meta">${esc(x.date)} ／ ${esc(x.proc || '術式未記載')}${x.staff ? ' ／ 記載: ' + esc(x.staff) : ''}${x.submittedBy ? ' ／ 提出: ' + esc(x.submittedBy) : ''}</div></div>
       <div class="right">${x.pct != null ? `<span class="pct">${x.pct}%</span><span class="bar"><i class="${x.submitted ? 'done' : ''}" style="width:${x.pct}%"></i></span><div class="when">記載 ${x.total - x.missing}/${x.total} 項目</div>` : `<span class="when">${x.rvFilled ? '記載 ' + x.rvFilled + ' 項目（進捗率は新版アプリから）' : '進捗 未計測'}</span>`}
         <div class="when">${last ? `最終 ${fmt(last)}（${rel(last)}）` : ''}</div></div>
