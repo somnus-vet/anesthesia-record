@@ -5867,7 +5867,17 @@ function criSummaryText(key) {
   const i = criInfo(key); if (!i || !i.conc) return '';
   const dose = stdDoseOf(key); const r = isNaN(dose) ? null : criRate(key, dose);
   const oneMl = i.conc / (i.w * i.mult);
-  return `🧪 ${i.cfg.method === 'dil' ? `${criFmt(i.cfg.dilution || (parseFloat(i.cfg.stock) / i.conc), 1)}倍希釈・${criFmt(i.cfg.vol, 0)}mL` : `1mL/h＝${criFmt(i.cfg.factor, 3)}${i.unit}`}（${criFmt(i.conc, 3)}${i.mass}/mL）${(i.w > 0) ? `　1mL/h＝${criFmt(oneMl, 3)}${i.unit}` : ''}${r !== null ? `　→ プラン ${criFmt(dose, 3)}${i.unit} ＝ <b>${criFmt(r, 2)} mL/h</b>` : ''}`;
+  // 作り方(原液を何mL引いて生食を何mL足すか)を先頭に出す
+  const vol = parseFloat(i.cfg.vol), stock = parseFloat(i.cfg.stock);
+  let recipe = '';
+  if (vol > 0) {
+    const amount = i.conc * vol;
+    const draw = stock > 0 ? amount / stock : null;
+    const saline = draw !== null ? vol - draw : null;
+    recipe = `<b>原液 ${draw !== null ? criFmt(draw, 2) + ' mL' : '—'}</b>${saline !== null ? ` ＋ 生食 <b>${criFmt(saline, 2)} mL</b>` : ''} → 合計 ${criFmt(vol, 1)} mL（${i.d.label} ${criFmt(amount, 1)} ${i.mass}）`
+      + (saline !== null && saline < 0 ? '<br><span style="color:var(--red)">⚠ 原液だけで総量を超えます。総量か倍率を見直してください</span>' : '') + '<br>';
+  }
+  return `🧪 ${recipe}${i.cfg.method === 'dil' ? `${criFmt(i.cfg.dilution || (parseFloat(i.cfg.stock) / i.conc), 1)}倍希釈` : `1mL/h＝${criFmt(i.cfg.factor, 3)}${i.unit}`}（${criFmt(i.conc, 3)}${i.mass}/mL）${(i.w > 0) ? `　1mL/h＝${criFmt(oneMl, 3)}${i.unit}` : ''}${r !== null ? `　→ プラン ${criFmt(dose, 3)}${i.unit} ＝ <b>${criFmt(r, 2)} mL/h</b>` : ''}`;
 }
 // チェック済みCRI薬で作り方が未設定のものに、この病院の直近症例の作り方を補う。それでも無いキーを返す
 function ensureCriCfgs() {
