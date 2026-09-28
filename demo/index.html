@@ -7182,7 +7182,7 @@ function criQuickButtonsHtml(planned) {
   const btn = d => {
     const n = ((current.freeNotes || []).filter(r => r && !r.deleted && r.kind === 'cri' && r.drugKey === d.key && r.time)).length;
     const last = criLastNote(d.key);
-    const cur = last && String(last.to || '').trim() !== '' && parseFloat(last.to) !== 0 ? `<span class="qml" style="color:#1a5478">${esc(last.to)}${esc(d.unit.replace('/kg', ''))}</span>` : '';
+    const cur = last && String(last.to || '').trim() !== '' && parseFloat(last.to) !== 0 ? `<span class="qml" style="color:#1a5478">${esc(last.to)} ${esc(d.unit)}</span>` : '';
     return `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="openCriSheet('${d.key}')">${esc(d.label)}<span class="later-tag" style="background:#1a5478">CRI</span>${cur}${n ? `<span class="qdose-badge">×${n}</span>` : ''}</button>`;
   };
   // 予定外のCRI: プロトコル未チェックの薬剤も「＋CRI」→薬剤選択で開始できる
@@ -7229,7 +7229,7 @@ function openCriSheet(key) {
   }
   if (last && parseFloat(curTo) !== 0) html += `<button type="button" class="dose-opt" onclick="commitCri(0)"><span class="dose-opt-label">停止<span class="dose-opt-perkg">0${esc(d.unit)}</span></span></button>`;
   html += `</div>`;
-  html += `<div class="cri-conv" style="border-top:none;margin-top:9px;padding-top:0"><div><input class="fdose" type="text" inputmode="decimal" id="criSheetDose" placeholder="用量" onfocus="tapClear(this)" oninput="criSheetConv('dose',this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">${esc(d.unit)}</span></div>${hasCfg ? `<span class="tl-arrow">＝</span><div><input class="fdose" type="text" inputmode="decimal" id="criSheetMl" placeholder="mL/h" onfocus="tapClear(this)" oninput="criSheetConv('ml',this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">mL/h</span></div>` : ''}<button type="button" class="qdose-btn" onclick="commitCriCustom()">この量で記録</button></div>`;
+  html += `<div class="cri-conv" style="border-top:none;margin-top:9px;padding-top:0"><div><input class="fdose" type="text" inputmode="decimal" id="criSheetDose" placeholder="用量" onfocus="tapClear(this)" oninput="criSheetConv('dose',this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">${esc(d.unit)}</span></div>${hasCfg ? `<span class="tl-arrow">＝</span><div><input class="fdose" type="text" inputmode="decimal" id="criSheetMl" placeholder="mL/h" onfocus="tapClear(this)" oninput="criSheetConv('ml',this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">mL/h</span></div>` : ''}<button type="button" class="qdose-btn" style="min-height:34px;padding:6px 9px;font-size:12px" onclick="commitCriCustom()">この量で記録</button></div>`;
   html += `<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button type="button" class="qdose-btn" style="font-size:12px;min-height:38px" onclick="closeDoseSelect();openCriPrep('${key}')">🧪 作り方</button><button type="button" class="qdose-btn dp-unplanned" style="font-size:12px;min-height:38px" onclick="closeDoseSelect();quickDoseBolus('${key}')">💉 単回投与(ショット)として記録</button></div>`;
   document.getElementById('doseSelectBody').innerHTML = html;
   document.getElementById('doseSelectModal').classList.add('on');
