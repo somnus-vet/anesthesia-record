@@ -5710,7 +5710,7 @@ function sendConsult() {
 // ── CRI 作成補助: 病院の作り方(1mL/h＝一定用量 / 希釈固定)でシリンジの作り方と mL/h↔用量を出す ──
 //   current.drugs[key].cri = { method:'rate'|'dil', vol, factor, amount, stock }
 //   rate: 1 mL/h = factor(用量単位) → 濃度 = factor×体重×(60 if /min)
-//   dil : 薬剤 amount(mg/μg) を vol mL に → 濃度 = amount/vol
+//   dil : 希釈倍率 dilution(原液を何倍に薄めるか) → 濃度 = stock/dilution、原液量 = vol/dilution
 function isCriKey(key) { return (DRUG_GROUPS.cri || []).some(x => x.key === key); }
 function criMass(unit) { return String(unit || '').indexOf('mg') === 0 ? 'mg' : 'μg'; }
 function criPerMin(unit) { return /\/min$/.test(String(unit || '')); }
@@ -5720,7 +5720,12 @@ function criInfo(key, cfgOverride) {
   if (!cfg) return null;
   const w = parseFloat(current.weight), mult = criPerMin(d.unit) ? 60 : 1;
   let conc = null;
-  if (cfg.method === 'dil') { const a = parseFloat(cfg.amount), v = parseFloat(cfg.vol); if (a > 0 && v > 0) conc = a / v; }
+  if (cfg.method === 'dil') {
+    let dil = parseFloat(cfg.dilution);
+    if (!(dil > 0) && parseFloat(cfg.amount) > 0 && parseFloat(cfg.vol) > 0 && parseFloat(cfg.stock) > 0) dil = parseFloat(cfg.stock) * parseFloat(cfg.vol) / parseFloat(cfg.amount);  // 旧保存(薬剤量)からの換算
+    const st = parseFloat(cfg.stock);
+    if (dil > 0 && st > 0) conc = st / dil;
+  }
   else { const f = parseFloat(cfg.factor); if (w > 0 && f > 0) conc = f * w * mult; }
   return { d, w, cfg, conc, mult, mass: criMass(d.unit), unit: d.unit };
 }
@@ -5738,8 +5743,8 @@ function openCriPrep(key) {
   if (!current) return;
   const d = findDrugDef(key); if (!d) return;
   _criPrepKey = key;
-  const cur = (current.drugs && current.drugs[key] && current.drugs[key].cri) || learnedCriFor(key) || { method: 'rate', vol: 50, factor: 1, amount: '', stock: d.stock || '' };
-  _criDraft = Object.assign({ method: 'rate', vol: 50, factor: 1, amount: '', stock: d.stock || '' }, cur);
+  const cur = (current.drugs && current.drugs[key] && current.drugs[key].cri) || learnedCriFor(key) || { method: 'rate', vol: 50, factor: 1, dilution: 10, stock: d.stock || '' };
+  _criDraft = Object.assign({ method: 'rate', vol: 50, factor: 1, dilution: 10, stock: d.stock || '' }, cur);
   document.getElementById('criPrepTitle').textContent = `🧪 ${d.label} CRI の作り方`;
   renderCriPrep();
   document.getElementById('criPrepModal').classList.add('on');
@@ -5755,8 +5760,8 @@ function renderCriPrep(changedKey) {
   let build = '';
   if (info && info.conc) {
     const stock = parseFloat(c.stock);
-    const amount = c.method === 'dil' ? parseFloat(c.amount) : info.conc * parseFloat(c.vol);
     const vol = parseFloat(c.vol);
+    const amount = info.conc * vol;
     const draw = (stock > 0 && amount > 0) ? amount / stock : null;
     const saline = (draw !== null && vol > 0) ? vol - draw : null;
     build = `<div class="cri-build"><b>作り方</b><br>${d.label} <b>${criFmt(amount, 1)} ${mass}</b>${draw !== null ? `（原液 <b>${criFmt(draw, 2)} mL</b>）` : ''}${saline !== null ? ` ＋ 生食 <b>${criFmt(saline, 2)} mL</b>` : ''} → 合計 <b>${criFmt(vol, 1)} mL</b>（${criFmt(info.conc, 2)} ${mass}/mL）${saline !== null && saline < 0 ? '<br><span style="color:var(--red)">⚠ 原液だけで総量を超えます。総量か用量係数を見直してください</span>' : ''}</div>`;
@@ -5774,9 +5779,10 @@ function renderCriPrep(changedKey) {
     </div>
     <div class="cri-row"><span class="cri-lbl">シリンジ総量</span>${inp('vol', c.vol, '50')}<span class="unit">mL</span></div>
     ${c.method === 'dil'
-      ? `<div class="cri-row"><span class="cri-lbl">入れる薬剤量</span>${inp('amount', c.amount, '')}<span class="unit">${mass}</span></div>`
+      ? `<div class="cri-row"><span class="cri-lbl">希釈倍率</span>${inp('dilution', c.dilution, '10')}<span class="unit">倍</span></div>`
       : `<div class="cri-row"><span class="cri-lbl">1 mL/h あたり</span>${inp('factor', c.factor, '1')}<span class="unit">${d.unit}</span></div>`}
     <div class="cri-row"><span class="cri-lbl">原液の濃度</span>${inp('stock', c.stock, '')}<span class="unit">${mass}/mL</span></div>
+    ${c.method === 'dil' && info && info.conc ? `<div class="cri-row"><span class="cri-lbl">できあがり濃度</span><b style="font-size:15px">${criFmt(info.conc, 3)} ${mass}/mL</b></div>` : ''}
     ${d.stockNote ? `<div style="font-size:11px;color:#075985;margin:-2px 0 6px">💧 ${esc(d.stockNote)}</div>` : ''}
     ${build}`;
   const body = document.getElementById('criPrepBody');
@@ -5793,7 +5799,7 @@ function saveCriPrep() {
   const key = _criPrepKey;
   if (!current.drugs[key]) current.drugs[key] = { use: true, dose: '', route: '' };
   current.drugs[key].use = true;
-  current.drugs[key].cri = { method: _criDraft.method === 'dil' ? 'dil' : 'rate', vol: _criDraft.vol, factor: _criDraft.factor, amount: _criDraft.amount, stock: _criDraft.stock };
+  current.drugs[key].cri = { method: _criDraft.method === 'dil' ? 'dil' : 'rate', vol: _criDraft.vol, factor: _criDraft.factor, dilution: _criDraft.dilution, stock: _criDraft.stock };
   const row = document.getElementById('drow_' + key); if (row) row.classList.add('on');
   closeCriPrep();
   refreshCriSummaries();
@@ -5805,7 +5811,7 @@ function criSummaryText(key) {
   const i = criInfo(key); if (!i || !i.conc) return '';
   const dose = stdDoseOf(key); const r = isNaN(dose) ? null : criRate(key, dose);
   const oneMl = i.conc / (i.w * i.mult);
-  return `🧪 ${i.cfg.method === 'dil' ? `${criFmt(i.cfg.amount, 1)}${i.mass}/${criFmt(i.cfg.vol, 0)}mL` : `1mL/h＝${criFmt(i.cfg.factor, 3)}${i.unit}`}（${criFmt(i.conc, 2)}${i.mass}/mL）${(i.w > 0) ? `　1mL/h＝${criFmt(oneMl, 3)}${i.unit}` : ''}${r !== null ? `　→ プラン ${criFmt(dose, 3)}${i.unit} ＝ <b>${criFmt(r, 2)} mL/h</b>` : ''}`;
+  return `🧪 ${i.cfg.method === 'dil' ? `${criFmt(i.cfg.dilution || (parseFloat(i.cfg.stock) / i.conc), 1)}倍希釈・${criFmt(i.cfg.vol, 0)}mL` : `1mL/h＝${criFmt(i.cfg.factor, 3)}${i.unit}`}（${criFmt(i.conc, 3)}${i.mass}/mL）${(i.w > 0) ? `　1mL/h＝${criFmt(oneMl, 3)}${i.unit}` : ''}${r !== null ? `　→ プラン ${criFmt(dose, 3)}${i.unit} ＝ <b>${criFmt(r, 2)} mL/h</b>` : ''}`;
 }
 function refreshCriSummaries() {
   (DRUG_GROUPS.cri || []).forEach(d => {
