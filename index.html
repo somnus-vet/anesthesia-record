@@ -390,6 +390,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-dose-unit{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap}
 .tl-opt-chip{flex:0 0 auto;min-height:38px;padding:6px 8px;font-size:12px;font-weight:700;border:1.5px solid var(--border);border-radius:var(--r-sm);background:#f8fafc;color:var(--text);cursor:pointer;font-family:inherit}
 .tl-opt-chip.empty{color:var(--muted);font-weight:400}
+.tl-opt-chip.cri-need{background:#fee2e2;border-color:#ef4444;color:#b91c1c}
 .tl-opt-line{flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;padding:4px 0 2px 6px}
 .tl-opt-btn{min-height:34px;padding:5px 9px;font-size:12.5px;font-weight:700;border:1px solid var(--blue);border-radius:8px;background:#fff;color:var(--blue);cursor:pointer;font-family:inherit}
 .tl-opt-btn.on{background:var(--blue);color:#fff}
@@ -2732,6 +2733,7 @@ function applyPreset(key) {
   populateForm();
   showToast(`プリセット適用: ${preset.label}`);
   autoSave();
+  try { promptMissingCriPrep(); } catch (_) {}
 }
 
 // ─────────────────────────────────────────────────
@@ -4817,7 +4819,7 @@ function renderDrugRow(d) {
         <span class="unit">${d.unit}</span>
         <span class="dose-calc" id="dcalc_${d.key}"></span>
         ${(d.conc && d.conc > 0 && !d.unit.includes('/hr') && !d.unit.includes('/min')) ? `<span class="ml-wrap"><span class="tl-arrow">→</span><input class="fdose fml" type="text" inputmode="decimal" id="dml_${d.key}" placeholder="mL" onfocus="tapClear(this)" oninput="onMlInput('${d.key}',this.value)" onblur="onMlBlur('${d.key}',this)" autocomplete="off"><span class="unit">mL</span></span>` : ''}
-        ${isCriKey(d.key) ? `<button type="button" class="tl-opt-chip" style="margin-left:4px" onclick="openCriPrep('${d.key}')">🧪 作成補助</button>` : ''}
+        ${isCriKey(d.key) ? `<button type="button" class="tl-opt-chip" id="cribtn_${d.key}" style="margin-left:4px" onclick="openCriPrep('${d.key}')">🧪 作成補助</button>` : ''}
       </div>
       ${isCriKey(d.key) ? `<div class="cri-sum" id="crisum_${d.key}" style="display:none" onclick="event.stopPropagation();openCriPrep('${d.key}')"></div>` : ''}
       <div class="rgrp" onclick="event.stopPropagation()" id="rgrp_${d.key}">
@@ -5846,6 +5848,7 @@ function saveCriPrep() {
   try { renderTimelineList(); } catch (_) {}
   autoSave();
   showToast('🧪 CRIの作り方を保存しました（次の症例にも引き継ぎます）');
+  try { setTimeout(() => promptMissingCriPrep(), 400); } catch (_) {}
 }
 function criSummaryText(key) {
   const i = criInfo(key); if (!i || !i.conc) return '';
@@ -5853,12 +5856,37 @@ function criSummaryText(key) {
   const oneMl = i.conc / (i.w * i.mult);
   return `🧪 ${i.cfg.method === 'dil' ? `${criFmt(i.cfg.dilution || (parseFloat(i.cfg.stock) / i.conc), 1)}倍希釈・${criFmt(i.cfg.vol, 0)}mL` : `1mL/h＝${criFmt(i.cfg.factor, 3)}${i.unit}`}（${criFmt(i.conc, 3)}${i.mass}/mL）${(i.w > 0) ? `　1mL/h＝${criFmt(oneMl, 3)}${i.unit}` : ''}${r !== null ? `　→ プラン ${criFmt(dose, 3)}${i.unit} ＝ <b>${criFmt(r, 2)} mL/h</b>` : ''}`;
 }
+// チェック済みCRI薬で作り方が未設定のものに、この病院の直近症例の作り方を補う。それでも無いキーを返す
+function ensureCriCfgs() {
+  const missing = [];
+  if (!current || !current.drugs) return missing;
+  (DRUG_GROUPS.cri || []).forEach(d => {
+    const s = current.drugs[d.key]; if (!s || !s.use) return;
+    if (!s.cri) { const lc = learnedCriFor(d.key); if (lc) s.cri = lc; }
+    if (!s.cri) missing.push(d.key);
+  });
+  return missing;
+}
+function criCfgMissing(key) { const s = current && current.drugs && current.drugs[key]; return !!(s && s.use && !s.cri); }
 function refreshCriSummaries() {
+  const missing = ensureCriCfgs();
   (DRUG_GROUPS.cri || []).forEach(d => {
     const el = document.getElementById('crisum_' + d.key); if (!el) return;
     const t = criSummaryText(d.key);
     el.innerHTML = t; el.style.display = t ? '' : 'none';
+    // 作り方が未設定のCRI薬はボタンを赤く(希釈で作るか等を麻酔PLの時点で決めておく)
+    const b = document.getElementById('cribtn_' + d.key);
+    if (b) { const need = missing.indexOf(d.key) >= 0; b.classList.toggle('cri-need', need); b.textContent = need ? '⚠ 作り方を設定' : '🧪 作成補助'; }
   });
+}
+// 作り方未設定のCRI薬があれば、その作成補助を開く(プリセット適用・チェック直後に呼ぶ)
+function promptMissingCriPrep() {
+  const missing = ensureCriCfgs();
+  if (!missing.length) return false;
+  const d = findDrugDef(missing[0]);
+  showToast(`🧪 ${d ? d.label : 'CRI'} の作り方(希釈など)を設定してください`);
+  setTimeout(() => openCriPrep(missing[0]), 50);
+  return true;
 }
 // 術中タブのCRI行: 用量欄の右に mL/h 欄を並べ、どちらから入力しても他方が連動する
 // (作り方が未設定の薬剤は🧪だけ出し、タップで作成補助を開く)
@@ -5899,6 +5927,8 @@ function toggleDrug(key, event) {
   if (current.drugs[key].use) { const _dd = findDrugDef(key); if (_dd) warnIfAllergyDrug(_dd.label); }
   if (current.drugs[key].use && isCriKey(key) && !current.drugs[key].cri) { const _lc = learnedCriFor(key); if (_lc) current.drugs[key].cri = _lc; }
   try { refreshCriSummaries(); } catch (_) {}
+  // CRI薬をチェックした時点で作り方が無ければ作成補助を開き、希釈方法を先に決めてもらう
+  if (current.drugs[key].use && isCriKey(key) && !current.drugs[key].cri) { try { promptMissingCriPrep(); } catch (_) {} }
   // チェックした時点で用量を入れておく(この病院の直近症例の用量 → プリセット → 参考範囲の下限)。入力欄で変更できる
   if (current.drugs[key].use && !String(current.drugs[key].dose || '').trim()) {
     const _df = defaultDoseFor(key);
@@ -7193,7 +7223,8 @@ function criQuickButtonsHtml(planned) {
     const n = ((current.freeNotes || []).filter(r => r && !r.deleted && r.kind === 'cri' && r.drugKey === d.key && r.time)).length;
     const last = criLastNote(d.key);
     const cur = last && String(last.to || '').trim() !== '' && parseFloat(last.to) !== 0 ? `<span class="qml" style="color:#5b2c83">${esc(last.to)} ${esc(d.unit)}</span>` : '';
-    return `<button type="button" class="qdose-btn" style="background:#efe6f7;border-color:#9b59b6;color:#5b2c83" onclick="openCriSheet('${d.key}')">${esc(d.label)}<span class="later-tag" style="background:#8e44ad">CRI</span>${cur}${n ? `<span class="qdose-badge">×${n}</span>` : ''}</button>`;
+    const need = criCfgMissing(d.key) ? '<span class="later-tag" style="background:#b91c1c">⚠作り方</span>' : '';
+    return `<button type="button" class="qdose-btn" style="background:#efe6f7;border-color:#9b59b6;color:#5b2c83" onclick="openCriSheet('${d.key}')">${esc(d.label)}<span class="later-tag" style="background:#8e44ad">CRI</span>${need}${cur}${n ? `<span class="qdose-badge">×${n}</span>` : ''}</button>`;
   };
   // 予定外のCRI: プロトコル未チェックの薬剤も「＋CRI」→薬剤選択で開始できる
   const unplanned = (DRUG_GROUPS.cri || []).filter(d => !(current.drugs && current.drugs[d.key] && current.drugs[d.key].use));
@@ -7229,7 +7260,8 @@ function openCriSheet(key) {
   document.getElementById('doseSelectTitle').textContent = `${allergyMatchForDrug(d.label) ? '⚠️アレルギー登録薬 ' : ''}${d.label} CRI`;
   const std = stdDoseOf(key);
   let html = `<div class="cri-cur">${last ? `現在 <b>${esc(curTo || '0')} ${esc(d.unit)}</b>${curRate !== null ? `　＝ <b>${criFmt(curRate, 2)} mL/h</b>` : ''}<span style="color:var(--muted);font-weight:400">（${esc(last.time)}〜）</span>` : '<span style="color:var(--muted)">まだ開始していません</span>'}</div>`;
-  html += `<div style="font-size:12px;color:var(--muted);margin:8px 0 6px">変更後の用量を選ぶ${hasCfg ? '' : '（🧪作り方を保存すると mL/h も出ます）'}</div><div class="dose-opts">`;
+  if (!hasCfg) html += `<div style="font-size:12px;font-weight:700;color:#b91c1c;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:6px 9px;margin-top:8px">⚠ 作り方(希釈)が未設定のため mL/h が出ません。下の「🧪 作り方」で設定してください</div>`;
+  html += `<div style="font-size:12px;color:var(--muted);margin:8px 0 6px">変更後の用量を選ぶ</div><div class="dose-opts">`;
   if (!isNaN(std)) {
     html += criOptBtn(key, d, +(std * 0.5).toFixed(4), '×0.5') + criOptBtn(key, d, std, 'プラン') + criOptBtn(key, d, +(std * 1.5).toFixed(4), '×1.5') + criOptBtn(key, d, +(std * 2).toFixed(4), '×2');
   } else {
