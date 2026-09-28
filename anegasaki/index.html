@@ -382,6 +382,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-unit-sm{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700}
 .tl-io{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;white-space:nowrap}
 .cri-hint{cursor:pointer;border-bottom:1.5px dotted #7fb8e0;padding-bottom:1px;-webkit-tap-highlight-color:transparent}
+.cri-cur{font-size:13px;color:#1a5478;background:#eaf4fb;border:1px solid #b9d9ee;border-radius:8px;padding:7px 9px}
 .tl-flow-lbl{flex:0 0 auto;font-size:12px;color:#0f6b5c;font-weight:700;padding:0 2px}
 .tl-text-in{flex:1;min-width:0;min-height:38px}
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
@@ -5546,7 +5547,7 @@ function renderDrugPick(q) {
   const used = new Set(Object.values(DRUG_GROUPS).flat().filter(d => current && current.drugs && current.drugs[d.key] && current.drugs[d.key].use).map(d => d.key));
   // 術中タブ上部の「⚡緊急薬」早見と同じ顔ぶれ(蘇生薬＋ダントロレン)に揃える
   const EMERG = ['adrenaline_low', 'adrenaline_arrest', 'atropine_v', 'diphenhydramine', 'dexamethasone', 'dantrolene', 'lipid20', 'glucose20'];
-  const chip = d => `<button type="button" class="qdose-btn${used.has(d.key) ? '' : ' dp-unplanned'}" onclick="closeDrugPick();quickDose('${d.key}')">${esc(d.label)}${d.sub ? `<span style="font-size:10.5px;font-weight:800;color:#b91c1c">${esc(d.sub)} ${esc(d.dog)}${esc(d.unit)}</span>` : ''}<span style="font-size:10px;opacity:.7">${d.sub ? '' : esc(d.unit)}</span>${plannedMl(d) ? `<span class="qml">${plannedMl(d)}</span>` : ''}${allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}</button>`;
+  const chip = d => `<button type="button" class="qdose-btn${used.has(d.key) ? '' : ' dp-unplanned'}" onclick="closeDrugPick();${isCriKey(d.key) ? 'openCriSheet' : 'quickDose'}('${d.key}')">${esc(d.label)}${d.sub ? `<span style="font-size:10.5px;font-weight:800;color:#b91c1c">${esc(d.sub)} ${esc(d.dog)}${esc(d.unit)}</span>` : ''}<span style="font-size:10px;opacity:.7">${d.sub ? '' : esc(d.unit)}</span>${plannedMl(d) ? `<span class="qml">${plannedMl(d)}</span>` : ''}${allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}</button>`;
   const emerg = EMERG.map(k => findDrugDef(k)).filter(d => d && (!qq || d.label.toLowerCase().indexOf(qq) >= 0));
   const emergHtml = emerg.length ? `<div style="font-size:11px;font-weight:800;color:#b91c1c;margin:4px 0 4px">🚨 緊急薬</div><div class="qdose-bar">${emerg.map(chip).join('')}</div>` : '';
   const html = emergHtml + Object.entries(DRUG_GROUPS).map(([gk, arr]) => {
@@ -6449,13 +6450,7 @@ function renderEventButtons() {
     const opts = `{drugKey:'${g[0]}',drugLabel:'${esc(g[2])}',unit:'%'}`;
     return `<button type="button" class="qdose-btn" style="background:#fae6d5;border-color:#e8a96b;color:#a3501a" onclick="addFreeNote('gas',${opts})">＋${esc(g[2])}</button>`;
   }).join('');
-  // プロトコルでチェック済みのCRI薬剤を動的ボタン化（薬剤特異の変化記録）
-  const criBtns = (DRUG_GROUPS.cri || [])
-    .filter(d => current.drugs && current.drugs[d.key] && current.drugs[d.key].use)
-    .map(d => {
-      const opts = `{drugKey:'${d.key}',drugLabel:'${esc(d.label)}',unit:'${esc(d.unit)}'}`;
-      return `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="addFreeNote('cri',${opts})">＋${esc(d.label)}(CRI)</button>`;
-    }).join('');
+  // CRI薬剤のボタンは「薬剤を記録」側(renderQuickDoseBar)に置く(CRIはイベントでなく薬剤のため)
   // 挿管が記録済みなら「挿管」ボタンの代わりに「チューブ交換」ボタンを出す
   const tubeBtn = (current.intubationTime || '').trim()
     ? `<button type="button" class="qdose-btn" style="background:#e0e8f2;border-color:#5a7fae;color:#2b4a73" onclick="addFreeNote('tubeChange')">🔄チューブ交換</button>`
@@ -6480,29 +6475,10 @@ function renderEventButtons() {
       + `<button type="button" class="btn-del" onclick="window._laOpen=null;renderEventButtons()">✕</button>`
       + `</span>`;
   };
-  // 予定外のCRI: プロトコル未チェックの薬剤も「＋CRI」→薬剤選択で開始記録できる
-  // （選ぶと薬剤名＋開始量入力の行が追加される。予定済みの薬剤は専用ボタンがあるので除外）
-  const criUnplanned = (DRUG_GROUPS.cri || [])
-    .filter(d => !(current.drugs && current.drugs[d.key] && current.drugs[d.key].use));
-  let criAddBtn = '';
-  if (criUnplanned.length) {
-    criAddBtn = window._criOpen
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;margin-right:4px;background:#e6f1fa;border:1px solid #7fb8e0;border-radius:10px;padding:2px 6px">`
-        + `<span style="font-size:12px;color:#1a5478;font-weight:700">CRI:</span>`
-        + criUnplanned.map(d => {
-            const opts = `{drugKey:'${d.key}',drugLabel:'${esc(d.label)}',unit:'${esc(d.unit)}'}`;
-            return `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="window._criOpen=false;addFreeNote('cri',${opts});renderEventButtons()">${esc(d.label)}</button>`;
-          }).join('')
-        + `<button type="button" class="btn-del" onclick="window._criOpen=false;renderEventButtons()">✕</button>`
-        + `</span>`
-      : `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="window._criOpen=true;renderEventButtons()">＋CRI</button>`;
-  } else {
-    window._criOpen = false;
-  }
   bar.innerHTML = (unset.length
     ? unset.map(laBtn).join('')
     : '<div class="evt-empty" style="margin-right:8px">全イベント記録済み</div>')
-    + viscBtn + tubeBtn + freeBtns + gasBtns + criBtns + criAddBtn;
+    + viscBtn + tubeBtn + freeBtns + gasBtns;
 }
 
 // イベント＋薬剤を時刻順に統合して1本のリストに描画
@@ -6987,7 +6963,7 @@ function addFreeNote(kind, opts) {
       if (r.kind === k && r.drugKey === entry.drugKey) { prev = r.to || ''; break; }
     }
     entry.from = prev || '0';
-    entry.to = '';
+    entry.to = (k === 'cri' && opts && opts.to !== undefined && opts.to !== null) ? String(opts.to) : '';
     if (k === 'gas') {
       // 初回(過去に記録なし)は麻酔プランの維持濃度、2回目以降はひとまず0を自動入力
       // （終了時のガスOFFがワンタップで記録できる。他の値にする時は欄タップ→入力）
@@ -7202,6 +7178,11 @@ function shiftTime(t, sec) {
 // DRUG_GROUPS から key で薬剤定義を取得
 function findDrugDef(key) {
   let found = null;
+  if (/__bolus$/.test(String(key || ''))) {
+    // CRI薬の単回投与用の仮定義(単位から /hr・/min を外す。参考範囲はCRI用なので出さない)
+    const base = findDrugDef(String(key).replace(/__bolus$/, ''));
+    return base ? Object.assign({}, base, { key: key, unit: String(base.unit || '').replace(/\/(hr|min)$/, ''), dog: '', cat: '', stock: undefined, stockNote: undefined }) : null;
+  }
   Object.values(DRUG_GROUPS).flat().forEach(d => { if (d.key === key) found = d; });
   return found;
 }
@@ -7236,14 +7217,18 @@ function computeDoseStr(d) {
 function renderQuickDoseBar() {
   const bar = document.getElementById('quickDoseBar');
   if (!bar || !current) return;
-  const used = Object.values(DRUG_GROUPS).flat()
+  const usedAll = Object.values(DRUG_GROUPS).flat()
     .filter(d => current.drugs && current.drugs[d.key] && current.drugs[d.key].use);
+  // CRI群の薬はショット(単回)ボタンにしない。CRI専用ボタン→シートで用量変更/ショットを選ぶ
+  // (ショットで記録するとSomLogでCRIラインに載らないため、入口を分ける)
+  const used = usedAll.filter(d => !isCriKey(d.key));
+  const criHtml = criQuickButtonsHtml(usedAll.filter(d => isCriKey(d.key)));
   if (!used.length) {
-    bar.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:2px 0">「A. 麻酔プロトコル」で薬剤をチェックすると、ここにワンタップ投与ボタンが出ます</div>';
+    bar.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:2px 0">「A. 麻酔プロトコル」で薬剤をチェックすると、ここにワンタップ投与ボタンが出ます</div>' + criHtml;
     return;
   }
   const log = current.drugLog || [];
-  bar.innerHTML = used.map(d => {
+  bar.innerHTML = criHtml + used.map(d => {
     const hits = log.filter(r => r.drug === d.label && r.time && !r.deleted);  // 削除墓標は回数に数えない
     // バッジは回数のみ。時刻まで載せるとボタンが横に伸びて折り返し、縦に積み上がるため。
     const badge = hits.length ? `<span class="qdose-badge">×${hits.length}</span>` : '';
@@ -7251,6 +7236,96 @@ function renderQuickDoseBar() {
     // 薬剤ボタンには薬液量(mL)を出さない(ユーザー要望: 選択済みの薬のボタンには不要。mLは用量シートで確認)
     return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${laterTag}${badge}</button>`;
   }).join('');
+}
+
+// ── CRI(持続投与)の記録: 薬剤記録バーの専用ボタン → シートで用量(またはmL/h)を選ぶ ──
+function criLastNote(key) {
+  const fn = (current && current.freeNotes) || [];
+  for (let i = fn.length - 1; i >= 0; i--) { const r = fn[i]; if (r && !r.deleted && r.kind === 'cri' && r.drugKey === key) return r; }
+  return null;
+}
+function criQuickButtonsHtml(planned) {
+  if (!current) return '';
+  const btn = d => {
+    const n = ((current.freeNotes || []).filter(r => r && !r.deleted && r.kind === 'cri' && r.drugKey === d.key && r.time)).length;
+    const last = criLastNote(d.key);
+    const cur = last && String(last.to || '').trim() !== '' && parseFloat(last.to) !== 0 ? `<span class="qml" style="color:#1a5478">${esc(last.to)}${esc(d.unit.replace('/kg', ''))}</span>` : '';
+    return `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="openCriSheet('${d.key}')">${esc(d.label)}<span class="later-tag" style="background:#1a5478">CRI</span>${cur}${n ? `<span class="qdose-badge">×${n}</span>` : ''}</button>`;
+  };
+  // 予定外のCRI: プロトコル未チェックの薬剤も「＋CRI」→薬剤選択で開始できる
+  const unplanned = (DRUG_GROUPS.cri || []).filter(d => !(current.drugs && current.drugs[d.key] && current.drugs[d.key].use));
+  let addBtn = '';
+  if (unplanned.length) {
+    addBtn = window._criOpen
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;margin-right:4px;background:#e6f1fa;border:1px solid #7fb8e0;border-radius:10px;padding:2px 6px">`
+        + `<span style="font-size:12px;color:#1a5478;font-weight:700">CRI:</span>`
+        + unplanned.map(d => `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="window._criOpen=false;renderQuickDoseBar();openCriSheet('${d.key}')">${esc(d.label)}</button>`).join('')
+        + `<button type="button" class="btn-del" onclick="window._criOpen=false;renderQuickDoseBar()">✕</button>`
+        + `</span>`
+      : `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="window._criOpen=true;renderQuickDoseBar()">＋CRI</button>`;
+  } else {
+    window._criOpen = false;
+  }
+  return planned.map(btn).join('') + addBtn;
+}
+function criOptBtn(key, d, perKg, label) {
+  const r = criRate(key, perKg);
+  return `<button type="button" class="dose-opt" onclick="commitCri(${perKg})">
+      <span class="dose-opt-label">${label}<span class="dose-opt-perkg">${perKg}${esc(d.unit)}</span></span>
+      <span class="dose-opt-val">${r === null ? '' : `<b class="dose-opt-ml">${criFmt(r, 2)} mL/h</b>`}</span>
+    </button>`;
+}
+function openCriSheet(key) {
+  if (!current) return;
+  const d = findDrugDef(key); if (!d) return;
+  doseSelectKey = key; doseSelectRoute = '';
+  const last = criLastNote(key);
+  const curTo = last ? String(last.to || '').trim() : '';
+  const info = criInfo(key), hasCfg = !!(info && info.conc && info.w > 0);
+  const curRate = hasCfg && curTo !== '' ? criRate(key, curTo) : null;
+  document.getElementById('doseSelectTitle').textContent = `${allergyMatchForDrug(d.label) ? '⚠️アレルギー登録薬 ' : ''}${d.label} CRI`;
+  const std = stdDoseOf(key);
+  let html = `<div class="cri-cur">${last ? `現在 <b>${esc(curTo || '0')} ${esc(d.unit)}</b>${curRate !== null ? `　＝ <b>${criFmt(curRate, 2)} mL/h</b>` : ''}<span style="color:var(--muted);font-weight:400">（${esc(last.time)}〜）</span>` : '<span style="color:var(--muted)">まだ開始していません</span>'}</div>`;
+  html += `<div style="font-size:12px;color:var(--muted);margin:8px 0 6px">変更後の用量を選ぶ${hasCfg ? '' : '（🧪作り方を保存すると mL/h も出ます）'}</div><div class="dose-opts">`;
+  if (!isNaN(std)) {
+    html += criOptBtn(key, d, +(std * 0.5).toFixed(4), '×0.5') + criOptBtn(key, d, std, 'プラン') + criOptBtn(key, d, +(std * 1.5).toFixed(4), '×1.5') + criOptBtn(key, d, +(std * 2).toFixed(4), '×2');
+  } else {
+    const _ref = String(current.species === 'cat' ? (d.cat || '') : (d.dog || ''));
+    const _m = _ref.match(/([\d.]+)\s*[〜~\-]\s*([\d.]+)/);
+    if (_m) { const lo = parseFloat(_m[1]), hi = parseFloat(_m[2]); html += criOptBtn(key, d, lo, '下限') + criOptBtn(key, d, +((lo + hi) / 2).toFixed(4), '中央') + criOptBtn(key, d, hi, '上限'); }
+  }
+  if (last && parseFloat(curTo) !== 0) html += `<button type="button" class="dose-opt" onclick="commitCri(0)"><span class="dose-opt-label">停止<span class="dose-opt-perkg">0${esc(d.unit)}</span></span></button>`;
+  html += `</div>`;
+  html += `<div class="cri-conv" style="border-top:none;margin-top:9px;padding-top:0"><div><input class="fdose" type="text" inputmode="decimal" id="criSheetDose" placeholder="用量" onfocus="tapClear(this)" oninput="criSheetConv('dose',this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">${esc(d.unit)}</span></div>${hasCfg ? `<span class="tl-arrow">＝</span><div><input class="fdose" type="text" inputmode="decimal" id="criSheetMl" placeholder="mL/h" onfocus="tapClear(this)" oninput="criSheetConv('ml',this.value)" onblur="this.dataset.prev=''" autocomplete="off"><span class="unit">mL/h</span></div>` : ''}<button type="button" class="qdose-btn" onclick="commitCriCustom()">この量で記録</button></div>`;
+  html += `<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button type="button" class="qdose-btn" style="font-size:12px;min-height:38px" onclick="closeDoseSelect();openCriPrep('${key}')">🧪 作り方</button><button type="button" class="qdose-btn dp-unplanned" style="font-size:12px;min-height:38px" onclick="closeDoseSelect();quickDoseBolus('${key}')">💉 単回投与(ショット)として記録</button></div>`;
+  document.getElementById('doseSelectBody').innerHTML = html;
+  document.getElementById('doseSelectModal').classList.add('on');
+}
+function criSheetConv(which, val) {
+  const key = doseSelectKey, info = criInfo(key); if (!info || !info.conc || !(info.w > 0)) return;
+  const v = parseFloat(val), de = document.getElementById('criSheetDose'), me = document.getElementById('criSheetMl');
+  if (isNaN(v)) return;
+  if (which === 'dose') { if (me) me.value = criFmt(criRate(key, v), 2); }
+  else { if (de) de.value = criFmt(v * info.conc / (info.w * info.mult), 3); }
+}
+function commitCriCustom() {
+  const de = document.getElementById('criSheetDose'); const v = parseFloat(de && de.value);
+  if (isNaN(v)) { showToast('用量を入力してください'); return; }
+  commitCri(v);
+}
+function commitCri(perKg) {
+  if (!current || !doseSelectKey) return;
+  const key = doseSelectKey, d = findDrugDef(key); if (!d) return;
+  warnIfAllergyDrug(d.label);
+  addFreeNote('cri', { drugKey: key, drugLabel: d.label, unit: d.unit, to: perKg });
+  closeDoseSelect();
+  try { renderQuickDoseBar(); } catch (_) {}
+}
+// CRI薬の単回投与(ショット): 同名の単回用定義があればそれ、無ければ /hr・/min を外した仮定義で記録
+function quickDoseBolus(key) {
+  const d = findDrugDef(key); if (!d) return;
+  const alt = Object.values(DRUG_GROUPS).flat().find(x => x.label === d.label && !isCriKey(x.key) && !/\/(hr|min)$/.test(x.unit || ''));
+  quickDose(alt ? alt.key : key + '__bolus');
 }
 
 // ワンタップ投与：用量選択パネルを開く
