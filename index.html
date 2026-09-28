@@ -362,6 +362,8 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-kind-memo{background:#fdecd2;color:#b8651b}
 .tl-kind-position{background:#ece1f3;color:#6b3a8b}
 .tl-kind-fluid{background:#d8ecf7;color:#1a5478}
+.tl-kind-cri{background:#efe6f7;color:#5b2c83}
+.tl-row.tl-cri{border-left-color:#8e44ad}
 .tl-kind-vent{background:#d4ede5;color:#0a6b53}
 .tl-kind-pcv{background:#d4ede5;color:#0a6b53}
 .tl-kind-vcv{background:#d9e4d0;color:#395a1e}
@@ -380,7 +382,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-unit-sm{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700}
 .tl-io{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;white-space:nowrap}
 .cri-hint{cursor:pointer;border-bottom:1.5px dotted #7fb8e0;padding-bottom:1px;-webkit-tap-highlight-color:transparent}
-.cri-cur{font-size:13px;color:#1a5478;background:#eaf4fb;border:1px solid #b9d9ee;border-radius:8px;padding:7px 9px}
+.cri-cur{font-size:13px;color:#5b2c83;background:#f3ecf9;border:1px solid #d4bde6;border-radius:8px;padding:7px 9px}
 .tl-flow-lbl{flex:0 0 auto;font-size:12px;color:#0f6b5c;font-weight:700;padding:0 2px}
 .tl-text-in{flex:1;min-width:0;min-height:38px}
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
@@ -6429,7 +6431,7 @@ function renderEventButtons() {
   const freeBtns =
       `<button type="button" class="qdose-btn" style="background:#fdecd2;border-color:#f0c074;color:#a35614" onclick="addFreeNote('memo')">＋メモ</button>`
     + `<button type="button" class="qdose-btn" style="background:#ece1f3;border-color:#b794cd;color:#6b3a8b" onclick="addFreeNote('position')">＋体位変換</button>`
-    + `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="addFreeNote('fluid')">＋輸液</button>`
+    + `<button type="button" class="qdose-btn" style="background:#efe6f7;border-color:#9b59b6;color:#5b2c83" onclick="addFreeNote('fluid')">＋輸液</button>`
     + `<button type="button" class="qdose-btn" style="background:#d4ede5;border-color:#5cba9d;color:#0a6b53" onclick="addFreeNote('vent')">＋呼吸管理</button>`
     + `<button type="button" class="qdose-btn" style="background:#d4f1eb;border-color:#3ec5ad;color:#0f6b5c" onclick="addFreeNote('flow')">＋O2/Air流量</button>`
     + `<button type="button" class="qdose-btn" style="background:#e7eef7;border-color:#5a7fae;color:#2b4a73" onclick="addFreeNote('gloveChange')">🧤グローブ交換</button>`;
@@ -6616,7 +6618,7 @@ function renderTimelineList() {
           kindCls = 'tl-kind-gas'; rowCls = 'tl-gas'; unitStr = esc(en.unit || '%');
         } else {
           lbl = `${esc(en.drugLabel || 'CRI')}(CRI)`;
-          kindCls = 'tl-kind-fluid'; rowCls = 'tl-fluid tl-cri'; unitStr = esc(en.unit || '');
+          kindCls = 'tl-kind-cri'; rowCls = 'tl-cri'; unitStr = esc(en.unit || '');
         }
         return `<div class="tl-row ${rowCls}">
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
@@ -7187,20 +7189,20 @@ function criQuickButtonsHtml(planned) {
   const btn = d => {
     const n = ((current.freeNotes || []).filter(r => r && !r.deleted && r.kind === 'cri' && r.drugKey === d.key && r.time)).length;
     const last = criLastNote(d.key);
-    const cur = last && String(last.to || '').trim() !== '' && parseFloat(last.to) !== 0 ? `<span class="qml" style="color:#1a5478">${esc(last.to)} ${esc(d.unit)}</span>` : '';
-    return `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="openCriSheet('${d.key}')">${esc(d.label)}<span class="later-tag" style="background:#1a5478">CRI</span>${cur}${n ? `<span class="qdose-badge">×${n}</span>` : ''}</button>`;
+    const cur = last && String(last.to || '').trim() !== '' && parseFloat(last.to) !== 0 ? `<span class="qml" style="color:#5b2c83">${esc(last.to)} ${esc(d.unit)}</span>` : '';
+    return `<button type="button" class="qdose-btn" style="background:#efe6f7;border-color:#9b59b6;color:#5b2c83" onclick="openCriSheet('${d.key}')">${esc(d.label)}<span class="later-tag" style="background:#8e44ad">CRI</span>${cur}${n ? `<span class="qdose-badge">×${n}</span>` : ''}</button>`;
   };
   // 予定外のCRI: プロトコル未チェックの薬剤も「＋CRI」→薬剤選択で開始できる
   const unplanned = (DRUG_GROUPS.cri || []).filter(d => !(current.drugs && current.drugs[d.key] && current.drugs[d.key].use));
   let addBtn = '';
   if (unplanned.length) {
     addBtn = window._criOpen
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;margin-right:4px;background:#e6f1fa;border:1px solid #7fb8e0;border-radius:10px;padding:2px 6px">`
-        + `<span style="font-size:12px;color:#1a5478;font-weight:700">CRI:</span>`
-        + unplanned.map(d => `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="window._criOpen=false;renderQuickDoseBar();openCriSheet('${d.key}')">${esc(d.label)}</button>`).join('')
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;margin-right:4px;background:#f3ecf9;border:1px solid #9b59b6;border-radius:10px;padding:2px 6px">`
+        + `<span style="font-size:12px;color:#5b2c83;font-weight:700">CRI:</span>`
+        + unplanned.map(d => `<button type="button" class="qdose-btn" style="background:#efe6f7;border-color:#9b59b6;color:#5b2c83" onclick="window._criOpen=false;renderQuickDoseBar();openCriSheet('${d.key}')">${esc(d.label)}</button>`).join('')
         + `<button type="button" class="btn-del" onclick="window._criOpen=false;renderQuickDoseBar()">✕</button>`
         + `</span>`
-      : `<button type="button" class="qdose-btn" style="background:#d8ecf7;border-color:#7fb8e0;color:#1a5478" onclick="window._criOpen=true;renderQuickDoseBar()">＋CRI</button>`;
+      : `<button type="button" class="qdose-btn" style="background:#efe6f7;border-color:#9b59b6;color:#5b2c83" onclick="window._criOpen=true;renderQuickDoseBar()">＋CRI</button>`;
   } else {
     window._criOpen = false;
   }
