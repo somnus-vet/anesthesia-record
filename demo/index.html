@@ -7172,10 +7172,15 @@ function renderQuickDoseBar() {
 }
 
 // ── CRI(持続投与)の記録: 薬剤記録バーの専用ボタン → シートで用量(またはmL/h)を選ぶ ──
+// 現在のCRI量 = その薬の記録のうち「時刻が最も遅い」行(配列順は入力順で時刻順ではない)
 function criLastNote(key) {
   const fn = (current && current.freeNotes) || [];
-  for (let i = fn.length - 1; i >= 0; i--) { const r = fn[i]; if (r && !r.deleted && r.kind === 'cri' && r.drugKey === key) return r; }
-  return null;
+  let best = null;
+  fn.forEach(r => {
+    if (!r || r.deleted || r.kind !== 'cri' || r.drugKey !== key) return;
+    if (!best || String(r.time || '') >= String(best.time || '')) best = r;
+  });
+  return best;
 }
 function criQuickButtonsHtml(planned) {
   if (!current) return '';
