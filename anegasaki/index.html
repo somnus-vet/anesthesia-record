@@ -381,6 +381,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-to-in{flex:0 0 70px;width:70px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
 .tl-unit-sm{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700}
 .tl-io{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;white-space:nowrap}
+.cri-hint{cursor:pointer;border-bottom:1.5px dotted #7fb8e0;padding-bottom:1px;-webkit-tap-highlight-color:transparent}
 .tl-flow-lbl{flex:0 0 auto;font-size:12px;color:#0f6b5c;font-weight:700;padding:0 2px}
 .tl-text-in{flex:1;min-width:0;min-height:38px}
 .tl-drug-name{flex:2;min-width:0;min-height:38px}
@@ -5768,13 +5769,14 @@ function criConvert(which, val) {
   if (which === 'dose') { const r = criRate(key, val, _criDraft); const el = document.getElementById('cri_convRate'); if (el) el.textContent = (r === null ? '—' : criFmt(r, 2)) + ' mL/h'; }
   else { const v = parseFloat(val); const el = document.getElementById('cri_convDose2'); if (el) el.textContent = (isNaN(v) ? '—' : criFmt(v * info.conc / (info.w * info.mult), 3)) + ' ' + info.unit; }
 }
-function openCriPrep(key) {
+function openCriPrep(key, convDose) {
   if (!current) return;
   const d = findDrugDef(key); if (!d) return;
   _criPrepKey = key;
   const cur = (current.drugs && current.drugs[key] && current.drugs[key].cri) || learnedCriFor(key) || { method: 'rate', vol: 50, factor: 1, dilution: 10, stock: d.stock || '' };
   _criDraft = Object.assign({ method: 'rate', vol: 50, factor: 1, dilution: 10, stock: d.stock || '' }, cur);
-  _criConv = { dose: '', rate: '' };
+  // 術中タブの行から開いた時は、その行の現在量を換算欄に入れておく(すぐ mL/h が見える)
+  _criConv = { dose: (convDose !== undefined && convDose !== null && !isNaN(parseFloat(convDose))) ? String(convDose) : '', rate: '' };
   document.getElementById('criPrepTitle').textContent = `🧪 ${d.label} CRI の作り方`;
   renderCriPrep();
   document.getElementById('criPrepModal').classList.add('on');
@@ -5860,9 +5862,12 @@ function refreshCriSummaries() {
   });
 }
 function criRateHintHtml(en) {
-  if (!en || !en.drugKey) return '';
+  if (!en || !en.drugKey || !isCriKey(en.drugKey)) return '';
   const r = criRate(en.drugKey, en.to);
-  return r === null ? '' : `<span class="tl-unit-sm" style="color:var(--navy);font-weight:800">＝${criFmt(r, 2)} mL/h</span>`;
+  const open = `onclick="event.stopPropagation();openCriPrep('${en.drugKey}', this.closest('.tl-io').querySelector('.tl-to-in').value)"`;
+  return r === null
+    ? `<span class="tl-unit-sm cri-hint" ${open} title="CRI作成補助">🧪</span>`
+    : `<span class="tl-unit-sm cri-hint" ${open} style="color:var(--navy);font-weight:800">＝${criFmt(r, 2)} mL/h 🧪</span>`;
 }
 
 function toggleDrug(key, event) {
