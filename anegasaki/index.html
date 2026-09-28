@@ -247,9 +247,9 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .cri-sum{font-size:12px;color:#1a5478;background:#eaf4fb;border:1px solid #b9d9ee;border-radius:7px;padding:5px 8px;margin-top:6px;line-height:1.5;cursor:pointer}
 .cri-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .cri-lbl{font-size:11px;color:var(--muted);font-weight:700;min-width:0}
-.cri-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.cri-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
 .cri-grid>div{display:flex;flex-wrap:wrap;align-items:center;gap:3px 4px}
-.cri-grid>div .fdose{width:64px;min-height:36px;padding:5px 7px}
+.cri-grid>div .fdose{flex:1 1 40px;width:auto;min-width:0;min-height:36px;padding:5px 7px}
 .cri-grid>div .unit{font-size:11px;color:var(--muted)}
 .cri-grid>div>span.cri-lbl{flex-basis:100%}
 .cri-build{font-size:12.5px;line-height:1.45;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:6px 9px}
