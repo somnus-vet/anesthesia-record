@@ -1849,18 +1849,18 @@ const DRUG_GROUPS = {
     { key:'cefovecin',      label:'セフォベシン',     unit:'mg/kg', dog:'8',      cat:'8',      routes:['SC'], def:'SC', conc:80 },
   ],
   cri: [
-    { key:'fentanyl_c',     label:'フェンタニル',     unit:'μg/kg/hr',  dog:'1〜5',    cat:'1〜3',    routes:['IV'], def:'IV', stock:50 },
-    { key:'remifentanil',   label:'レミフェンタニル', unit:'μg/kg/hr',  dog:'10〜40',  cat:'10〜40',  routes:['IV'], def:'IV', stock:100, vial:2, vialUnit:'mg', solve:20, stockNote:'粉末バイアル。何mLで溶解するかで原液濃度が決まる' },
-    { key:'medetomidine_c', label:'メデトミジン',     unit:'μg/kg/hr',  dog:'1〜3',    cat:'1〜3',    routes:['IV'], def:'IV', stock:1000 },
-    { key:'lidocaine_c',    label:'リドカイン',       unit:'mg/kg/hr',  dog:'1.5〜3',  cat:'—',       routes:['IV'], def:'IV', stock:20 },
-    { key:'ketamine_c',     label:'ケタミン',         unit:'mg/kg/hr',  dog:'0.1〜0.6',cat:'0.1〜0.6',routes:['IV'], def:'IV', stock:50 },
-    { key:'noradrenaline_c',label:'ノルアドレナリン', unit:'μg/kg/min', dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['IV'], def:'IV', stock:1000 },
-    { key:'adrenaline_c',   label:'アドレナリン',     unit:'μg/kg/min', dog:'0.05〜0.4',cat:'0.05〜0.4',routes:['IV'], def:'IV', dilution:'100倍希釈', dilutionNote:'原液(1mg/mL) 0.1mL を生食で 10mL にメスアップ → 10μg/mL', stock:1000 },
-    { key:'phenylephrine_c',label:'フェニレフリン',   unit:'μg/kg/min', dog:'1〜5',     cat:'1〜5',      routes:['IV'], def:'IV', stock:1000 },
-    { key:'tramadol_c',     label:'トラマドール',     unit:'mg/kg/hr',  dog:'—',        cat:'0.1〜0.3', routes:['IV'], def:'IV', stock:50 },
-    { key:'dopamine_c',     label:'ドパミン',         unit:'μg/kg/min', dog:'3〜10',    cat:'3〜10',    routes:['IV'], def:'IV', stock:20000, stockNote:'製剤により濃度が違う(例: 200mg/10mL=20mg/mL)。原液濃度を確認' },
-    { key:'dobutamine_c',   label:'ドブタミン',       unit:'μg/kg/min', dog:'2〜10',    cat:'2〜10',    routes:['IV'], def:'IV', stock:20000, stockNote:'製剤により濃度が違う(例: 100mg/5mL=20mg/mL)。原液濃度を確認' },
-    { key:'rocuronium_c',   label:'ロクロニウム',     unit:'mg/kg/hr',  dog:'0.1〜0.2', cat:'0.1〜0.2', routes:['IV'], def:'IV', stock:10 },
+    { key:'fentanyl_c',     label:'フェンタニル',     unit:'μg/kg/hr',  dog:'1〜5',    cat:'1〜3',    routes:['CRI','IV'], def:'CRI', stock:50 },
+    { key:'remifentanil',   label:'レミフェンタニル', unit:'μg/kg/hr',  dog:'10〜40',  cat:'10〜40',  routes:['CRI','IV'], def:'CRI', stock:100, vial:2, vialUnit:'mg', solve:20, stockNote:'粉末バイアル。何mLで溶解するかで原液濃度が決まる' },
+    { key:'medetomidine_c', label:'メデトミジン',     unit:'μg/kg/hr',  dog:'1〜3',    cat:'1〜3',    routes:['CRI','IV'], def:'CRI', stock:1000 },
+    { key:'lidocaine_c',    label:'リドカイン',       unit:'mg/kg/hr',  dog:'1.5〜3',  cat:'—',       routes:['CRI','IV'], def:'CRI', stock:20 },
+    { key:'ketamine_c',     label:'ケタミン',         unit:'mg/kg/hr',  dog:'0.1〜0.6',cat:'0.1〜0.6',routes:['CRI','IV'], def:'CRI', stock:50 },
+    { key:'noradrenaline_c',label:'ノルアドレナリン', unit:'μg/kg/min', dog:'0.05〜0.3',cat:'0.05〜0.3',routes:['CRI','IV'], def:'CRI', stock:1000 },
+    { key:'adrenaline_c',   label:'アドレナリン',     unit:'μg/kg/min', dog:'0.05〜0.4',cat:'0.05〜0.4',routes:['CRI','IV'], def:'CRI', dilution:'100倍希釈', dilutionNote:'原液(1mg/mL) 0.1mL を生食で 10mL にメスアップ → 10μg/mL', stock:1000 },
+    { key:'phenylephrine_c',label:'フェニレフリン',   unit:'μg/kg/min', dog:'1〜5',     cat:'1〜5',      routes:['CRI','IV'], def:'CRI', stock:1000 },
+    { key:'tramadol_c',     label:'トラマドール',     unit:'mg/kg/hr',  dog:'—',        cat:'0.1〜0.3', routes:['CRI','IV'], def:'CRI', stock:50 },
+    { key:'dopamine_c',     label:'ドパミン',         unit:'μg/kg/min', dog:'3〜10',    cat:'3〜10',    routes:['CRI','IV'], def:'CRI', stock:20000, stockNote:'製剤により濃度が違う(例: 200mg/10mL=20mg/mL)。原液濃度を確認' },
+    { key:'dobutamine_c',   label:'ドブタミン',       unit:'μg/kg/min', dog:'2〜10',    cat:'2〜10',    routes:['CRI','IV'], def:'CRI', stock:20000, stockNote:'製剤により濃度が違う(例: 100mg/5mL=20mg/mL)。原液濃度を確認' },
+    { key:'rocuronium_c',   label:'ロクロニウム',     unit:'mg/kg/hr',  dog:'0.1〜0.2', cat:'0.1〜0.2', routes:['CRI','IV'], def:'CRI', stock:10 },
   ],
   vasopressors: [
     { key:'atropine_v',     label:'アトロピン',       unit:'μg/kg', dog:'20〜40',     cat:'20〜40',     routes:['IV','IM','SC'], def:'IV', conc:500 },
@@ -7230,7 +7230,7 @@ function findDrugDef(key) {
   if (/__bolus$/.test(String(key || ''))) {
     // CRI薬の単回投与用の仮定義(単位から /hr・/min を外す。参考範囲はCRI用なので出さない)
     const base = findDrugDef(String(key).replace(/__bolus$/, ''));
-    return base ? Object.assign({}, base, { key: key, unit: String(base.unit || '').replace(/\/(hr|min)$/, ''), dog: '', cat: '', stock: undefined, stockNote: undefined }) : null;
+    return base ? Object.assign({}, base, { key: key, unit: String(base.unit || '').replace(/\/(hr|min)$/, ''), dog: '', cat: '', stock: undefined, stockNote: undefined, routes: ['IV'], def: 'IV' }) : null;
   }
   Object.values(DRUG_GROUPS).flat().forEach(d => { if (d.key === key) found = d; });
   return found;
