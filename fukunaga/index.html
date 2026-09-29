@@ -381,6 +381,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-to-in{flex:0 0 70px;width:70px;min-height:38px;text-align:center;font-weight:700;font-size:14px;padding:6px 2px}
 .tl-unit-sm{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:700}
 .tl-io{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;white-space:nowrap}
+.btn-del.arm{color:#fff!important;background:#dc2626;border-radius:6px;font-size:11px!important;font-weight:800;padding:4px 7px!important;line-height:1}
 .cri-hint{cursor:pointer;border-bottom:1.5px dotted #7fb8e0;padding-bottom:1px;-webkit-tap-highlight-color:transparent}
 .cri-cur{font-size:13px;color:#5b2c83;background:#f3ecf9;border:1px solid #d4bde6;border-radius:8px;padding:7px 9px}
 .tl-flow-lbl{flex:0 0 auto;font-size:12px;color:#0f6b5c;font-weight:700;padding:0 2px}
@@ -6683,14 +6684,14 @@ function renderTimelineList() {
             <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(perKg)}" placeholder="量" onfocus="tapClear(this)" oninput="editDrugLogDose(${i},this.value)" onblur="tapClearRestoreDrug(this,${i})" autocomplete="off">
             <button type="button" class="tl-opt-chip${unit ? '' : ' empty'}" onclick="toggleDrugOpt(${i},'unit')">${esc(unit) || '単位'}</button>
             <button type="button" class="tl-opt-chip${d.route ? '' : ' empty'}" onclick="toggleDrugOpt(${i},'route')">${esc(d.route) || '経路'}</button>
-            <button class="btn-del" onclick="removeDrugLog(${i})">✕</button>${opt}</div>`;
+            <button class="btn-del" onclick="if(!delArmed(this))return;removeDrugLog(${i})">✕</button>${opt}</div>`;
         }).join('') + `</div>`;
       }
       return `<div class="tl-row tl-event"${mixSub ? ' style="flex-wrap:wrap"' : ''}>
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
         <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
-        <button class="btn-del" onclick="clearEvent('${en.key}')">✕</button>
+        <button class="btn-del" onclick="if(!delArmed(this))return;clearEvent('${en.key}')">✕</button>
         ${mixSub}
       </div>`;
     }
@@ -6724,7 +6725,7 @@ function renderTimelineList() {
           ${modeBtns}
           ${vdetail}
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // 値変化型（輸液 / CRI / 維持薬gas）: [from] → [to入力] [unit]
@@ -6744,7 +6745,7 @@ function renderTimelineList() {
           <span class="tl-kind ${kindCls}">${lbl}</span>
           <span class="tl-io"><span class="tl-from">${esc(en.from || '0')}</span><span class="tl-arrow">→</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.to || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'to',this.value)${k === 'cri' ? `;criRowDose(this,${en.idx})` : ''}" onblur="tapClearRestore(this,${en.idx},'to')" onchange="onFreeNoteFinalize()" autocomplete="off"><span class="tl-unit-sm">${unitStr}</span>${k === 'cri' ? criRateHintHtml(en) : ''}</span>
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // 手技の開始/終了（術式ボックスごと）。手術種別の最初の開始/最後の終了には「手術開始/終了」タグ
@@ -6754,7 +6755,7 @@ function renderTimelineList() {
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-proc">${esc(en.name)} ${en.phase === 'end' ? '終了' : '開始'}</span>${_tag ? `<span class="tl-surg-tag">${_tag}</span>` : ''}
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // 自発呼吸: マーカーのみ（値なし）
@@ -6763,7 +6764,7 @@ function renderTimelineList() {
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-spont">自発呼吸</span>
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // 人工呼吸OFF: マーカーのみ（値なし、複数回記録可）
@@ -6772,7 +6773,7 @@ function renderTimelineList() {
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-ventoff">人工呼吸OFF</span>
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // グローブ交換: 時刻マーカーのみ（複数回記録可。SomLogのグローブ交換タイマー起点）
@@ -6781,7 +6782,7 @@ function renderTimelineList() {
           <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
           <span class="tl-kind tl-kind-glove">グローブ交換</span>
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // O2/Air 流量: スナップショット型（その時点の流量を記録、複数回登録可）
@@ -6791,7 +6792,7 @@ function renderTimelineList() {
           <span class="tl-kind tl-kind-flow">O2/Air</span>
           <span class="tl-io"><span class="tl-flow-lbl">O2</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.o2 || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'o2',this.value)" onblur="tapClearRestore(this,${en.idx},'o2')" autocomplete="off"><span class="tl-flow-lbl">Air</span><input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(en.air || '')}" placeholder="0" onfocus="tapClear(this)" oninput="editFreeNote(${en.idx},'air',this.value)" onblur="tapClearRestore(this,${en.idx},'air')" autocomplete="off"><span class="tl-unit-sm">L/min</span></span>
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // チューブ交換: 交換後サイズ（mm / Fr）を記録、複数回登録可
@@ -6802,7 +6803,7 @@ function renderTimelineList() {
           <input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(en.size||'')}" placeholder="-" oninput="editFreeNote(${en.idx},'size',this.value)" autocomplete="off"><span class="tl-unit">mm</span>
           <input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(en.sizeFr||'')}" placeholder="-" oninput="editFreeNote(${en.idx},'sizeFr',this.value)" autocomplete="off"><span class="tl-unit">Fr</span>
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // 体位変換: 「元の体勢」「変換後の体勢」を毎回それぞれ右横/左横/仰/伏 から選ぶ
@@ -6824,7 +6825,7 @@ function renderTimelineList() {
           <span style="display:inline-flex;flex-wrap:wrap;align-items:center"><span style="color:#6b3a8b;font-size:12px;margin-right:3px">後</span>${mkBtns('to', en.to)}</span>
           <span style="font-weight:700;color:#6b3a8b;margin-left:8px;white-space:nowrap">${disp}</span>
           <span class="tl-spacer"></span>
-          <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+          <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
         </div>`;
       }
       // メモ: 自由記載
@@ -6832,7 +6833,7 @@ function renderTimelineList() {
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editFreeNote(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
         <span class="tl-kind tl-kind-memo">メモ</span>
         <input class="fin tl-text-in" type="text" value="${esc(en.text)}" placeholder="メモ内容…" oninput="editFreeNote(${en.idx},'text',this.value)" autocomplete="off">
-        <button class="btn-del" onclick="removeFreeNote(${en.idx})">✕</button>
+        <button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${en.idx})">✕</button>
       </div>`;
     }
     const _dd = drugDefForLog(en);
@@ -6855,7 +6856,7 @@ function renderTimelineList() {
       <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" title="経路を変更" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`
             : `<button type="button" class="tl-opt-chip${_unit ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit) || '単位'}</button>
       <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`}
-      <button class="btn-del" onclick="removeDrugLog(${en.idx})">✕</button>
+      <button class="btn-del" onclick="if(!delArmed(this))return;removeDrugLog(${en.idx})">✕</button>
       ${_optLine}
     </div>`;
   }).join('');
@@ -6943,10 +6944,20 @@ function drugRowNow(idx) {
   pushCurrentToSheets();
 }
 
+// 記録欄の✕は2回タップで削除(1回目は「削除?」に変わり2.5秒で戻る)。指が当たっただけで消えないように
+function delArmed(btn) {
+  if (!btn) return true;
+  if (btn.dataset.arm === '1') { clearTimeout(btn._armT); btn.dataset.arm = ''; btn.classList.remove('arm'); btn.textContent = '✕'; return true; }
+  document.querySelectorAll('.btn-del.arm').forEach(b => { clearTimeout(b._armT); b.dataset.arm = ''; b.classList.remove('arm'); b.textContent = '✕'; });
+  btn.dataset.arm = '1'; btn.classList.add('arm'); btn.textContent = '削除?';
+  btn._armT = setTimeout(() => { btn.dataset.arm = ''; btn.classList.remove('arm'); btn.textContent = '✕'; }, 2500);
+  return false;
+}
 // 薬剤ログ1件を削除（freeNotes同様、同期unionで復活しないよう墓標方式）
 function removeDrugLog(idx) {
   if (!current || !Array.isArray(current.drugLog) || !current.drugLog[idx]) return;
   current.drugLog[idx].deleted = true;
+  touchEv(current.drugLog[idx]);  // いつ消したか追えるように
   renderTimeline();
   autoSave();
   pushCurrentToSheets();
@@ -7134,6 +7145,7 @@ function tapClearRestore(el, idx, field) {
 function removeFreeNote(idx) {
   if (!current || !Array.isArray(current.freeNotes) || !current.freeNotes[idx]) return;
   current.freeNotes[idx].deleted = true;
+  touchEv(current.freeNotes[idx]);
   recomputeFreeNotesFroms();
   try { recomputeSurgTimes(); } catch (_) {}
   renderTimeline();
