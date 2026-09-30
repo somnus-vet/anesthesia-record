@@ -5741,7 +5741,7 @@ function karteText(c) {
   // ---------- 見出し ----------
   L.push(`【麻酔記録】${S(c.date).replace(/-/g, '/')}${S(c.caseNo) ? '　No.' + S(c.caseNo) : ''}`);
   L.push(J([S(c.patientName), SPL[S(c.species)] || S(c.species), S(c.breed), SEXL[S(c.sex)] || S(c.sex), w ? `${w}kg` : '',
-    (typeof formatAgeYM === 'function' ? formatAgeYM(c.ageY, c.ageM) : ''), S(c.asaps) ? `ASA ${S(c.asaps)}${c.asapsE ? 'E' : ''}` : '', S(c.bcs) ? `BCS ${S(c.bcs)}/9` : ''], '　'));
+    (typeof formatAgeYM === 'function' ? String(formatAgeYM(c.ageY, c.ageM) || '').replace(/(\d+)Y/, '$1歳').replace(/(\d+)M/, '$1ヶ月') : ''), S(c.asaps) ? `ASA ${S(c.asaps)}${c.asapsE ? 'E' : ''}` : '', S(c.bcs) ? `BCS ${S(c.bcs)}/9` : ''], '　'));
   const l3 = J([S(c.procedure) ? `術式: ${S(c.procedure)}` : '', S(c.diagnosis) ? `診断: ${S(c.diagnosis)}` : '']); if (l3) L.push(l3);
   const staff = J([S(c.surgeon) ? `術者 ${S(c.surgeon)}` : '', S(c.assistant) ? `助手 ${S(c.assistant)}` : '', S(c.anesthMonitor) ? `麻酔 ${S(c.anesthMonitor)}` : '', S(c.anesthSupervisor) ? `指導 ${S(c.anesthSupervisor)}` : '']);
   if (staff) L.push(staff);
