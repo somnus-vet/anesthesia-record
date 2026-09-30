@@ -1346,6 +1346,7 @@ body.board-mode .screen{inset:32px 0 0 0!important}
 
     <!-- ========== TAB 4: 合併症/回復/申し送り ========== -->
     <div class="panel" id="panel4">
+      <button class="btn-add-row" style="margin:0 0 10px;border-style:solid;border-color:var(--navy);color:var(--navy);font-weight:700;background:#fff" onclick="openKarteText()">📋 カルテ貼り付け用テキスト（電子カルテへコピー）</button>
 
       <div class="card acc" id="acc_c9">
         <div class="c-hdr" onclick="toggleAcc('c9')"><span><span class="acc-arrow">▶</span>経過メモ・インシデント<span class="acc-badge" id="badge_c9"></span></span><span class="c-hdr-en">Phase notes</span></div>
@@ -1630,6 +1631,22 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     <div class="modal-hdr" style="background:#1a5478"><span id="criPrepTitle">🧪 CRI 作成補助</span><button class="modal-close" onclick="closeCriPrep()">×</button></div>
     <div class="modal-body" style="padding-top:8px" id="criPrepBody"></div>
     <div class="modal-footer"><button class="btn-save" style="width:100%;background:#1a5478" onclick="saveCriPrep()">この作り方で保存</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="karteModal" onclick="if(event.target===this)closeKarteText()">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-hdr">
+      <span>📋 カルテ貼り付け用テキスト</span>
+      <button class="modal-close" onclick="closeKarteText()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">電子カルテ(Ahmics等)の麻酔記録にそのまま貼り付けられる純テキストです。Windowsでこのページを開いてコピーすると、Macを介さず貼り付けできます。</div>
+      <textarea id="karteTextArea" class="ftxt" readonly style="width:100%;min-height:46vh;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.45;white-space:pre;overflow:auto"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button type="button" class="qdose-btn" style="flex:1;justify-content:center;background:var(--navy);border-color:var(--navy);color:#fff" onclick="copyKarteText()">📋 全文をコピー</button>
+        <button type="button" class="qdose-btn" style="flex:0 0 auto" onclick="closeKarteText()">閉じる</button>
+      </div>
+    </div>
   </div>
 </div>
 <div class="modal-overlay" id="consultModal" onclick="if(event.target===this)closeConsult()">
@@ -5692,6 +5709,166 @@ function premedRecord(kind, id) {
   if (premedPending().length) renderPremedSheet(); else closePremedSheet();
 }
 function premedTimeOnly() { closePremedSheet(); if (!(current.anesthStart || '').trim()) recordEvent('anesthStart'); else showToast('前投薬の時刻は記録済みです'); }
+
+
+// ── カルテ貼り付け用テキスト(電子カルテ Ahmics 等へ)。SomLog の karte_text.py と同じ構成。
+//    SomLogはMac・電子カルテはWindowsのことが多いので、Web版(このアプリ)をWindowsで開いて
+//    ここからコピー → そのまま貼り付けできるようにする。
+function karteText(c) {
+  c = c || current; if (!c) return '';
+  const S = v => (v === null || v === undefined) ? '' : String(v).trim();
+  const hhmm = t => { const m = String(t || '').match(/(\d{1,2}):(\d{2})/); return m ? `${m[1].padStart(2, '0')}:${m[2]}` : ''; };
+  const J = (a, sep) => a.filter(Boolean).join(sep === undefined ? '／' : sep);
+  const num = v => { const f = parseFloat(v); return isNaN(f) ? null : f; };
+  const w = num(c.weight) || 0;
+  const L = [];
+  const SEXL = { M: '♂', MC: '♂去勢', F: '♀', FS: '♀避妊' };
+  const SPL = { dog: '犬', cat: '猫', rabbit: 'うさぎ', other: '他' };
+  // ---------- 見出し ----------
+  L.push(`【麻酔記録】${S(c.date).replace(/-/g, '/')}${S(c.caseNo) ? '　No.' + S(c.caseNo) : ''}`);
+  L.push(J([S(c.patientName), SPL[S(c.species)] || S(c.species), S(c.breed), SEXL[S(c.sex)] || S(c.sex), w ? `${w}kg` : '',
+    (typeof formatAgeYM === 'function' ? formatAgeYM(c.ageY, c.ageM) : ''), S(c.asaps) ? `ASA ${S(c.asaps)}${c.asapsE ? 'E' : ''}` : '', S(c.bcs) ? `BCS ${S(c.bcs)}/9` : ''], '　'));
+  const l3 = J([S(c.procedure) ? `術式: ${S(c.procedure)}` : '', S(c.diagnosis) ? `診断: ${S(c.diagnosis)}` : '']); if (l3) L.push(l3);
+  const staff = J([S(c.surgeon) ? `術者 ${S(c.surgeon)}` : '', S(c.assistant) ? `助手 ${S(c.assistant)}` : '', S(c.anesthMonitor) ? `麻酔 ${S(c.anesthMonitor)}` : '', S(c.anesthSupervisor) ? `指導 ${S(c.anesthSupervisor)}` : '']);
+  if (staff) L.push(staff);
+  const chips = [];
+  if (c.seizures) chips.push('発作歴あり');
+  try { if (typeof algState === 'function' && algState(c) === 'yes') chips.push('アレルギー: ' + (allergySummaryText(c) || 'あり')); } catch (_) {}
+  if (S(c.preMeds)) chips.push(`事前投与中: ${S(c.preMeds)}`);
+  if (chips.length) L.push('※ ' + J(chips));
+  // ---------- 経過(節目時刻) ----------
+  const tl = [];
+  INTRAOP_EVENTS.forEach(e => { const v = hhmm(c[e.key]); if (v) tl.push(`${e.label === '前投薬' ? '前投与' : e.label} ${v}`); });
+  const durs = [];
+  if (S(c.anesthDur)) durs.push(`麻酔時間 ${S(c.anesthDur)}分`);
+  if (S(c.surgDur)) durs.push(`手術時間 ${S(c.surgDur)}分`);
+  let segTxt = ''; try { segTxt = (typeof procSegText === 'function') ? S(procSegText(c)) : ''; } catch (_) {}
+  if (tl.length || durs.length) {
+    L.push(''); L.push('[経過] ' + J(tl));
+    if (durs.length) L.push(' ' + J(durs, '・'));
+    if (segTxt) L.push(' ' + segTxt);
+  }
+  // ---------- 麻酔プラン ----------
+  const gn = { premeds: '前投薬', induction: '導入', addon: '追加投与', antibiotics: '抗菌薬', cri: 'CRI', vasopressors: '昇圧/循環', antagonists: '拮抗薬', postAnalg: '術後鎮痛', other: 'その他' };
+  const drugs = c.drugs || {};
+  const pl = [];
+  Object.entries(DRUG_GROUPS).forEach(([gk, arr]) => {
+    const items = [];
+    (arr || []).forEach(d => {
+      const dd = drugs[d.key]; if (!dd || !dd.use) return;
+      const dose = S(dd.dose), route = S(dd.route);
+      const isRate = /\/(hr|min)$/.test(d.unit || '');
+      let t = d.label;
+      if (dose) {
+        t += ` ${dose}${d.unit}`;
+        const dn = num(dose);
+        if (dn !== null && w && !isRate && d.conc) t += ` (${(dn * w / d.conc).toFixed(2)}mL)`;
+        if (isRate && typeof criRate === 'function') { try { const r = criRate(d.key, dn); if (r !== null && r !== undefined) t += ` ＝${criFmt(r, 2)}mL/h`; } catch (_) {} }
+      }
+      if (route) t += ` ${route}`;
+      if (dd.mix && typeof MIX_LABELS !== 'undefined' && MIX_LABELS[dd.mix]) t += `（${MIX_LABELS[dd.mix]}）`;
+      items.push(t);
+    });
+    if (items.length) { pl.push(` ■${gn[gk] || gk}`); items.forEach(x => pl.push(`  ${x}`)); }
+  });
+  const maint = [c.maintIsoflurane ? 'イソフルラン' : '', c.maintSevoflurane ? 'セボフルラン' : '', c.maintPropofol ? 'プロポフォール' : ''].filter(Boolean);
+  if (maint.length) pl.push(` ■維持: ${maint.join('/')}${S(c.maintConc) ? ' ' + S(c.maintConc) + '%' : ''}${S(c.maintO2) ? '　O2 ' + S(c.maintO2) + 'L/min' : ''}${S(c.maintAir) ? '　Air ' + S(c.maintAir) + 'L/min' : ''}`);
+  if (S(c.fluidType) || S(c.fluidRate)) pl.push(` ■輸液: ${J([S(c.fluidType), S(c.fluidRate) ? S(c.fluidRate) + 'mL/kg/hr' : ''], ' ')}`);
+  if (pl.length) { L.push(''); L.push('[麻酔プラン]'); pl.forEach(x => L.push(x)); }
+  // ---------- 使用薬剤(実投与。薬剤+用量+経路ごとに回数集約) ----------
+  const used = new Map();
+  (c.drugLog || []).forEach(r => {
+    if (!r || r.deleted || !S(r.drug)) return;
+    const dose = S(r.dose).replace(/\s*=\s*[\d.]+\s*[^\s(]*/, '').replace(/\s+/g, ' ').trim();
+    const key = `${S(r.drug)}|${dose}|${S(r.route)}`;
+    const ent = used.get(key) || { disp: J([S(r.drug), dose, S(r.route)], ' '), n: 0, mix: new Set() };
+    ent.n++; if (r.mix) ent.mix.add(Number(r.mix)); used.set(key, ent);
+  });
+  if (used.size) {
+    L.push(''); L.push('[使用薬剤]');
+    used.forEach(e => { const tag = e.mix.size ? '（' + Array.from(e.mix).sort().map(m => '混注' + m).join('・') + '）' : ''; L.push(` ${e.disp}${tag}${e.n > 1 ? ' ×' + e.n : ''}`); });
+  }
+  // ---------- 局所麻酔 ----------
+  const la = [];
+  [['localMixture', 'localBlocks', ''], ['localMixture2', 'localBlocks2', '溶液2 ']].forEach(([mk, bk, tag]) => {
+    const mix = (c[mk] && typeof c[mk] === 'object') ? c[mk] : {}; const blocks = (c[bk] && typeof c[bk] === 'object') ? c[bk] : {};
+    const tv = num(mix.totalVolume) || 0;
+    const calc = (mix.drugs || []).filter(d => d && S(d.name)).map(d => { const cp = num(d.conc) || 0, sm = num(d.stockMl) || 0, tmg = cp * 10 * sm; return { n: S(d.name), cp, sm, tmg, mp: tv > 0 ? tmg / tv : 0 }; });
+    const usedB = Object.entries(blocks).filter(([k, v]) => v && typeof v === 'object' && v.use);
+    if (!calc.length && !usedB.length) return;
+    if (calc.length || tv) la.push(` ${tag}薬液: ` + J(calc.map(x => `${x.n} ${x.cp}%×${x.sm}mL`), ' + ') + (tv ? `　計${tv}mL` : '') + (calc.length && tv ? '（' + J(calc.map(x => `${x.n} ${x.mp.toFixed(2)}mg/mL`), '、') + '）' : ''));
+    let usedMl = 0;
+    usedB.forEach(([k, d]) => {
+      const v = num(d.volume) || 0, sn = num(d.sites) || 0, tml = v * sn; usedMl += tml;
+      const def = LOCAL_BLOCKS.find(b => b.key === k);
+      la.push(` ${tag}${def ? def.label : k}${S(d.side) ? '(' + S(d.side) + ')' : ''}: ${v}mL×${sn}=${tml.toFixed(2)}mL${S(d.note) ? ' ' + S(d.note) : ''}`);
+    });
+    if (usedB.length && calc.length) la.push(` ${tag}累計 ${usedMl.toFixed(2)}mL: ` + J(calc.map(x => { const mg = usedMl * x.mp; return w ? `${x.n} ${(mg / w).toFixed(2)}mg/kg` : `${x.n} ${mg.toFixed(1)}mg`; }), '、'));
+  });
+  [c.localCustom1, c.localCustom2].forEach(v => { if (S(v)) la.push(` その他: ${S(v)}`); });
+  if (la.length) { L.push(''); L.push('[局所麻酔]'); la.forEach(x => L.push(x)); }
+  // ---------- 縫合糸(請求用) ----------
+  const fn = (c.freeNotes || []).filter(n => n && typeof n === 'object' && !n.deleted);
+  const sut = new Map(); const sutTxt = [];
+  fn.forEach(n => { if (S(n.kind) !== 'suture') return; const k = S(n.sutureKey); if (k) sut.set(k, (sut.get(k) || 0) + (parseInt(n.count, 10) || 1)); else if (S(n.text)) sutTxt.push(S(n.text)); });
+  if (sut.size || sutTxt.length) {
+    const lab = k => { const d = (typeof SUTURE_TYPES !== 'undefined') ? SUTURE_TYPES.find(x => x.key === k) : null; return d ? d.label : k; };
+    L.push(''); L.push('[縫合糸] ' + J(Array.from(sut.entries()).map(([k, n]) => `${lab(k)} ${n}本`).concat(sutTxt), '、'));
+  }
+  // ---------- イベント(時刻順) ----------
+  const ev = [];
+  const pe = c.procEvents || {};
+  Object.keys(pe).forEach(k => { if (!pe[k] || /^pe_mix[123]$/.test(k)) return; const meta = (c.procEventsMeta || {})[k]; if (meta && meta.deleted) return; ev.push([hhmm(pe[k]), evtLabel(k)]); });
+  fn.forEach(n => {
+    const k = S(n.kind); let d = '';
+    if (k === 'memo') d = S(n.text);
+    else if (k === 'position') d = '体位変換 ' + (S(n.text) || J([S(n.from), S(n.to)], '→'));
+    else if (k === 'fluid') d = `輸液 ${S(n.from) || '0'}→${S(n.to)} mL/hr`;
+    else if (k === 'vent') d = `換気 ${S(n.mode)}${S(n.to) ? ' ' + S(n.to) : ''}${S(n.rr) ? ' RR' + S(n.rr) : ''}`;
+    else if (k === 'spont') d = '自発呼吸';
+    else if (k === 'ventOff') d = '人工呼吸OFF';
+    else if (k === 'cri') d = `${S(n.drugLabel) || 'CRI'} CRI ${S(n.from) || '0'}→${S(n.to)} ${S(n.unit)}`;
+    else if (k === 'gas') d = `${S(n.drugLabel) || '維持薬'} ${S(n.from) || '0'}→${S(n.to)}%`;
+    else if (k === 'flow') d = `O2 ${S(n.o2) || '0'} / Air ${S(n.air) || '0'} L/min`;
+    else if (k === 'tubeChange') d = 'チューブ交換';
+    else if (k === 'gloveChange') d = 'グローブ交換';
+    else if (k === 'proc') d = `${S(n.name)} ${n.phase === 'end' ? '終了' : '開始'}`;
+    else if (k === 'suture') return;
+    else d = S(n.text);
+    if (d) ev.push([hhmm(n.time), d]);
+  });
+  ev.sort((a, b) => a[0].localeCompare(b[0]));
+  if (ev.length) { L.push(''); L.push('[イベント]'); ev.forEach(([t, d]) => L.push(` ${t} ${d}`)); }
+  // ---------- 合併症 ----------
+  const compVal = { compHypothermia: ['compHypothermiaDeg', '℃'], compBleed: ['compBleedMax', 'mL'], compTachy: ['compTachyMax', 'bpm'], compBrady: ['compBradyMin', 'bpm'], compHtn: ['compHtnMax', 'mmHg'], compHypotension: ['compHypotensionMin', 'mmHg'], compArrhythmia: ['compArrhythmiaType', ''], compHypoxemia: ['compHypoxemiaMin', '%'], compHypocapnia: ['compHypocapniaMin', 'mmHg'], compHypercapnia: ['compHypercapniaMax', 'mmHg'] };
+  const comps = [];
+  (typeof PP_COMP_LABELS !== 'undefined' ? PP_COMP_LABELS : []).forEach(([k, lbl]) => { if (!c[k]) return; const cv = compVal[k]; comps.push(lbl + (cv && S(c[cv[0]]) ? `(${S(c[cv[0]])}${cv[1]})` : '')); });
+  L.push(''); L.push('[合併症] ' + (comps.length ? J(comps) : '特記なし'));
+  if (S(c.compDetails)) L.push(' ' + S(c.compDetails));
+  // ---------- 回復 ----------
+  const rec = J([S(c.recTemp) ? `T ${S(c.recTemp)}℃` : '', S(c.recHr) ? `HR ${S(c.recHr)}` : '', S(c.recRr) ? `RR ${S(c.recRr)}` : '', S(c.painScore) ? `疼痛 ${S(c.painScore)}${S(c.painMethod) ? '(' + S(c.painMethod) + ')' : ''}` : ''], '　');
+  if (rec || S(c.postopPain) || S(c.recNotes)) { L.push(''); L.push('[回復]' + (rec ? ' ' + rec : '')); if (S(c.postopPain)) L.push(` 術後鎮痛: ${S(c.postopPain)}`); if (S(c.recNotes)) L.push(` ${S(c.recNotes)}`); }
+  // ---------- 経過メモ ----------
+  const ph = [['phaseNoteInd', '導入'], ['phaseNoteMaint', '維持'], ['phaseNoteWake', '覚醒'], ['phaseNotePost', '術後']].filter(([k]) => S(c[k]));
+  if (ph.length) { L.push(''); L.push('[経過メモ]'); ph.forEach(([k, l]) => L.push(` ${l}: ${S(c[k])}`)); }
+  if (S(c.notes)) { L.push(''); L.push(`[備考] ${S(c.notes)}`); }
+  L.push(''); L.push(`(SomLogApp ${nowIsoStr().slice(0, 16)} 出力)`);
+  return L.join('\n');
+}
+function openKarteText() {
+  if (!current) return;
+  try { collectForm(); } catch (_) {}
+  const ta = document.getElementById('karteTextArea'); ta.value = karteText(current);
+  document.getElementById('karteModal').classList.add('on');
+}
+function closeKarteText() { document.getElementById('karteModal').classList.remove('on'); }
+async function copyKarteText() {
+  const ta = document.getElementById('karteTextArea'); const t = ta.value;
+  let ok = false;
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(t); ok = true; } } catch (_) {}
+  if (!ok) { try { ta.focus(); ta.select(); ok = document.execCommand('copy'); } catch (_) {} }
+  showToast(ok ? '📋 コピーしました。電子カルテに貼り付けてください' : '自動コピーできませんでした。テキストを選択してコピーしてください');
+}
 
 // ── ソムナスに相談(病院ビルドのみ): 誰が押したかだけ必須、メモ任意。症例に保存→Sheets同期→進捗ボードに出る ──
 let _consultWho = '';
