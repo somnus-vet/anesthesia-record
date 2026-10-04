@@ -7863,7 +7863,7 @@ function _indDrugs(focusKey) {
   if (f && !used.some(d => d.key === f.key)) used.push(f);
   return used.length ? used : all;
 }
-function _indRowsOf(d) { return (current.drugLog || []).filter(r => r && !r.deleted && r.drug === d.label && r.method); }
+function _indRowsOf(d) { return (current.drugLog || []).filter(r => r && !r.deleted && r.drug === d.label && !/CRI/i.test(String(r.route || ''))); }  // 旧記録(method無し)も累計に含める
 function _perKgOfRow(r) { const m = String(r.dose || '').match(/^\s*([\d.]+)/); return m ? parseFloat(m[1]) : NaN; }
 function _fmtSec(s) { s = Math.max(0, Math.round(+s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 function _secBetween(t1, t2) { const a = timeToSec(t1), b = timeToSec(t2); if (a === null || b === null) return null; return ((b - a) % 86400 + 86400) % 86400; }
@@ -7908,7 +7908,7 @@ function renderInductionSheet(focusKey) {
     html += `<div class="ind-drug">
       <div class="ind-hd"><b>${esc(d.label)}${allergyMatchForDrug(d.label) ? ' ⚠️ｱﾚﾙｷﾞｰ' : ''}</b><span class="ind-plan">${!isNaN(std) ? `プラン ${std}${esc(unit)}${w ? ` = ${(std * w).toFixed(1)}${esc(dispUnit)}` : ''}${!isNaN(planMl) ? ` / ${planMl.toFixed(2)} mL` : ''}` : 'プラン用量なし'}</span></div>
       <div class="ind-sec"><span class="ind-lb">${afterIntub ? '追加' : 'to effect'}</span>${steps.map(s => `<button type="button" class="qdose-btn ind-step" onclick="indAddEffect('${d.key}',${s})">${s}<small>${esc(unit)}</small></button>`).join('')}</div>
-      <div class="ind-cum">累計 <b>${+cum.toFixed(3)}${esc(unit)}</b>${w ? ` = ${(cum * w).toFixed(1)}${esc(dispUnit)}${d.conc ? ` / ${(cum * w / d.conc).toFixed(2)} mL` : ''}` : ''}${!isNaN(std) && std > 0 ? `（プランの ${Math.round(cum / std * 100)}%）` : ''}${rows.length > 1 ? ` ・ ${rows.length}回 / ${_fmtSec(_secBetween(rows[0].time, rows[rows.length - 1].time) || 0)}` : ''}</div>`;
+      <div class="ind-cum">累計 <b>${+cum.toFixed(2)}${esc(unit)}</b>${w ? ` = ${(cum * w).toFixed(1)}${esc(dispUnit)}${d.conc ? ` / ${(cum * w / d.conc).toFixed(2)} mL` : ''}` : ''}${!isNaN(std) && std > 0 ? `（プランの ${Math.round(cum / std * 100)}%）` : ''}${rows.length > 1 ? ` ・ ${rows.length}回 / ${_fmtSec(_secBetween(rows[0].time, rows[rows.length - 1].time) || 0)}` : ''}</div>`;
     if (running) {
       html += `<div class="ind-run">⏱ slow bolus 投与中 <b data-slowstart="${esc(running.time)}">${_fmtSec(_secBetween(running.time, nowTime()) || 0)}</b>
         <button type="button" class="qdose-btn on" onclick="indFinishSlow('${esc(running.uid)}','manual')">投与完了</button></div>`;
@@ -7954,7 +7954,7 @@ function indAddBolus(key, method) {
   const drawn = parseFloat((document.getElementById('indDrawn_' + key) || {}).value || '');
   if (isNaN(drawn) || drawn <= 0) { showToast('引いた量(mL)を入力してください'); return; }
   if (!w || !d.conc) { showToast('体重と薬液濃度が必要です'); return; }
-  const perKg = +(drawn * d.conc / w).toFixed(3);
+  const perKg = +(drawn * d.conc / w).toFixed(2);
   const extra = { method, drawnMl: drawn, note: '' };
   if (method === 'slow') extra.durSec = null;
   const row = _indPush(d, perKg, extra);
@@ -7986,7 +7986,7 @@ function indSetRemain(key, uid, forced) {
   const w = parseFloat(current.weight) || 0;
   const actualMl = (+r.drawnMl) - remain;
   r.remainMl = remain;
-  if (w && d.conc) r.dose = formatDose(d, +(actualMl * d.conc / w).toFixed(3));
+  if (w && d.conc) r.dose = formatDose(d, +(actualMl * d.conc / w).toFixed(2));
   if (r.method === 'slow' && r.durSec == null) { r.durSec = _secBetween(r.time, nowTime()) || 0; r.durBy = 'remain'; }
   _indRefreshNote(r); touchEv(r);
   renderTimeline(); autoSave(); pushCurrentToSheets(); renderInductionSheet(key);
