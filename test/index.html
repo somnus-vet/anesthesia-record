@@ -8139,6 +8139,8 @@ function recordEvent(key) {
     if (gas) addFreeNote('gas', { ...gas, time: shiftTime(t0, 3) });
     addFreeNote('fluid', { time: shiftTime(t0, 4) });  // 輸液（初回はプランの輸液速度が初期値）
     _tagInductionSet(t0);  // 4行を「導入セット」として挿管行の下にまとめる
+    renderTimeline();       // タグ付け後に描き直し(addFreeNote内の描画はタグ前)
+    autoSave();
     pushCurrentToSheets();  // 自動追加分もSheetsへ反映
   }
 }
