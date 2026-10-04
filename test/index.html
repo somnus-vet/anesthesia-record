@@ -6897,7 +6897,7 @@ function renderTimelineList() {
       const indSub = en.key === 'intubationTime' ? _indSetSubHtml() : '';
       return `<div class="tl-row tl-event"${(mixSub || indSub) ? ' style="flex-wrap:wrap"' : ''}>
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
-        <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${indSub ? '<span class="tl-surg-tag">導入セット</span>' : ''}${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
+        <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="if(!delArmed(this))return;clearEvent('${en.key}')">✕</button>
         ${mixSub}${indSub}

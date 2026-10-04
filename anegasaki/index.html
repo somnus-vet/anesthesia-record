@@ -438,6 +438,30 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .dose-opts{display:flex;flex-direction:column;gap:7px}
 .dose-opt{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;border:1.5px solid var(--border);border-radius:9px;padding:11px 13px;cursor:pointer;text-align:left;width:100%;min-height:48px}
 .dose-opt:active{background:var(--blue-bg);border-color:var(--blue)}
+.tl-ind-line{flex-basis:100%;display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:4px 0 2px 6px;font-size:13px;color:#4c1d95}
+.tl-ind-line b{font-size:18px;font-variant-numeric:tabular-nums;min-width:48px}
+.tl-ind-btn{min-height:34px;padding:4px 10px;font-size:12px}
+.tl-indsub{flex-basis:100%;display:flex;flex-direction:column;gap:4px;padding:4px 0 3px 8px;margin-left:2px;border-left:3px solid #94a3b8}
+.tl-indsub-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.tl-indsub-name{flex:0 0 86px;font-size:12.5px;font-weight:700;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-indsub-row .tl-to-in{flex:0 0 56px;width:56px;min-height:32px;font-size:13px;padding:3px 2px}
+.tl-indsub-row .tl-vmode{min-height:30px;padding:3px 7px;font-size:11.5px}
+.tl-indsub-row .btn-del{min-height:30px;padding:0 4px;font-size:15px}
+.tl-mthbadge{font-size:10px;font-weight:700;border-radius:5px;padding:2px 5px;color:#fff;background:#0e7490;white-space:nowrap;align-self:center}
+.tl-mthbadge.bolus{background:#7c3aed}.tl-mthbadge.slow{background:#b45309}.tl-mthbadge.topup{background:#475569}
+.ind-drug{border:1.5px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;background:#f8fafc}
+.ind-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px;font-size:15px;flex-wrap:wrap}
+.ind-plan{font-size:12px;color:var(--muted)}
+.ind-sec{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0}
+.ind-lb{font-size:12px;color:var(--muted);min-width:60px}
+.ind-step small{font-size:10px;margin-left:2px;font-weight:600}
+.ind-ml{width:78px;text-align:right;min-height:40px}
+.ind-cum{font-size:13px;margin:4px 0 6px;color:var(--text)}
+.ind-run{display:flex;align-items:center;gap:10px;font-size:14px;background:#fff7ed;border:1.5px solid #fdba74;border-radius:8px;padding:8px 10px;margin:6px 0;flex-wrap:wrap}
+.ind-run b{font-size:24px;font-variant-numeric:tabular-nums;min-width:64px}
+.ind-remain{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 10px;margin:6px 0}
+.ind-note{font-size:12px;color:var(--muted);margin-top:4px}
+.ind-warn{font-size:12.5px;color:#b91c1c;margin-bottom:8px}
 .dose-opt-label{font-size:15px;font-weight:700;color:var(--text)}
 .dose-opt-val{font-size:12px;color:var(--muted);text-align:right}
 .dose-opt-perkg{font-size:12px;color:var(--muted);margin-left:7px;font-weight:600}
@@ -1835,6 +1859,16 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     <div class="modal-footer">
       <button type="button" onclick="closeBlockPicker()">閉じる</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="inductionModal" onclick="if(event.target===this)closeInductionSheet()">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-hdr">
+      <span id="inductionTitle">導入薬の投与</span>
+      <button class="modal-close" onclick="closeInductionSheet()">×</button>
+    </div>
+    <div class="modal-body" id="inductionBody"></div>
   </div>
 </div>
 
@@ -6843,10 +6877,11 @@ function renderTimelineList() {
   current.drugLog.forEach((d, i) => {
     if (!d || d.deleted) return; // 削除墓標は表示しない
     if (d.mix && _mixGrouped(d.mix)) return; // 混注の構成薬は「混注①」の行の下にまとめて出す(時刻は混注の行で一括)
-    entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'', mix:d.mix||'' });
+    entries.push({ type:'drug', idx:i, drug:d.drug||'', dose:d.dose||'', route:d.route||'', time:d.time||'', mix:d.mix||'', method:d.method||'', durSec:d.durSec, note:d.note||'', uid:d.uid||'', drawnMl:d.drawnMl, remainMl:d.remainMl });
   });
   current.freeNotes.forEach((n, i) => {
     if (!n || n.deleted) return; // 削除墓標は表示しない
+    if (n.set === 'ind' && (current.intubationTime || '').trim()) return; // 導入セットは挿管行の下にまとめて出す
     entries.push({
       type:'free', idx:i,
       kind: n.kind || 'memo',
@@ -6911,12 +6946,13 @@ function renderTimelineList() {
             <button class="btn-del" onclick="if(!delArmed(this))return;removeDrugLog(${i})">✕</button>${opt}</div>`;
         }).join('') + `</div>`;
       }
-      return `<div class="tl-row tl-event"${mixSub ? ' style="flex-wrap:wrap"' : ''}>
+      const indSub = en.key === 'intubationTime' ? _indSetSubHtml() : '';
+      return `<div class="tl-row tl-event"${(mixSub || indSub) ? ' style="flex-wrap:wrap"' : ''}>
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
         <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="if(!delArmed(this))return;clearEvent('${en.key}')">✕</button>
-        ${mixSub}
+        ${mixSub}${indSub}
       </div>`;
     }
     if (en.type === 'free') {
@@ -7086,16 +7122,17 @@ function renderTimelineList() {
       _optLine = `<div class="tl-opt-line">` + _opts.map(o =>
         `<button type="button" class="tl-opt-btn${o === _cur ? ' on' : ''}" onclick="setDrugOpt(${en.idx},'${_drugOptOpen.which}','${o}')">${o}</button>`).join('') + `</div>`;
     }
-    return `<div class="tl-row tl-drug" data-drugidx="${en.idx}"${_optLine ? ' style="flex-wrap:wrap"' : ''}>
+    const _indX = _indRowExtra(en);
+    return `<div class="tl-row tl-drug" data-drugidx="${en.idx}"${(_optLine || _indX) ? ' style="flex-wrap:wrap"' : ''}>
       <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editDrugLog(${en.idx},'time',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
-      ${en.mix ? `<span class="tl-mixbadge m${en.mix}">混${({1:'①',2:'②',3:'③'})[en.mix] || en.mix}</span>` : ''}<input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
+      ${_mthBadge(en)}${en.mix ? `<span class="tl-mixbadge m${en.mix}">混${({1:'①',2:'②',3:'③'})[en.mix] || en.mix}</span>` : ''}<input class="fin tl-drug-name" type="text" value="${esc(en.drug)}" placeholder="薬剤名" oninput="editDrugLog(${en.idx},'drug',this.value)" autocomplete="off">
       <input class="fin tl-drug-dose" type="text" inputmode="decimal" value="${esc(_perKg)}" placeholder="量" onfocus="tapClear(this)" oninput="editDrugLogDose(${en.idx},this.value)" onblur="tapClearRestoreDrug(this,${en.idx})" autocomplete="off">
       ${_dd ? `<button type="button" class="tl-opt-chip" title="単位を変更" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit)}</button>
       <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" title="経路を変更" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`
             : `<button type="button" class="tl-opt-chip${_unit ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'unit')">${esc(_unit) || '単位'}</button>
       <button type="button" class="tl-opt-chip${en.route ? '' : ' empty'}" onclick="toggleDrugOpt(${en.idx},'route')">${esc(en.route) || '経路'}</button>`}
       <button class="btn-del" onclick="if(!delArmed(this))return;removeDrugLog(${en.idx})">✕</button>
-      ${_optLine}
+      ${_optLine}${_indX}
     </div>`;
   }).join('');
 }
@@ -7682,6 +7719,7 @@ function quickDose(key) {
   if (!current) return;
   const d = findDrugDef(key);
   if (!d) return;
+  if (_isInductionKey(key)) { openInductionSheet(key); return; }
   doseSelectKey = key;
   const drugData0 = (current.drugs && current.drugs[key]) || {};
   doseSelectRoute = drugData0.route || d.def || (d.routes && d.routes[0]) || '';
@@ -7921,6 +7959,228 @@ function evtLabel(key) {
 }
 
 // イベントを現在時刻で記録（既存値があれば上書き）
+// ─────────────────────────────────────────────────
+// 導入薬シート: to effect(刻み) / bolus(全量) / slow bolus(自動計時) ＋ 残量入力で実投与量を確定
+// 記録は drugLog の行に method('effect'|'topup'|'bolus'|'slow'), drawnMl, remainMl, durSec, durBy, note を持たせる。
+// dose 文字列は実投与量のままにするので、SomLog/PDF/振り返りの既存の読み方は変わらない。
+// ─────────────────────────────────────────────────
+// ── v2: タイムライン側の残量入力 / 導入セット(挿管の自動4行をまとめる) ──
+function _indEnsureTimer() { if (!_indSheetTimer) _indSheetTimer = setInterval(_indTick, 1000); }
+function _indRowExtra(en) {
+  if (en.method !== 'bolus' && en.method !== 'slow') return '';
+  if (en.method === 'slow' && en.durSec == null) {
+    _indEnsureTimer();
+    return `<div class="tl-ind-line">⏱ slow bolus 投与中 <b data-slowstart="${esc(en.time)}">${_fmtSec(_secBetween(en.time, nowTime()) || 0)}</b><button type="button" class="qdose-btn on tl-ind-btn" onclick="indFinishSlow('${esc(en.uid)}','manual')">投与完了</button></div>`;
+  }
+  if (en.remainMl == null && en.drawnMl != null) {
+    return `<div class="tl-ind-line">${en.method === 'slow' ? 'slow bolus' : 'bolus'} ${(+en.drawnMl).toFixed(2)}mL → 残量 <input class="fin tl-to-in" id="indRemainTl_${esc(en.uid)}" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><span class="tl-unit-sm">mL</span><button type="button" class="qdose-btn tl-ind-btn" onclick="indSetRemainTl('${esc(en.uid)}')">確定</button><button type="button" class="qdose-btn dp-unplanned tl-ind-btn" onclick="indSetRemainTl('${esc(en.uid)}',0)">全量入れた</button></div>`;
+  }
+  return '';
+}
+function _indApplyRemain(r, d, remain) {
+  const w = parseFloat(current.weight) || 0;
+  const actualMl = (+r.drawnMl) - remain;
+  r.remainMl = remain;
+  if (w && d && d.conc) r.dose = formatDose(d, +(actualMl * d.conc / w).toFixed(2));
+  if (r.method === 'slow' && r.durSec == null) { r.durSec = _secBetween(r.time, nowTime()) || 0; r.durBy = 'remain'; }
+  _indRefreshNote(r); touchEv(r);
+  renderTimeline(); autoSave(); pushCurrentToSheets();
+  showToast(`✅ 実投与 ${actualMl.toFixed(2)} mL で確定`);
+}
+function indSetRemainTl(uid, forced) {
+  const r = (current.drugLog || []).find(x => x && x.uid === uid); if (!r) return;
+  const remain = forced !== undefined ? forced : parseFloat((document.getElementById('indRemainTl_' + uid) || {}).value || '');
+  if (isNaN(remain) || remain < 0 || remain > (+r.drawnMl || 0)) { showToast('残量(mL)は 0〜引いた量 の範囲で入力してください'); return; }
+  _indApplyRemain(r, drugDefForLog(r), remain);
+}
+const _IND_SET_KINDS = ['flow', 'vent', 'gas', 'fluid'];
+function _tagInductionSet(t0) {
+  (current.freeNotes || []).forEach(n => {
+    if (!n || n.deleted || n.set) return;
+    const k = _IND_SET_KINDS.indexOf(n.kind);
+    if (k >= 0 && n.time === shiftTime(t0, k + 1)) n.set = 'ind';
+  });
+}
+function _indSetNotes() {
+  const out = [];
+  (current.freeNotes || []).forEach((n, i) => { if (n && !n.deleted && n.set === 'ind') out.push({ n, i }); });
+  out.sort((a, b) => _IND_SET_KINDS.indexOf(a.n.kind) - _IND_SET_KINDS.indexOf(b.n.kind));
+  return out;
+}
+function _shiftInductionSet(t0) {
+  if (timeToSec(t0) === null) return;
+  _indSetNotes().forEach(({ n }) => { const k = _IND_SET_KINDS.indexOf(n.kind); n.time = shiftTime(t0, (k >= 0 ? k : 0) + 1); touchEv(n); });
+}
+function _indSetSubHtml() {
+  const items = _indSetNotes();
+  if (!items.length) return '';
+  const inp = (i, f, v, ph) => `<input class="fin tl-to-in" type="text" inputmode="decimal" value="${esc(v || '')}" placeholder="${ph || '0'}" onfocus="tapClear(this)" oninput="editFreeNote(${i},'${f}',this.value)" onblur="tapClearRestore(this,${i},'${f}')" onchange="onFreeNoteFinalize()" autocomplete="off">`;
+  return `<div class="tl-indsub">` + items.map(({ n, i }) => {
+    let body = '';
+    if (n.kind === 'flow') {
+      body = `<span class="tl-flow-lbl">O2</span>${inp(i, 'o2', n.o2)}<span class="tl-flow-lbl">Air</span>${inp(i, 'air', n.air)}<span class="tl-unit-sm">L/min</span>`;
+    } else if (n.kind === 'vent') {
+      const vm = n.mode || '';
+      const mb = (m, l) => `<button type="button" class="tl-vmode${vm === m ? ' on' : ''}" onclick="setVentMode(${i},'${m}')">${l || m}</button>`;
+      body = mb('PCV') + mb('VCV') + mb('OFF') + mb('SPONT', '自発');
+      if (vm === 'PCV' || vm === 'VCV') body += `${inp(i, 'to', n.to)}<span class="tl-unit-sm">${vm === 'VCV' ? 'mL' : 'cmH₂O'}</span>${inp(i, 'rr', n.rr, 'RR')}<span class="tl-unit-sm">回/分</span>`;
+      else if (!vm) body += `<span class="tl-vent-hint">←モード選択</span>`;
+    } else if (n.kind === 'gas') {
+      body = `${inp(i, 'to', n.to)}<span class="tl-unit-sm">${esc(n.unit || '%')}</span>`;
+    } else if (n.kind === 'fluid') {
+      body = `${inp(i, 'to', n.to)}<span class="tl-unit-sm">mL/hr</span>`;
+    }
+    const name = n.kind === 'flow' ? 'O2/Air' : n.kind === 'vent' ? '呼吸管理' : n.kind === 'gas' ? (n.drugLabel || '維持薬') : '輸液';
+    return `<div class="tl-indsub-row"><span class="tl-indsub-name">${esc(name)}</span>${body}<span class="tl-spacer"></span><button class="btn-del" onclick="if(!delArmed(this))return;removeFreeNote(${i})">✕</button></div>`;
+  }).join('') + `</div>`;
+}
+
+const INDUCTION_STEPS = { propofol: [0.5, 1, 2], alfaxalone_i: [0.25, 0.5, 1] };
+let _indSheetTimer = null;
+function _isInductionKey(key) { return (DRUG_GROUPS.induction || []).some(x => x.key === key); }
+function _indDrugs(focusKey) {
+  const all = DRUG_GROUPS.induction || [];
+  const used = all.filter(d => current.drugs && current.drugs[d.key] && current.drugs[d.key].use);
+  const f = focusKey ? all.find(d => d.key === focusKey) : null;
+  if (f && !used.some(d => d.key === f.key)) used.push(f);
+  return used.length ? used : all;
+}
+function _indRowsOf(d) { return (current.drugLog || []).filter(r => r && !r.deleted && r.drug === d.label && r.method); }
+function _perKgOfRow(r) { const m = String(r.dose || '').match(/^\s*([\d.]+)/); return m ? parseFloat(m[1]) : NaN; }
+function _fmtSec(s) { s = Math.max(0, Math.round(+s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+function _secBetween(t1, t2) { const a = timeToSec(t1), b = timeToSec(t2); if (a === null || b === null) return null; return ((b - a) % 86400 + 86400) % 86400; }
+function _mthBadge(en) {
+  if (!en.method) return '';
+  const lbl = en.method === 'effect' ? 'to effect' : en.method === 'topup' ? '追加' : en.method === 'bolus' ? 'bolus'
+    : 'slow ' + (en.durSec != null ? _fmtSec(en.durSec) : '…');
+  return `<span class="tl-mthbadge ${esc(en.method)}" title="${esc(en.note || '')}">${lbl}</span>`;
+}
+function openInductionSheet(focusKey) {
+  if (!current) return;
+  collectForm();
+  renderInductionSheet(focusKey);
+  document.getElementById('inductionModal').classList.add('on');
+  _indEnsureTimer();
+}
+function closeInductionSheet() {
+  document.getElementById('inductionModal').classList.remove('on');  // タイマーは _indTick が自己停止
+}
+function _indTick() {
+  const els = document.querySelectorAll('[data-slowstart]');
+  els.forEach(el => { el.textContent = _fmtSec(_secBetween(el.dataset.slowstart, nowTime()) || 0); });
+  const open = document.getElementById('inductionModal').classList.contains('on');
+  if (!els.length && !open && _indSheetTimer) { clearInterval(_indSheetTimer); _indSheetTimer = null; }
+}
+function renderInductionSheet(focusKey) {
+  const w = parseFloat(current.weight) || 0;
+  const t0 = current.inductionTime || '';
+  const afterIntub = !!(current.intubationTime || '').trim();
+  document.getElementById('inductionTitle').textContent = `導入薬の投与${t0 ? '（導入 ' + t0 + '）' : ''}`;
+  let html = '';
+  if (!w) html += `<div class="ind-warn">体重が未入力のため mL 換算ができません（患者情報で体重を入れてください）</div>`;
+  if (afterIntub) html += `<div class="ind-note" style="margin-bottom:6px">挿管後の記録は「追加投与」として残ります</div>`;
+  _indDrugs(focusKey).forEach(d => {
+    const std = stdDoseOf(d.key);
+    const unit = d.unit, dispUnit = unit.replace('/kg', '');
+    const planMl = (w && !isNaN(std) && d.conc) ? std * w / d.conc : NaN;
+    const rows = _indRowsOf(d);
+    const cum = rows.reduce((s, r) => { const v = _perKgOfRow(r); return s + (isNaN(v) ? 0 : v); }, 0);
+    const steps = INDUCTION_STEPS[d.key] || [0.5, 1, 2];
+    const running = rows.find(r => r.method === 'slow' && r.durSec == null);
+    html += `<div class="ind-drug">
+      <div class="ind-hd"><b>${esc(d.label)}${allergyMatchForDrug(d.label) ? ' ⚠️ｱﾚﾙｷﾞｰ' : ''}</b><span class="ind-plan">${!isNaN(std) ? `プラン ${std}${esc(unit)}${w ? ` = ${(std * w).toFixed(1)}${esc(dispUnit)}` : ''}${!isNaN(planMl) ? ` / ${planMl.toFixed(2)} mL` : ''}` : 'プラン用量なし'}</span></div>
+      <div class="ind-sec"><span class="ind-lb">${afterIntub ? '追加' : 'to effect'}</span>${steps.map(s => `<button type="button" class="qdose-btn ind-step" onclick="indAddEffect('${d.key}',${s})">${s}<small>${esc(unit)}</small></button>`).join('')}</div>
+      <div class="ind-cum">累計 <b>${+cum.toFixed(3)}${esc(unit)}</b>${w ? ` = ${(cum * w).toFixed(1)}${esc(dispUnit)}${d.conc ? ` / ${(cum * w / d.conc).toFixed(2)} mL` : ''}` : ''}${!isNaN(std) && std > 0 ? `（プランの ${Math.round(cum / std * 100)}%）` : ''}${rows.length > 1 ? ` ・ ${rows.length}回 / ${_fmtSec(_secBetween(rows[0].time, rows[rows.length - 1].time) || 0)}` : ''}</div>`;
+    if (running) {
+      html += `<div class="ind-run">⏱ slow bolus 投与中 <b data-slowstart="${esc(running.time)}">${_fmtSec(_secBetween(running.time, nowTime()) || 0)}</b>
+        <button type="button" class="qdose-btn on" onclick="indFinishSlow('${esc(running.uid)}','manual')">投与完了</button></div>`;
+    } else {
+      html += `<div class="ind-sec"><span class="ind-lb">引いた量</span><input class="fin ind-ml" id="indDrawn_${d.key}" type="text" inputmode="decimal" value="${!isNaN(planMl) ? planMl.toFixed(2) : ''}" placeholder="mL" autocomplete="off"> mL
+        <button type="button" class="qdose-btn" onclick="indAddBolus('${d.key}','bolus')">bolus 全量</button>
+        <button type="button" class="qdose-btn" onclick="indAddBolus('${d.key}','slow')">⏱ slow bolus 開始</button></div>`;
+    }
+    const done = rows.filter(r => (r.method === 'slow' && r.durSec != null) || (r.method === 'bolus' && r.remainMl != null));
+    if (done.length) html += `<div class="ind-note">${done.map(r => esc(r.note || '')).join('<br>')}</div>`;
+    html += `</div>`;
+  });
+  html += `<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px"><button type="button" class="qdose-btn dp-unplanned" onclick="closeInductionSheet()">閉じる</button></div>`;
+  document.getElementById('inductionBody').innerHTML = html;
+}
+function _indPush(d, perKg, extra) {
+  if (!Array.isArray(current.drugLog)) current.drugLog = [];
+  const dd = (current.drugs && current.drugs[d.key]) || {};
+  warnIfAllergyDrug(d.label);
+  const row = Object.assign({ drug: d.label, dose: formatDose(d, perKg), route: dd.route || d.def || 'IV', time: nowTime(), uid: genUid() }, extra);
+  current.drugLog.push(row);
+  if (!(current.inductionTime || '').trim() && !(current.intubationTime || '').trim()) {
+    current.inductionTime = row.time; setVal('f_inductionTime', row.time); updateDurations();
+  }
+  renderTimeline(); autoSave(); pushCurrentToSheets();
+  return row;
+}
+function indAddEffect(key, step) {
+  const d = findDrugDef(key); if (!d || !current) return;
+  const after = !!(current.intubationTime || '').trim();
+  _indPush(d, step, { method: after ? 'topup' : 'effect', note: after ? '追加投与' : 'to effect' });
+  renderInductionSheet(key);
+  showToast(`✅ ${d.label} ${step}${d.unit}（${after ? '追加' : 'to effect'}）を記録`);
+}
+function indAddBolus(key, method) {
+  const d = findDrugDef(key); if (!d || !current) return;
+  const w = parseFloat(current.weight) || 0;
+  const drawn = parseFloat((document.getElementById('indDrawn_' + key) || {}).value || '');
+  if (isNaN(drawn) || drawn <= 0) { showToast('引いた量(mL)を入力してください'); return; }
+  if (!w || !d.conc) { showToast('体重と薬液濃度が必要です'); return; }
+  const perKg = +(drawn * d.conc / w).toFixed(3);
+  const extra = { method, drawnMl: drawn, note: '' };
+  if (method === 'slow') extra.durSec = null;
+  const row = _indPush(d, perKg, extra);
+  _indRefreshNote(row);
+  if (method === 'slow') renderInductionSheet(key); else closeInductionSheet();
+  showToast(method === 'slow' ? `⏱ slow bolus 開始（${drawn.toFixed(2)} mL）` : `✅ bolus ${drawn.toFixed(2)} mL を記録 — 下の行で残量を入れると実投与量に直ります`);
+}
+function indFinishSlow(uid, by, endTime) {
+  const r = (current.drugLog || []).find(x => x && x.uid === uid); if (!r) return;
+  r.durSec = _secBetween(r.time, endTime || nowTime()) || 0; r.durBy = by;
+  _indRefreshNote(r); touchEv(r);
+  renderTimeline(); autoSave(); pushCurrentToSheets();
+  closeInductionSheet();
+  showToast(`⏱ slow bolus 完了 ${_fmtSec(r.durSec)} — 下の行で残量を入力してください`);
+}
+function closeRunningSlowBolus(endTime, by) {
+  let n = 0;
+  (current.drugLog || []).forEach(r => {
+    if (r && !r.deleted && r.method === 'slow' && r.durSec == null) {
+      r.durSec = _secBetween(r.time, endTime) || 0; r.durBy = by; _indRefreshNote(r); touchEv(r); n++;
+    }
+  });
+  return n;
+}
+function indSetRemain(key, uid, forced) {
+  const d = findDrugDef(key); const r = (current.drugLog || []).find(x => x && x.uid === uid); if (!d || !r) return;
+  const remain = forced !== undefined ? forced : parseFloat((document.getElementById('indRemain_' + uid) || {}).value || '');
+  if (isNaN(remain) || remain < 0 || remain > (+r.drawnMl || 0)) { showToast('残量(mL)は 0〜引いた量 の範囲で入力してください'); return; }
+  const w = parseFloat(current.weight) || 0;
+  const actualMl = (+r.drawnMl) - remain;
+  r.remainMl = remain;
+  if (w && d.conc) r.dose = formatDose(d, +(actualMl * d.conc / w).toFixed(3));
+  if (r.method === 'slow' && r.durSec == null) { r.durSec = _secBetween(r.time, nowTime()) || 0; r.durBy = 'remain'; }
+  _indRefreshNote(r); touchEv(r);
+  renderTimeline(); autoSave(); pushCurrentToSheets(); renderInductionSheet(key);
+  showToast(`✅ 実投与 ${actualMl.toFixed(2)} mL で確定`);
+}
+function _indRefreshNote(r) {
+  if (r.method !== 'slow' && r.method !== 'bolus') return;
+  let s = r.method === 'slow' ? 'slow bolus' : 'bolus';
+  if (r.method === 'slow') s += r.durSec != null ? ` ${_fmtSec(r.durSec)}${r.durBy === 'intub' ? '(挿管で自動終了)' : ''}` : '（投与中）';
+  if (r.drawnMl != null) {
+    s += r.remainMl != null
+      ? ` ${(+r.drawnMl).toFixed(2)}mL中 残${(+r.remainMl).toFixed(2)}mL → 実投与${((+r.drawnMl) - (+r.remainMl)).toFixed(2)}mL`
+      : ` ${(+r.drawnMl).toFixed(2)}mL（残量未入力＝全量として記録中）`;
+  }
+  r.note = s;
+}
+
 function recordEvent(key) {
   if (!current) return;
   const t = nowTime();
@@ -7951,6 +8211,7 @@ function recordEvent(key) {
   autoSave();
   pushCurrentToSheets();
   showToast(`✅ ${evtLabel(key)} を ${t} に記録`);
+  if (key === 'inductionTime') openInductionSheet();
   // 歯科症例: 手術終了の記録で「口腔内ガーゼ・出血チェック」ポップアップ（SomLog側にも同じ表示）
   if (key === 'surgEnd') {
     const _pp = (getVal('f_procedure') || (current && current.procedure) || '');
@@ -7962,6 +8223,7 @@ function recordEvent(key) {
   // 挿管したら、呼吸管理（モード未選択）・O2/Air流量・輸液 を自動で追加（不要なら✕で消せる）
   if (key === 'intubationTime') {
     const t0 = current.intubationTime;
+    if (closeRunningSlowBolus(t0, 'intub')) { renderTimeline(); showToast('⏱ slow bolus を挿管時刻で終了にしました'); }
     addFreeNote('flow', { time: shiftTime(t0, 1) });   // 酸素流量（O2/Air）
     addFreeNote('vent', { time: shiftTime(t0, 2) });   // 呼吸管理（換気・モード未選択）
     // 維持ガス: 既定はイソフルラン。セボ選択時はセボ、プロポフォール単独(TIVA)はガスなし。
@@ -7975,6 +8237,9 @@ function recordEvent(key) {
     }
     if (gas) addFreeNote('gas', { ...gas, time: shiftTime(t0, 3) });
     addFreeNote('fluid', { time: shiftTime(t0, 4) });  // 輸液（初回はプランの輸液速度が初期値）
+    _tagInductionSet(t0);  // 4行を「導入セット」として挿管行の下にまとめる
+    renderTimeline();       // タグ付け後に描き直し(addFreeNote内の描画はタグ前)
+    autoSave();
     pushCurrentToSheets();  // 自動追加分もSheetsへ反映
   }
 }
@@ -7997,6 +8262,7 @@ function editEventTime(key, val) {
     current[key] = val;
     setVal('f_' + key, val);
     updateDurations();
+    if (key === 'intubationTime') _shiftInductionSet(val);
   }
   autoSave();
 }
