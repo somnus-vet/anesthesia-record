@@ -450,6 +450,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .ind-step small{font-size:10px;margin-left:2px;font-weight:600}
 .ind-ml{width:78px;text-align:right;min-height:40px}
 .ind-cum{font-size:13px;margin:4px 0 6px;color:var(--text)}
+.ind-since{display:flex;align-items:center;gap:8px;font-size:13px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:6px 10px;margin:4px 0 6px;flex-wrap:wrap}
+.ind-since b{font-size:22px;font-variant-numeric:tabular-nums;min-width:56px;color:#1d4ed8}
+.ind-since .ind-since-last{font-size:12px;color:var(--muted)}
+.ind-unit{min-height:40px;padding:6px 9px}
+.ind-custom{width:70px}
 .ind-run{display:flex;align-items:center;gap:10px;font-size:14px;background:#fff7ed;border:1.5px solid #fdba74;border-radius:8px;padding:8px 10px;margin:6px 0;flex-wrap:wrap}
 .ind-run b{font-size:24px;font-variant-numeric:tabular-nums;min-width:64px}
 .ind-remain{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 10px;margin:6px 0}
@@ -1709,6 +1714,22 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     <div class="modal-body" style="padding-top:8px">
       <input class="fin" id="drugPickSearch" type="text" placeholder="薬剤名で検索（例: ブト）" oninput="renderDrugPick(this.value)" autocomplete="off" style="margin-bottom:8px">
       <div id="drugPickBody" style="max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="opioidModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-hdr" style="background:#c0392b">⚠️ オピオイドの組み合わせ注意
+      <button class="modal-close" onclick="document.getElementById('opioidModal').classList.remove('on')">✕</button></div>
+    <div class="modal-body" style="font-size:17px;font-weight:800;line-height:1.6;color:#c0392b">
+      フェンタニル ＋ ブトルファノール が同時に選ばれています
+      <div style="font-size:13px;font-weight:600;color:#555;margin-top:10px;line-height:1.7">
+        ・ブトルファノールは μ受容体の拮抗薬（κ作動）<br>
+        ・フェンタニル（完全μ作動薬）の鎮痛を打ち消す／効きにくくする可能性<br>
+        ・意図した併用（拮抗目的など）なら、このまま進めてください</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" style="width:100%" onclick="document.getElementById('opioidModal').classList.remove('on')">確認した</button>
     </div>
   </div>
 </div>
@@ -5210,7 +5231,9 @@ function setDrugMix(key, val) {
   if (!current.drugs[key]) current.drugs[key] = { use:true, dose:'', route:'' };
   const cur = current.drugs[key].mix || '';
   current.drugs[key].mix = (String(cur) === String(val)) ? '' : val;
+  const _wasOff = !current.drugs[key].use;
   current.drugs[key].use = true;
+  if (_wasOff) warnOpioidConflict(key);
   const row = document.getElementById('drow_' + key);
   if (row) row.classList.add('on');
   refreshMixChips();
@@ -5570,6 +5593,18 @@ function refreshAllergyDrugBadges() {
     const d = findDrugDef(key); if (!d) return;
     if (allergyMatchForDrug(d.label)) nameEl.insertAdjacentHTML('beforeend', '<span class="drug-alg-badge">⚠️アレルギー</span>');
   });
+}
+// フェンタニル(完全μ作動薬)とブトルファノール(μ拮抗/κ作動)の併用警告。
+// どちらが選択済みでも、もう一方を選んだ/記録した時点でポップアップ(記録自体は止めない)
+const _OPI_FENT = ['fentanyl_p', 'fentanyl_c'], _OPI_BUT = ['butorphanol'];
+function _opiUsed(keys) { return !!(current && current.drugs && keys.some(k => current.drugs[k] && current.drugs[k].use)); }
+function warnOpioidConflict(key) {
+  if (!current) return false;
+  const hit = (_OPI_BUT.indexOf(key) >= 0 && _opiUsed(_OPI_FENT)) || (_OPI_FENT.indexOf(key) >= 0 && _opiUsed(_OPI_BUT));
+  if (!hit) return false;
+  const m = document.getElementById('opioidModal'); if (m) m.classList.add('on');
+  try { showToast('⚠️ フェンタニルとブトルファノールが同時に選ばれています（μ拮抗）'); } catch (_) {}
+  return true;
 }
 function warnIfAllergyDrug(label) {
   const it = allergyMatchForDrug(label);
@@ -6220,7 +6255,7 @@ function toggleDrug(key, event) {
   if (event.target.closest('.drug-inputs') || event.target.closest('.rgrp')) return;
   if (!current.drugs[key]) current.drugs[key] = { use:false, dose:'', route:'' };
   current.drugs[key].use = !current.drugs[key].use;
-  if (current.drugs[key].use) { const _dd = findDrugDef(key); if (_dd) warnIfAllergyDrug(_dd.label); }
+  if (current.drugs[key].use) { const _dd = findDrugDef(key); if (_dd) warnIfAllergyDrug(_dd.label); warnOpioidConflict(key); }
   if (current.drugs[key].use && isCriKey(key) && !current.drugs[key].cri) { const _lc = learnedCriFor(key); if (_lc) current.drugs[key].cri = _lc; }
   try { refreshCriSummaries(); } catch (_) {}
   // CRI薬をチェックした時点で作り方が無ければ知らせる(行内の方式ボタンで決めてもらう)
@@ -6248,8 +6283,10 @@ function onDoseInput(key, val) {
   if (!current) return;
   if (isDrugBanned(key)) return;
   if (!current.drugs[key]) current.drugs[key] = { use:true, dose:'', route:'' };
+  const _wasOff = !current.drugs[key].use;
   current.drugs[key].dose = val;
   current.drugs[key].use = true;
+  if (_wasOff) warnOpioidConflict(key);
   delete current.drugs[key].ml;  // 用量を直したら薬液量は用量から計算し直す
   const row = document.getElementById('drow_' + key);
   if (row) row.classList.add('on');
@@ -7621,6 +7658,7 @@ function quickDose(key) {
   const d = findDrugDef(key);
   if (!d) return;
   if (_isInductionKey(key)) { openInductionSheet(key); return; }
+  warnOpioidConflict(key);
   doseSelectKey = key;
   const drugData0 = (current.drugs && current.drugs[key]) || {};
   doseSelectRoute = drugData0.route || d.def || (d.routes && d.routes[0]) || '';
@@ -7969,6 +8007,7 @@ function closeInductionSheet() {
 function _indTick() {
   const els = document.querySelectorAll('[data-slowstart]');
   els.forEach(el => { el.textContent = _fmtSec(_secBetween(el.dataset.slowstart, nowTime()) || 0); });
+  document.querySelectorAll('[data-sincelast]').forEach(el => { el.textContent = _fmtSec(_secBetween(el.dataset.sincelast, nowTime()) || 0); });
   const open = document.getElementById('inductionModal').classList.contains('on');
   if (!els.length && !open && _indSheetTimer) { clearInterval(_indSheetTimer); _indSheetTimer = null; }
 }
@@ -7991,6 +8030,8 @@ function renderInductionSheet(focusKey) {
     html += `<div class="ind-drug">
       <div class="ind-hd"><b>${esc(d.label)}${allergyMatchForDrug(d.label) ? ' ⚠️ｱﾚﾙｷﾞｰ' : ''}</b><span class="ind-plan">${!isNaN(std) ? `プラン ${std}${esc(unit)}${w ? ` = ${(std * w).toFixed(1)}${esc(dispUnit)}` : ''}${!isNaN(planMl) ? ` / ${planMl.toFixed(2)} mL` : ''}` : 'プラン用量なし'}</span></div>
       <div class="ind-sec"><span class="ind-lb">${afterIntub ? '追加' : 'to effect'}</span>${steps.map(s => `<button type="button" class="qdose-btn ind-step" onclick="indAddEffect('${d.key}',${s})">${s}<small>${esc(unit)}</small></button>`).join('')}</div>
+      <div class="ind-sec"><span class="ind-lb">自由入力</span><input class="fin ind-ml ind-custom" id="indCustom_${d.key}" type="text" inputmode="decimal" placeholder="数値" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();indAddCustom('${d.key}')}">${_indUnitBtns(d)}<button type="button" class="qdose-btn on" onclick="indAddCustom('${d.key}')">記録</button></div>
+      ${_indSinceHtml(rows, unit)}
       <div class="ind-cum">累計 <b>${+cum.toFixed(2)}${esc(unit)}</b>${w ? ` = ${(cum * w).toFixed(1)}${esc(dispUnit)}${d.conc ? ` / ${(cum * w / d.conc).toFixed(2)} mL` : ''}` : ''}${!isNaN(std) && std > 0 ? `（プランの ${Math.round(cum / std * 100)}%）` : ''}${rows.length > 1 ? ` ・ ${rows.length}回 / ${_fmtSec(_secBetween(rows[0].time, rows[rows.length - 1].time) || 0)}` : ''}</div>`;
     if (running) {
       html += `<div class="ind-run">⏱ slow bolus 投与中 <b data-slowstart="${esc(running.time)}">${_fmtSec(_secBetween(running.time, nowTime()) || 0)}</b>
@@ -8019,12 +8060,58 @@ function _indPush(d, perKg, extra) {
   renderTimeline(); autoSave(); pushCurrentToSheets();
   return row;
 }
-function indAddEffect(key, step) {
+// 前回の投与(同薬で時刻が最新の行)。to effect の次の刻みを押すタイミングの目安に使う
+function _indLastRow(rows) {
+  let best = null, bs = -1;
+  (rows || []).forEach(r => { const sec = timeToSec(r.time); if (sec !== null && sec >= bs) { bs = sec; best = r; } });
+  return best;
+}
+function _indSinceHtml(rows, unit) {
+  const last = _indLastRow(rows);
+  if (!last) return '';
+  if (last.method === 'slow' && last.durSec == null) return '';   // slow bolus 投与中は ind-run 側に表示
+  const amt = _perKgOfRow(last);
+  return `<div class="ind-since">⏱ 前回の投与から <b data-sincelast="${esc(last.time)}">${_fmtSec(_secBetween(last.time, nowTime()) || 0)}</b><span class="ind-since-last">前回 ${esc(last.time)}${isNaN(amt) ? '' : ` ${+amt.toFixed(2)}${esc(unit)}`}</span></div>`;
+}
+const _indCustomUnit = {};   // 薬剤key → 'kg'(mg/kg) | 'abs'(mg) | 'ml'
+function _indUnitBtns(d) {
+  const cur = _indCustomUnit[d.key] || 'kg';
+  const abs = String(d.unit || '').replace('/kg', '');
+  return [['kg', d.unit], ['abs', abs], ['ml', 'mL']].map(([u, l]) =>
+    `<button type="button" class="tl-vmode ind-unit${cur === u ? ' on' : ''}" data-indunit="${d.key}:${u}" onclick="indSetUnit('${d.key}','${u}')">${esc(l)}</button>`).join('');
+}
+function indSetUnit(key, u) {
+  _indCustomUnit[key] = u;
+  document.querySelectorAll(`[data-indunit^="${key}:"]`).forEach(b => b.classList.toggle('on', b.dataset.indunit === key + ':' + u));
+}
+function _indSinceToast(rows) {
+  const last = _indLastRow(rows);
+  if (!last || (last.method === 'slow' && last.durSec == null)) return '';
+  return `・前回から ${_fmtSec(_secBetween(last.time, nowTime()) || 0)}`;
+}
+function indAddEffect(key, step, srcText) {
   const d = findDrugDef(key); if (!d || !current) return;
   const after = !!(current.intubationTime || '').trim();
-  _indPush(d, step, { method: after ? 'topup' : 'effect', note: after ? '追加投与' : 'to effect' });
+  const since = _indSinceToast(_indRowsOf(d));
+  const base = after ? '追加投与' : 'to effect';
+  _indPush(d, step, { method: after ? 'topup' : 'effect', note: srcText ? `${base} ${srcText}` : base });
   renderInductionSheet(key);
-  showToast(`✅ ${d.label} ${step}${d.unit}（${after ? '追加' : 'to effect'}）を記録`);
+  showToast(`✅ ${d.label} ${+(+step).toFixed(2)}${d.unit}（${after ? '追加' : 'to effect'}）を記録${since}`);
+}
+// 自由入力: mg/kg・mg・mL のどれで入れても mg/kg に換算して to effect と同じ扱いで記録
+function indAddCustom(key) {
+  const d = findDrugDef(key); if (!d || !current) return;
+  const inp = document.getElementById('indCustom_' + key);
+  const v = parseFloat((inp && inp.value || '').replace(/[^\d.]/g, ''));
+  if (isNaN(v) || v <= 0) { showToast('数値を入力してください'); return; }
+  const u = _indCustomUnit[key] || 'kg';
+  const w = parseFloat(current.weight) || 0;
+  const abs = String(d.unit || '').replace('/kg', '');
+  let perKg, src = '';
+  if (u === 'kg') { perKg = v; }
+  else if (u === 'abs') { if (!w) { showToast('体重が未入力のため換算できません'); return; } perKg = v / w; src = `${v}${abs}`; }
+  else { if (!w || !d.conc) { showToast('体重と薬液濃度が必要です'); return; } perKg = v * d.conc / w; src = `${v}mL`; }
+  indAddEffect(key, +perKg.toFixed(2), src);
 }
 function indAddBolus(key, method) {
   const d = findDrugDef(key); if (!d || !current) return;
