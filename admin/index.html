@@ -102,10 +102,10 @@ main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
 <script>
 // 病院一覧（アプリの各ビルドと同じ GAS / URL）
 const HOSPITALS = [
-  { key:'BDY', name:'個人シート（BUDDY・たむら・舞鶴 等）', app:'https://somnus-vet.github.io/anesthesia-record/', url:'https://script.google.com/macros/s/AKfycbwQ_Oqtsl4ptT2g2JNpCyjsnl_hqpGd2CYQf7S7Uzbf4WmJkSG6aIOVTpgbGFjrkK9Z/exec' },
-  { key:'FAH', name:'フクナガ', app:'https://somnus-vet.github.io/anesthesia-record/fukunaga/', url:'https://script.google.com/macros/s/AKfycbwIVEjIEQvnI3k39H992jRwGnBXEYAbc0jRvixcUNua0fI_J9MY89XAa0tudp9vmMfR/exec' },
-  { key:'ANG', name:'姉ヶ崎', app:'https://somnus-vet.github.io/anesthesia-record/anegasaki/', url:'https://script.google.com/macros/s/AKfycbx3LKoMw0pXFjombv7nl0X_45opzCfmUSzNKO5g5Aw_NdkYjNQGA-DuE3XD7D38161h/exec' },
-  { key:'MHM', name:'みはま', app:'https://somnus-vet.github.io/anesthesia-record/mihama/', url:'https://script.google.com/macros/s/AKfycbwuIfxG0MogJ4VG5aw5AhRX7MRiXvbXzj_gO8tGqO7aITYfG8fSV8D5j92x4sG_QHj0pQ/exec' },
+  { key:'BDY', name:'個人シート', app:'https://somnus-vet.github.io/anesthesia-record/', url:'https://script.google.com/macros/s/AKfycbwQ_Oqtsl4ptT2g2JNpCyjsnl_hqpGd2CYQf7S7Uzbf4WmJkSG6aIOVTpgbGFjrkK9Z/exec' },
+  { key:'FAH', name:'FAH', app:'https://somnus-vet.github.io/anesthesia-record/fukunaga/', url:'https://script.google.com/macros/s/AKfycbwIVEjIEQvnI3k39H992jRwGnBXEYAbc0jRvixcUNua0fI_J9MY89XAa0tudp9vmMfR/exec' },
+  { key:'ANG', name:'ANG', app:'https://somnus-vet.github.io/anesthesia-record/anegasaki/', url:'https://script.google.com/macros/s/AKfycbx3LKoMw0pXFjombv7nl0X_45opzCfmUSzNKO5g5Aw_NdkYjNQGA-DuE3XD7D38161h/exec' },
+  { key:'MHM', name:'MHM', app:'https://somnus-vet.github.io/anesthesia-record/mihama/', url:'https://script.google.com/macros/s/AKfycbwuIfxG0MogJ4VG5aw5AhRX7MRiXvbXzj_gO8tGqO7aITYfG8fSV8D5j92x4sG_QHj0pQ/exec' },
 ];
 const CFG_KEY = 'som_rvboard_cfg', SEEN_KEY = 'som_rvboard_seen', SEENALL_KEY = 'som_rvboard_seen_all';
 let cfg = {}, seen = {}, seenAll = '';
@@ -143,10 +143,11 @@ function rel(ms) {
   return `${Math.round(s / 86400)}日前`;
 }
 
-const FAC_NAMES = { BDY:'BUDDY', TAC:'たむら', ANG:'姉ヶ崎', FAH:'フクナガ', MHM:'みはま', CKE:'クッキー', FDC:'福岡犬猫歯科', KSN:'くすの木', HDM:'ひだまり', MZR:'舞鶴', YDG:'淀川中央', KUU:'クウ' };
-let _facNames = Object.assign({}, FAC_NAMES);
+// 病院名はコードに書かず、合言葉を入れた病院のスプレッドシート「病院マスタ」から取得する(未取得の間はコード表示)
+let _facNames = {};
+const hname = h => (h.key === 'BDY' ? h.name : (_facNames[h.key] || h.name));
 async function loadFacNames(h, token) {
-  // 個人用シートの「病院マスタ」(コード/病院名)を1回読んで表示名に使う(失敗しても固定表に戻る)
+  // その病院のシートの「病院マスタ」(コード/病院名)を読んで表示名に使う(失敗時はコードのまま)
   try {
     const res = await fetch(`${h.url}?action=read&sheet=${encodeURIComponent('病院マスタ')}&token=${encodeURIComponent(token)}&_=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return;
@@ -156,13 +157,13 @@ async function loadFacNames(h, token) {
 async function fetchHospital(h) {
   const token = (cfg[h.key] && cfg[h.key].token) || '';
   if (!token || (cfg[h.key] && cfg[h.key].off)) return [];
-  if (h.key === 'BDY') await loadFacNames(h, token);
+  await loadFacNames(h, token);
   const url = `${h.url}?action=read&sheet=${encodeURIComponent('症例予約')}&token=${encodeURIComponent(token)}&_=${Date.now()}`;
   const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`${h.name}: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`${hname(h)}: HTTP ${res.status}`);
   const text = (await res.text()).replace(/^﻿/, '');
-  if (/^\s*unauthorized/i.test(text)) throw new Error(`${h.name}: 合言葉が違います`);
-  if (!text.split(/\r?\n/)[0].includes('詳細')) throw new Error(`${h.name}: 応答が不正`);
+  if (/^\s*unauthorized/i.test(text)) throw new Error(`${hname(h)}: 合言葉が違います`);
+  if (!text.split(/\r?\n/)[0].includes('詳細')) throw new Error(`${hname(h)}: 応答が不正`);
   const cutoff = Date.now() - 30 * 86400 * 1000;
   return parseCSV(text).map(r => {
     let d = {}; try { d = JSON.parse(r['詳細'] || '{}') || {}; } catch (_) {}
@@ -179,7 +180,7 @@ async function fetchHospital(h) {
     const caseDate = tsOf((r['日付'] || d.date || '') + ' 00:00');
     const fac = String(r['施設コード'] || d.facility || h.key).trim();
     return {
-      hosp: h, fac, facName: (h.key === 'BDY' ? (_facNames[fac] || fac) : h.name),
+      hosp: h, fac, facName: (_facNames[fac] || fac || hname(h)),
       id: r['内部ID'] || d.id || '', date: r['日付'] || d.date || '', caseDate,
       name: r['患者名'] || d.patientName || '', proc: r['術式'] || d.procedure || '', staff: r['担当'] || d.staff || '',
       pct: p && typeof p.pct === 'number' ? p.pct : null, total: p ? p.total : 0, missing: p ? p.missing : 0, rvFilled,
@@ -200,7 +201,7 @@ async function refreshAll() {
   // 通知: 前回の読み込み後に新しく「新着」になった症例
   const fresh = rows.filter(isNew).filter(x => !prevNew.has(x.hosp.key + '|' + x.id));
   if (fresh.length && _notifyOn && 'Notification' in window && Notification.permission === 'granted') {
-    fresh.slice(0, 3).forEach(x => { try { const isCon = x.consultedAt && x.consultedAt >= Math.max(x.edited, x.submitted); new Notification(isCon ? `🙋 相談 ${x.facName || x.hosp.name}: ${x.name || '患者名なし'}（${x.consultBy}）` : `${x.facName || x.hosp.name}: ${x.name || '患者名なし'} 振り返り ${x.pct != null ? x.pct + '%' : ''}${x.submitted ? '（提出）' : ''}`, { body: isCon ? (x.consultText || `${x.date} ${x.proc}`) : `${x.date} ${x.proc}${x.staff ? ' ／ ' + x.staff : ''}`, tag: x.hosp.key + x.id }); } catch (_) {} });
+    fresh.slice(0, 3).forEach(x => { try { const isCon = x.consultedAt && x.consultedAt >= Math.max(x.edited, x.submitted); new Notification(isCon ? `🙋 相談 ${x.facName || hname(x.hosp)}: ${x.name || '患者名なし'}（${x.consultBy}）` : `${x.facName || hname(x.hosp)}: ${x.name || '患者名なし'} 振り返り ${x.pct != null ? x.pct + '%' : ''}${x.submitted ? '（提出）' : ''}`, { body: isCon ? (x.consultText || `${x.date} ${x.proc}`) : `${x.date} ${x.proc}${x.staff ? ' ／ ' + x.staff : ''}`, tag: x.hosp.key + x.id }); } catch (_) {} });
   }
   try { document.title = (rows.filter(isNew).length ? `(${rows.filter(isNew).length}) ` : '') + '振り返り 進捗ボード'; } catch (_) {}
 }
@@ -224,7 +225,7 @@ function render() {
   document.getElementById('stCon').textContent = consulted.length;
   document.getElementById('stWip').textContent = active.length;
   document.getElementById('stSub').textContent = subs.length;
-  const on = HOSPITALS.filter(h => cfg[h.key] && cfg[h.key].token && !cfg[h.key].off).map(h => h.name);
+  const on = HOSPITALS.filter(h => cfg[h.key] && cfg[h.key].token && !cfg[h.key].off).map(hname);
   document.getElementById('subLine').textContent = on.length ? `監視中: ${on.join('・')}` : '未設定';
   let show;
   if (filter === 'active') show = active;
@@ -238,7 +239,7 @@ function render() {
     const last = Math.max(x.edited, x.submitted, x.consultedAt);
     const link = `${x.hosp.app}?case=${encodeURIComponent(x.id)}&view=review`;
     return `<div class="card${isNew(x) ? ' new' : ''}" onclick="openCase('${esc(x.hosp.key)}','${esc(x.id)}','${link}')">
-      <span class="hosp">${esc(x.facName || x.hosp.name)}</span>
+      <span class="hosp">${esc(x.facName || hname(x.hosp))}</span>
       <div><div class="who">${esc(x.name || '（患者名なし）')}${isNew(x) ? '<span class="badge new">新着</span>' : ''}${x.submitted ? '<span class="badge sub">📤 提出済</span>' : ''}${x.comments ? `<span class="badge cm">💬${x.comments}</span>` : ''}${x.consults ? `<span class="badge con">🙋 相談${x.consults > 1 ? x.consults : ''}</span>` : ''}</div>
         ${x.consults ? `<div class="consult">🙋 <b>${esc(x.consultBy)}</b> ${esc(fmt(x.consultedAt))}${x.consultText ? '：' + esc(x.consultText) : '（メモなし）'}</div>` : ''}
         <div class="meta">${esc(x.date)} ／ ${esc(x.proc || '術式未記載')}${x.staff ? ' ／ 記載: ' + esc(x.staff) : ''}${x.submittedBy ? ' ／ 提出: ' + esc(x.submittedBy) : ''}</div></div>
@@ -257,7 +258,7 @@ function markAllSeen() { seenAll = new Date().toISOString(); try { localStorage.
 // 設定
 function openSettings() {
   document.getElementById('hospRows').innerHTML = HOSPITALS.map(h => `<div class="hrow">
-    <div class="nm"><input type="checkbox" id="on_${h.key}" ${cfg[h.key] && cfg[h.key].off ? '' : 'checked'}> ${esc(h.name)} <span class="note" style="font-weight:400">(${esc(h.key)})</span></div>
+    <div class="nm"><input type="checkbox" id="on_${h.key}" ${cfg[h.key] && cfg[h.key].off ? '' : 'checked'}> ${esc(hname(h))} <span class="note" style="font-weight:400">(${esc(h.key)})</span></div>
     <label>合言葉（アクセスキー）</label><input type="text" id="tk_${h.key}" value="${esc((cfg[h.key] && cfg[h.key].token) || '')}" placeholder="アプリの設定画面と同じ合言葉" autocomplete="off">
   </div>`).join('');
   document.getElementById('settings').classList.add('on');
