@@ -8061,10 +8061,9 @@ function _indPush(d, perKg, extra) {
   return row;
 }
 // 前回の投与(同薬で時刻が最新の行)。to effect の次の刻みを押すタイミングの目安に使う
-function _indLastRow(rows) {
-  let best = null, bs = -1;
-  (rows || []).forEach(r => { const sec = timeToSec(r.time); if (sec !== null && sec >= bs) { bs = sec; best = r; } });
-  return best;
+function _indLastRow(rows) {   // 最後に追加した行(時刻編集や日付またぎに影響されない)
+  const a = (rows || []).filter(r => r && timeToSec(r.time) !== null);
+  return a.length ? a[a.length - 1] : null;
 }
 function _indSinceHtml(rows, unit) {
   const last = _indLastRow(rows);
