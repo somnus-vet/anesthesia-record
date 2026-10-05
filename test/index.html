@@ -455,6 +455,11 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .ind-since .ind-since-last{font-size:12px;color:var(--muted)}
 .ind-unit{min-height:40px;padding:6px 9px}
 .ind-custom{width:70px}
+/* 導入中バー: 導入シートを閉じても挿管するまで画面下(全タブ共通)に残り、タップでシートに戻る */
+.ind-bar{flex-shrink:0;display:flex;align-items:center;gap:10px;background:#1d4ed8;color:#fff;padding:8px 14px;font-size:13.5px;font-weight:700;cursor:pointer;border-top:1px solid #1e40af}
+.ind-bar b{font-size:20px;font-variant-numeric:tabular-nums}
+.ind-bar .ind-bar-sub{font-weight:600;opacity:.9;font-size:12.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ind-bar .ind-bar-open{border:1.5px solid rgba(255,255,255,.7);border-radius:8px;padding:4px 10px;font-size:12.5px;white-space:nowrap}
 .ind-run{display:flex;align-items:center;gap:10px;font-size:14px;background:#fff7ed;border:1.5px solid #fdba74;border-radius:8px;padding:8px 10px;margin:6px 0;flex-wrap:wrap}
 .ind-run b{font-size:24px;font-variant-numeric:tabular-nums;min-width:64px}
 .ind-remain{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 10px;margin:6px 0}
@@ -1543,6 +1548,7 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     </div>
   </div>
 
+  <div class="ind-bar" id="indBar" style="display:none" onclick="openInductionSheet()"></div>
   <div class="act-bar">
     <button class="act-btn act-primary" onclick="saveCase()">💾 保存</button>
     <button class="act-btn act-secondary" id="restoreBtn" onclick="restoreCaseDetail()" style="display:none">🕘 記載復元</button>
@@ -6592,7 +6598,7 @@ function updateDurations() {
 // 麻酔=前投薬→帰舎、手術=手術開始→手術終了、抗菌薬=直近投与→手術終了。
 // 終了イベント未入力なら現在時刻まで＝ライブ表示。
 function updateLiveTimers() {
-  if (!current) return;
+  if (!current) { const _ib = document.getElementById('indBar'); if (_ib) _ib.style.display = 'none'; return; }
   const now = nowTime();
   setTimerBox('Anesth', current.anesthStart, current.returnToWard, now);
   // 抗菌薬は手術終了で計時停止。終了後に投与した分(術後投与)を起点にすると
@@ -6718,6 +6724,7 @@ function renderTimeline() {
   renderQuickDoseBar();
   renderTimelineList();
   updateLiveTimers();
+  try { _indUpdateBar(); } catch (_) {}
 }
 
 // 未記録の術中イベントをタップボタンで表示（術式特異イベントも術式に応じて追加）
@@ -7994,6 +8001,26 @@ function _mthBadge(en) {
     : 'slow ' + (en.durSec != null ? _fmtSec(en.durSec) : '…');
   return `<span class="tl-mthbadge ${esc(en.method)}" title="${esc(en.note || '')}">${lbl}</span>`;
 }
+// 導入中バー(導入時刻あり・挿管前)。挿管を記録すると消える
+function _indBarActive() {
+  return !!(current && (current.inductionTime || '').trim() && !(current.intubationTime || '').trim());
+}
+function _indUpdateBar() {
+  const bar = document.getElementById('indBar'); if (!bar) return;
+  if (!_indBarActive()) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  const parts = [];
+  _indDrugs().forEach(d => {
+    const rows = _indRowsOf(d);
+    if (!rows.length) return;
+    const cum = rows.reduce((s, r) => { const v = _perKgOfRow(r); return s + (isNaN(v) ? 0 : v); }, 0);
+    const last = _indLastRow(rows);
+    const run = rows.find(r => r.method === 'slow' && r.durSec == null);
+    parts.push(`${esc(d.label)} 累計 ${+cum.toFixed(2)}${esc(d.unit)}` + (run ? `・slow bolus 投与中 <b data-slowstart="${esc(run.time)}">${_fmtSec(_secBetween(run.time, nowTime()) || 0)}</b>` : last ? `・前回から <b data-sincelast="${esc(last.time)}">${_fmtSec(_secBetween(last.time, nowTime()) || 0)}</b>` : ''));
+  });
+  bar.innerHTML = `<span>💉 導入中</span><span class="ind-bar-sub">${parts.length ? parts.join('　') : '導入 ' + esc(current.inductionTime)}</span><span class="ind-bar-open">シートを開く ▸</span>`;
+  bar.style.display = '';
+  _indEnsureTimer();
+}
 function openInductionSheet(focusKey) {
   if (!current) return;
   collectForm();
@@ -8009,7 +8036,8 @@ function _indTick() {
   els.forEach(el => { el.textContent = _fmtSec(_secBetween(el.dataset.slowstart, nowTime()) || 0); });
   document.querySelectorAll('[data-sincelast]').forEach(el => { el.textContent = _fmtSec(_secBetween(el.dataset.sincelast, nowTime()) || 0); });
   const open = document.getElementById('inductionModal').classList.contains('on');
-  if (!els.length && !open && _indSheetTimer) { clearInterval(_indSheetTimer); _indSheetTimer = null; }
+  const barOn = _indBarActive();
+  if (!els.length && !open && !barOn && _indSheetTimer) { clearInterval(_indSheetTimer); _indSheetTimer = null; }
 }
 function renderInductionSheet(focusKey) {
   const w = parseFloat(current.weight) || 0;
@@ -8072,11 +8100,10 @@ function _indSinceHtml(rows, unit) {
   const amt = _perKgOfRow(last);
   return `<div class="ind-since">⏱ 前回の投与から <b data-sincelast="${esc(last.time)}">${_fmtSec(_secBetween(last.time, nowTime()) || 0)}</b><span class="ind-since-last">前回 ${esc(last.time)}${isNaN(amt) ? '' : ` ${+amt.toFixed(2)}${esc(unit)}`}</span></div>`;
 }
-const _indCustomUnit = {};   // 薬剤key → 'kg'(mg/kg) | 'abs'(mg) | 'ml'
+const _indCustomUnit = {};   // 薬剤key → 'kg'(mg/kg) | 'ml'(mL)
 function _indUnitBtns(d) {
   const cur = _indCustomUnit[d.key] || 'kg';
-  const abs = String(d.unit || '').replace('/kg', '');
-  return [['kg', d.unit], ['abs', abs], ['ml', 'mL']].map(([u, l]) =>
+  return [['kg', d.unit], ['ml', 'mL']].map(([u, l]) =>
     `<button type="button" class="tl-vmode ind-unit${cur === u ? ' on' : ''}" data-indunit="${d.key}:${u}" onclick="indSetUnit('${d.key}','${u}')">${esc(l)}</button>`).join('');
 }
 function indSetUnit(key, u) {
@@ -8097,7 +8124,7 @@ function indAddEffect(key, step, srcText) {
   renderInductionSheet(key);
   showToast(`✅ ${d.label} ${+(+step).toFixed(2)}${d.unit}（${after ? '追加' : 'to effect'}）を記録${since}`);
 }
-// 自由入力: mg/kg・mg・mL のどれで入れても mg/kg に換算して to effect と同じ扱いで記録
+// 自由入力: mg/kg でも mL でも mg/kg に換算して to effect と同じ扱いで記録
 function indAddCustom(key) {
   const d = findDrugDef(key); if (!d || !current) return;
   const inp = document.getElementById('indCustom_' + key);
@@ -8105,10 +8132,8 @@ function indAddCustom(key) {
   if (isNaN(v) || v <= 0) { showToast('数値を入力してください'); return; }
   const u = _indCustomUnit[key] || 'kg';
   const w = parseFloat(current.weight) || 0;
-  const abs = String(d.unit || '').replace('/kg', '');
   let perKg, src = '';
   if (u === 'kg') { perKg = v; }
-  else if (u === 'abs') { if (!w) { showToast('体重が未入力のため換算できません'); return; } perKg = v / w; src = `${v}${abs}`; }
   else { if (!w || !d.conc) { showToast('体重と薬液濃度が必要です'); return; } perKg = v * d.conc / w; src = `${v}mL`; }
   indAddEffect(key, +perKg.toFixed(2), src);
 }
