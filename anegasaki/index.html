@@ -442,6 +442,9 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 .tl-ind-line b{font-size:18px;font-variant-numeric:tabular-nums;min-width:48px}
 .tl-ind-btn{min-height:34px;padding:4px 10px;font-size:12px}
 .tl-indsub{flex-basis:100%;display:flex;flex-direction:column;gap:4px;padding:4px 0 3px 8px;margin-left:2px;border-left:3px solid #94a3b8}
+.tl-intubsub{flex-basis:100%;display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:4px 0 3px 8px;margin-left:2px;border-left:3px solid #94a3b8}
+.tl-intubsub+.tl-indsub{padding-top:0;margin-top:-6px}
+.tl-intubsub .tl-indsub-name{font-size:13px;font-weight:700;min-width:64px}
 .tl-indsub-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .tl-indsub-name{flex:0 0 86px;font-size:12.5px;font-weight:700;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tl-indsub-row .tl-to-in{flex:0 0 56px;width:56px;min-height:32px;font-size:13px;padding:3px 2px}
@@ -6961,10 +6964,11 @@ function renderTimelineList() {
   list.innerHTML = entries.map(en => {
     if (en.type === 'event') {
       let extra = '';
+      let intubSub = '';
       if (en.key === 'intubationTime') {
-        extra = `<input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(current.tubeSize||'')}" placeholder="-" oninput="editIntubField('tubeSize',this.value)" autocomplete="off"><span class="tl-unit">mm</span>`
+        intubSub = `<div class="tl-intubsub"><span class="tl-indsub-name">チューブ</span><input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(current.tubeSize||'')}" placeholder="-" oninput="editIntubField('tubeSize',this.value)" autocomplete="off"><span class="tl-unit">mm</span>`
           + `<input class="fin tl-tube-in" type="text" inputmode="decimal" value="${esc(current.tubeSizeFr||'')}" placeholder="-" oninput="editIntubField('tubeSizeFr',this.value)" autocomplete="off"><span class="tl-unit">Fr</span>`
-          + `<button type="button" class="tl-diff${current.intubationDifficult?' on':''}" onclick="toggleIntubDifficult()">${window.innerWidth <= 430 ? '困難' : '挿管困難'} ${current.intubationDifficult?'有':'無'}</button>`;
+          + `<button type="button" class="tl-diff${current.intubationDifficult?' on':''}" onclick="toggleIntubDifficult()">${window.innerWidth <= 430 ? '困難' : '挿管困難'} ${current.intubationDifficult?'有':'無'}</button></div>`;
       }
       // 混注①②③: 構成薬を小さな行で下に付ける(時刻は混注の行で一括、用量/単位/経路は個別に編集可)
       let mixSub = '';
@@ -6991,12 +6995,12 @@ function renderTimelineList() {
         }).join('') + `</div>`;
       }
       const indSub = en.key === 'intubationTime' ? _indSetSubHtml() : '';
-      return `<div class="tl-row tl-event"${(mixSub || indSub) ? ' style="flex-wrap:wrap"' : ''}>
+      return `<div class="tl-row tl-event"${(mixSub || indSub || intubSub) ? ' style="flex-wrap:wrap"' : ''}>
         <input class="fin tl-time-in" type="text" value="${esc(en.time)}" placeholder="00:00:00" oninput="editEventTime('${en.key}',this.value)" onchange="onFreeNoteFinalize()" autocomplete="off">
-        <span class="tl-name${en.key==='intubationTime'?' tl-name-c':''}">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
+        <span class="tl-name">${en.label}</span>${(/^pe_mix[123]$/.test(en.key) && en.time && en.time === (current.anesthStart || '')) ? '<span class="tl-surg-tag">前投薬</span>' : ''}
         ${extra ? extra + '<span class="tl-spacer"></span>' : ''}
         <button class="btn-del" onclick="if(!delArmed(this))return;clearEvent('${en.key}')">✕</button>
-        ${mixSub}${indSub}
+        ${intubSub}${mixSub}${indSub}
       </div>`;
     }
     if (en.type === 'free') {
@@ -8127,6 +8131,11 @@ function openInductionSheet(focusKey) {
   document.getElementById('inductionModal').classList.add('on');
   _indEnsureTimer();
 }
+// シート内の「挿管を記録」: 通常の挿管記録(slow bolus終了・導入セット追加)と同じ処理→シートと導入中バーが閉じる
+function indRecordIntub() {
+  closeInductionSheet();
+  recordEvent('intubationTime');
+}
 function closeInductionSheet() {
   document.getElementById('inductionModal').classList.remove('on');  // タイマーは _indTick が自己停止
 }
@@ -8172,7 +8181,7 @@ function renderInductionSheet(focusKey) {
     if (done.length) html += `<div class="ind-note">${done.map(r => esc(r.note || '')).join('<br>')}</div>`;
     html += `</div>`;
   });
-  html += `<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px"><button type="button" class="qdose-btn dp-unplanned" onclick="closeInductionSheet()">閉じる</button></div>`;
+  html += `<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px">${afterIntub ? '' : `<button type="button" class="qdose-btn on" style="margin-right:auto" onclick="indRecordIntub()">🫁 挿管を記録</button>`}<button type="button" class="qdose-btn dp-unplanned" onclick="closeInductionSheet()">閉じる</button></div>`;
   document.getElementById('inductionBody').innerHTML = html;
 }
 function _indPush(d, perKg, extra) {
@@ -8387,6 +8396,11 @@ function clearEvent(key) {
     const _mn = (String(key).match(/^pe_mix([123])$/) || [])[1];
     if (_mn) (current.drugLog || []).forEach(d => { if (d && !d.deleted && String(d.mix) === _mn) { d.deleted = true; touchEv(d); } });  // 構成薬も一緒に取り消す
   } else {
+    if (key === 'intubationTime') {   // 挿管で自動追加した導入セット(O2/Air・呼吸管理・ガス・輸液)も一緒に消す
+      let n = 0;
+      _indSetNotes().forEach(({ n: note }) => { note.deleted = true; touchEv(note); n++; });
+      if (n) { recomputeFreeNotesFroms(); try { recomputeSurgTimes(); } catch (_) {} }
+    }
     current[key] = '';
     setVal('f_' + key, '');
     updateDurations();
