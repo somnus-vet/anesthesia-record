@@ -1298,6 +1298,7 @@ body.board-mode .screen{inset:32px 0 0 0!important}
           <div class="frow">
             <input class="fin" type="text" id="f_localCustom2" placeholder="ブロック名・薬剤・部位・量等" oninput="autoSave()">
           </div>
+          <button type="button" onclick="openBlockTplList()" style="background:#fff;border:1.5px dashed #c99a00;color:#7a5a00;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;width:100%;margin-top:10px;min-height:38px">★ ブロック定型一覧（この病院の「いつもの入れ方」）</button>
           </div></div>
         </div>
       </div>
@@ -1796,14 +1797,6 @@ body.board-mode .screen{inset:32px 0 0 0!important}
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('生理食塩水(NaCl)')">NaCl</button>
       </div>
 
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">📍 局所麻酔（メイン溶液＋ブロック）</div>
-      <div id="presetLocalSummary" style="font-size:12px;line-height:1.6;background:#f8fafc;border:1.5px solid var(--border);border-radius:7px;padding:8px;margin-bottom:6px"></div>
-      <div style="display:flex;gap:6px;margin-bottom:14px">
-        <button type="button" class="preset-edit-btn" style="margin:0;flex:1;width:auto" onclick="capturePresetLocalFromCase()">⬇ 今開いている症例の局所麻酔を取り込む</button>
-        <button type="button" class="preset-edit-btn" style="margin:0;flex:0 0 auto;width:auto;border-color:#f5c2c7;color:#c0392b" onclick="clearPresetLocal()">クリア</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin:-8px 0 12px">※ 薬剤レシピ・ブロック種類・側・部位数を保存。mL/site は体重依存のため保存せず、適用後に当日入力します。</div>
-
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">薬剤・用量・経路</div>
       <div id="presetDrugList"></div>
 
@@ -1882,6 +1875,36 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     <div class="modal-body" id="blockPickerBody"></div>
     <div class="modal-footer">
       <button type="button" onclick="closeBlockPicker()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ブロック定型 編集モーダル ========== -->
+<div class="modal-overlay" id="blockTplModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span id="blockTplTitle">★ ブロックの定型</span>
+      <button class="modal-close" onclick="closeBlockTplEditor()">×</button>
+    </div>
+    <div class="modal-body" id="blockTplBody"></div>
+    <div class="modal-footer">
+      <button type="button" id="blockTplDel" class="btn-reset" onclick="deleteBlockTplEditor()" style="background:#fdecea;border-color:#f5c2c7;color:#c0392b;margin-right:auto">削除</button>
+      <button type="button" onclick="closeBlockTplEditor()">キャンセル</button>
+      <button type="button" class="btn-save" onclick="saveBlockTplEditor()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ブロック定型 一覧モーダル ========== -->
+<div class="modal-overlay" id="blockTplListModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span>★ ブロック定型一覧</span>
+      <button class="modal-close" onclick="closeBlockTplList()">×</button>
+    </div>
+    <div class="modal-body" id="blockTplListBody"></div>
+    <div class="modal-footer">
+      <button type="button" onclick="closeBlockTplList()">閉じる</button>
     </div>
   </div>
 </div>
@@ -2360,7 +2383,10 @@ function renderBlockCard(si, key, d) {
   return `<div data-set="${si}" data-block="${key}" style="background:#fff;border:1.5px solid var(--border);border-radius:7px;padding:8px;margin-bottom:6px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
       <span style="font-weight:700;font-size:13px;color:var(--navy)">${esc(def.label)}</span>
-      <button type="button" onclick="removeBlock(${si},'${key}')" style="background:#fff;border:1.5px solid #f5c2c7;color:#dc3545;border-radius:6px;width:28px;height:28px;font-size:13px;cursor:pointer">×</button>
+      <span style="display:flex;gap:4px">
+        <button type="button" onclick="openBlockTplEditor(${si},'${key}')" title="定型として登録" style="background:#fff8e0;border:1.5px solid #f3c441;color:#7a5a00;border-radius:6px;height:28px;padding:0 8px;font-size:12px;font-weight:700;cursor:pointer">★ 定型</button>
+        <button type="button" onclick="removeBlock(${si},'${key}')" style="background:#fff;border:1.5px solid #f5c2c7;color:#dc3545;border-radius:6px;width:28px;height:28px;font-size:13px;cursor:pointer">×</button>
+      </span>
     </div>
     <div class="frow" style="gap:4px;flex-wrap:wrap;align-items:center">
       <input class="fdose b-vol" type="text" inputmode="decimal" pattern="[0-9.]*" value="${esc(d.volume||'')}" placeholder="0.0" oninput="setBlockField(${si},'${key}','volume',this.value)" style="width:60px">
@@ -2371,6 +2397,7 @@ function renderBlockCard(si, key, d) {
       <span class="unit">= <strong class="b-total">0.00mL</strong></span>
     </div>
     <div class="b-drugs" style="margin:4px 0"></div>
+    <div class="b-tpl" style="margin:2px 0 4px">${tplBadgeHtml(si, key)}</div>
     <input class="block-note b-note" type="text" value="${esc(d.note||'')}" placeholder="メモ（部位・効果等）" oninput="setBlockField(${si},'${key}','note',this.value)" style="width:100%;font-size:13px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;background:#f8fafc;min-height:34px">
   </div>`;
 }
@@ -2537,6 +2564,190 @@ function updateCombinedLATox() {
     + (over ? '<br>複数の局所麻酔薬は毒性が加算されます。合計が極量の100%を超えています。減量を検討してください。' : '');
 }
 
+// ─────────────── ブロック定型（ブロック×動物種の「いつもの入れ方」）───────────────
+// 保存先: userPresets.__hospital__.blockTemplates[ "<blockKey>|<sp>" ]
+//   = { mode:'mlkg'|'abs', value:'0.3', maxMl:'5', sites:'2', side:'両側', note:'', savedAt }
+// sp: 'dog' | 'cat' | 'other'(兎・その他)。Sheetsの __extras__ 行で端末間共有(GAS変更なし)。
+// 体重比(mL/kg/site)は上限mLで頭打ち(大型犬の硬膜外・下歯槽など)。絶対量(mL/site)は固定。
+const TPL_SPECIES = [['dog','犬'],['cat','猫'],['other','その他']];
+function tplSpeciesOfCase() { const s = current && current.species; return s === 'cat' ? 'cat' : s === 'dog' ? 'dog' : 'other'; }
+function tplSpeciesLabel(sp) { return (TPL_SPECIES.find(x => x[0] === sp) || ['', '?'])[1]; }
+function getBlockTemplates() { const h = userPresets && userPresets.__hospital__; return (h && h.blockTemplates && typeof h.blockTemplates === 'object') ? h.blockTemplates : {}; }
+function getBlockTemplate(key, sp) { return getBlockTemplates()[key + '|' + sp] || null; }
+function _ensureHospitalEntry() {
+  if (!userPresets || typeof userPresets !== 'object') userPresets = {};
+  if (!userPresets.__hospital__) userPresets.__hospital__ = { label: '（病院の既定）', drugs: {} };
+  if (!userPresets.__hospital__.blockTemplates || typeof userPresets.__hospital__.blockTemplates !== 'object') userPresets.__hospital__.blockTemplates = {};
+  if (!Object.keys(userPresets).some(k => k.indexOf('__') !== 0)) Object.assign(userPresets, JSON.parse(JSON.stringify(DRUG_PRESETS)));
+  return userPresets.__hospital__;
+}
+function _persistBlockTemplates(msg) {
+  savePresetsToStorage();
+  try { renderPresetBar(); } catch (_) {}
+  pushPresetsToSheets().then(ok => { if (ok === false && sheetsConfig && sheetsConfig.enabled && sheetsConfig.webappUrl) showToast('⚠️ 端末には保存。Sheetsへの共有は失敗'); });
+  if (msg) showToast(msg);
+}
+function tplDoseText(t) {
+  if (!t || !t.value) return '';
+  let s = t.mode === 'mlkg' ? `${t.value} mL/kg/site` : `${t.value} mL/site`;
+  if (t.mode === 'mlkg' && t.maxMl) s += `（最大${t.maxMl}mL）`;
+  const extra = []; if (t.side) extra.push(t.side); if (t.sites && t.sites !== '1') extra.push(`${t.sites}部位`);
+  if (extra.length) s += ' ' + extra.join('・');
+  return s;
+}
+// 定型から mL/site を計算。体重比で体重未入力なら null
+function tplVolume(t, weight) {
+  if (!t) return null;
+  const v = parseFloat(t.value); if (isNaN(v)) return null;
+  if (t.mode !== 'mlkg') return v;
+  const w = parseFloat(weight) || 0; if (!w) return null;
+  let ml = v * w; const mx = parseFloat(t.maxMl);
+  if (!isNaN(mx) && mx > 0 && ml > mx) ml = mx;
+  return ml;
+}
+function fmtMl(x) { return (x === null || x === undefined || isNaN(x)) ? '' : String(Math.round(x * 100) / 100); }
+// ブロック追加時/再適用: 定型があれば量・側・部位数を入れる
+function applyBlockTemplate(si, key, opts) {
+  opts = opts || {};
+  const sp = tplSpeciesOfCase(); const t = getBlockTemplate(key, sp);
+  if (!t || !current) return false;
+  const d = ensureBlockData(si, key);
+  const ml = tplVolume(t, current.weight);
+  if (ml === null && t.mode === 'mlkg') { if (!opts.silent) showToast('体重が未入力のため量を計算できません'); }
+  else d.volume = fmtMl(ml);
+  if (t.sites) d.sites = t.sites;
+  if (BLOCKS_WITH_SIDE.has(key)) d.side = t.side || '';
+  if (t.note && !d.note) d.note = t.note;
+  return true;
+}
+function reapplyBlockTemplate(si, key) {
+  if (!applyBlockTemplate(si, key)) return;
+  renderSelectedBlocks(si); autoSave();
+  showToast('定型を適用しました');
+}
+function tplBadgeHtml(si, key) {
+  const sp = tplSpeciesOfCase(); const t = getBlockTemplate(key, sp);
+  if (!t) return `<span style="font-size:11px;color:var(--muted)">定型なし（${esc(tplSpeciesLabel(sp))}）— 右上の「★ 定型」で今の入れ方を登録</span>`;
+  return `<button type="button" onclick="reapplyBlockTemplate(${si},'${key}')" style="background:#fff8e0;border:1px solid #f3c441;color:#7a5a00;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;min-height:26px;text-align:left">★ 定型（${esc(tplSpeciesLabel(sp))}）: ${esc(tplDoseText(t))}　↻再適用</button>`;
+}
+
+// ---- 定型の編集モーダル ----
+let _tplEdit = null;
+function openBlockTplEditor(si, key, spOverride, fromList) {
+  const def = getBlockDef(key); if (!def) return;
+  const sp = spOverride || tplSpeciesOfCase();
+  const t = getBlockTemplate(key, sp);
+  const S = _laSet(si || 1);
+  const d = (si && current && current[S.blocks] && current[S.blocks][key]) || {};
+  const w = parseFloat(current && current.weight) || 0;
+  let init;
+  if (t) init = { mode: t.mode, value: t.value, maxMl: t.maxMl || '', sites: t.sites || '1', side: t.side || '', note: t.note || '' };
+  else {
+    // 未登録なら今のカードの入力から初期値を作る（体重があれば mL/kg 換算）
+    const vol = parseFloat(d.volume) || 0;
+    init = { mode: (w && vol) ? 'mlkg' : 'abs', value: (w && vol) ? String(Math.round(vol / w * 1000) / 1000) : (vol ? String(vol) : ''), maxMl: '', sites: d.sites || '1', side: d.side || '', note: '' };
+  }
+  _tplEdit = Object.assign({ si: si || 1, key, sp, fromList: !!fromList, exists: !!t }, init);
+  renderBlockTplEditor();
+  document.getElementById('blockTplModal').classList.add('on');
+}
+function closeBlockTplEditor() { document.getElementById('blockTplModal').classList.remove('on'); _tplEdit = null; }
+function tplSet(f, v) {
+  const e = _tplEdit; if (!e) return;
+  e[f] = v;
+  if (f === 'sp') {
+    // 動物種を切り替えたら、その種の既存定型があれば読み込む
+    const t = getBlockTemplate(e.key, v); e.exists = !!t;
+    if (t) Object.assign(e, { mode: t.mode, value: t.value, maxMl: t.maxMl || '', sites: t.sites || '1', side: t.side || '', note: t.note || '' });
+  }
+  if (f === 'sp' || f === 'mode' || f === 'side') renderBlockTplEditor(); else renderTplPreview();
+}
+function renderBlockTplEditor() {
+  const e = _tplEdit; if (!e) return;
+  const def = getBlockDef(e.key);
+  document.getElementById('blockTplTitle').textContent = `★ ${def.label} の定型`;
+  const spBtns = TPL_SPECIES.map(([v, l]) => `<button type="button" class="qdose-btn ${e.sp === v ? 'on' : ''}" onclick="tplSet('sp','${v}')">${l}</button>`).join('');
+  const modeBtns = [['mlkg','体重比 mL/kg'],['abs','絶対量 mL']].map(([v, l]) => `<button type="button" class="qdose-btn ${e.mode === v ? 'on' : ''}" onclick="tplSet('mode','${v}')">${l}</button>`).join('');
+  const hasSide = BLOCKS_WITH_SIDE.has(e.key);
+  const sideBtns = ['','R','L','両側'].map(s => `<button type="button" class="rbtn ${e.side === s ? 'on' : ''}" onclick="tplSet('side','${s}')">${s || '指定なし'}</button>`).join('');
+  document.getElementById('blockTplBody').innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">動物種（種ごとに別の定型を持てます）</div>
+    <div class="qdose-bar">${spBtns}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">量の決め方</div>
+    <div class="qdose-bar">${modeBtns}</div>
+    <div class="frow" style="gap:6px;align-items:center;flex-wrap:wrap">
+      <input class="fdose" type="text" inputmode="decimal" value="${esc(e.value)}" placeholder="0.0" oninput="tplSet('value',this.value)">
+      <span class="unit">${e.mode === 'mlkg' ? 'mL/kg/site' : 'mL/site'}</span>
+      ${e.mode === 'mlkg' ? `<span class="unit" style="margin-left:10px">上限</span><input class="fdose" type="text" inputmode="decimal" value="${esc(e.maxMl)}" placeholder="なし" oninput="tplSet('maxMl',this.value)"><span class="unit">mL/site</span>` : ''}
+    </div>
+    ${e.mode === 'mlkg' ? '<div style="font-size:11px;color:var(--muted);margin-top:4px">上限を入れると大型犬でも頭打ち（例: 硬膜外 0.2mL/kg・最大6mL、下歯槽 0.1mL/kg・最大1mL）</div>' : ''}
+    <div class="frow" style="gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <span class="unit">部位数</span><input class="fdose" type="text" inputmode="numeric" value="${esc(e.sites)}" style="width:52px" oninput="tplSet('sites',this.value)">
+      ${hasSide ? `<span class="unit" style="margin-left:10px">側</span>${sideBtns}` : ''}
+    </div>
+    <div class="frow" style="margin-top:8px"><input class="fin" type="text" value="${esc(e.note)}" placeholder="メモ（手技のコツ等・任意。カードのメモに入ります）" oninput="tplSet('note',this.value)"></div>
+    <div id="blockTplPreview" style="margin-top:10px;background:#fff8e0;border:1px solid #f3c441;border-radius:7px;padding:8px;font-size:12px;line-height:1.6"></div>`;
+  document.getElementById('blockTplDel').style.display = e.exists ? '' : 'none';
+  renderTplPreview();
+}
+function renderTplPreview() {
+  const e = _tplEdit; const el = document.getElementById('blockTplPreview'); if (!e || !el) return;
+  const t = { mode: e.mode, value: e.value, maxMl: e.maxMl, sites: e.sites, side: e.side };
+  const rows = [];
+  if (e.mode === 'mlkg') [3, 5, 10, 20, 30, 40].forEach(w => { const ml = tplVolume(t, w); if (ml !== null) rows.push(`${w}kg→${fmtMl(ml)}`); });
+  const w = parseFloat(current && current.weight) || 0;
+  const cur = (w && e.sp === tplSpeciesOfCase()) ? tplVolume(t, w) : null;
+  el.innerHTML = `<div><b>${esc(tplDoseText(t) || '— 量を入力してください')}</b></div>`
+    + (rows.length ? `<div style="color:var(--muted)">${rows.join('　')} mL/site</div>` : '')
+    + (cur !== null ? `<div>この症例（${w}kg）なら <b>${fmtMl(cur)} mL/site</b></div>` : '');
+}
+function saveBlockTplEditor() {
+  const e = _tplEdit; if (!e) return;
+  if (!e.value || isNaN(parseFloat(e.value))) { showToast('量を入力してください'); return; }
+  const h = _ensureHospitalEntry();
+  h.blockTemplates[e.key + '|' + e.sp] = { mode: e.mode, value: String(e.value).trim(), maxMl: e.mode === 'mlkg' ? String(e.maxMl || '').trim() : '', sites: String(e.sites || '1').trim(), side: e.side || '', note: (e.note || '').trim(), savedAt: nowIsoStr() };
+  const def = getBlockDef(e.key);
+  const si = e.si, key = e.key, fromList = e.fromList, sp = e.sp;
+  closeBlockTplEditor();
+  _persistBlockTemplates(`★ ${def.label}（${tplSpeciesLabel(sp)}）の定型を保存しました`);
+  if (fromList) renderBlockTplList();
+  else if (current) {
+    if (sp === tplSpeciesOfCase()) { applyBlockTemplate(si, key, { silent: true }); autoSave(); } // 今のカードにも反映
+    renderSelectedBlocks(si);
+  }
+}
+function deleteBlockTplEditor() {
+  const e = _tplEdit; if (!e) return;
+  const h = _ensureHospitalEntry();
+  delete h.blockTemplates[e.key + '|' + e.sp];
+  const si = e.si, fromList = e.fromList;
+  closeBlockTplEditor();
+  _persistBlockTemplates('定型を削除しました');
+  if (fromList) renderBlockTplList(); else if (current) renderSelectedBlocks(si);
+}
+// ---- 定型一覧 ----
+function openBlockTplList() { renderBlockTplList(); document.getElementById('blockTplListModal').classList.add('on'); }
+function closeBlockTplList() { document.getElementById('blockTplListModal').classList.remove('on'); }
+function renderBlockTplList() {
+  const el = document.getElementById('blockTplListBody'); if (!el) return;
+  const entries = Object.entries(getBlockTemplates()).filter(([k, t]) => t && getBlockDef(k.split('|')[0]));
+  if (!entries.length) { el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--muted);font-size:13px">まだ定型がありません。<br>ブロックカード右上の「★ 定型」から登録できます</div>'; return; }
+  const order = LOCAL_BLOCKS.map(b => b.key);
+  el.innerHTML = TPL_SPECIES.map(([sp, lbl]) => {
+    const rows = entries.filter(([k]) => k.split('|')[1] === sp);
+    if (!rows.length) return '';
+    rows.sort((a, b) => order.indexOf(a[0].split('|')[0]) - order.indexOf(b[0].split('|')[0]));
+    return `<div style="font-size:12px;font-weight:800;color:var(--blue);margin:8px 0 4px">${lbl}</div>` + rows.map(([k, t]) => {
+      const bk = k.split('|')[0]; const def = getBlockDef(bk);
+      return `<div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed #eee">
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">${esc(def.label)}</div><div style="font-size:12px;color:var(--navy)">${esc(tplDoseText(t))}${t.note ? `<span style="color:var(--muted)"> ・${esc(t.note)}</span>` : ''}</div></div>
+        <button type="button" class="rbtn" onclick="openBlockTplEditor(0,'${bk}','${sp}',true)">編集</button>
+      </div>`;
+    }).join('');
+  }).join('');
+}
+
+
 // ─────────────── ブロックピッカー ───────────────
 // 複数選択方式: タップで選択/解除をトグルし、「閉じる」で確定。
 function openBlockPicker(si = 1) {
@@ -2555,7 +2766,8 @@ function renderBlockPickerBody() {
       const b = LOCAL_BLOCKS.find(x => x.key === key);
       if (!b) return '';
       const isSelected = selectedSet.has(key);
-      return `<button type="button" onclick="toggleBlockSelection('${key}')" style="background:${isSelected?'#d4edda':'#eaf3fb'};color:${isSelected?'#155724':'var(--navy)'};border:1.5px solid ${isSelected?'var(--green)':'var(--blue)'};border-radius:7px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer;margin:2px;min-height:38px">${esc(b.label)}${isSelected?' ✓':''}</button>`;
+      const hasTpl = !!getBlockTemplate(key, tplSpeciesOfCase());
+      return `<button type="button" onclick="toggleBlockSelection('${key}')" style="background:${isSelected?'#d4edda':'#eaf3fb'};color:${isSelected?'#155724':'var(--navy)'};border:1.5px solid ${isSelected?'var(--green)':'var(--blue)'};border-radius:7px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer;margin:2px;min-height:38px">${hasTpl?'★':''}${esc(b.label)}${isSelected?' ✓':''}</button>`;
     }).join('');
     return `<div style="margin-bottom:10px">
       <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">${esc(grp.cat)}</div>
@@ -2577,7 +2789,8 @@ function toggleBlockSelection(key) {
   if (existing && existing.use) {
     existing.use = false; // 解除（入力済みの量・部位は残す）
   } else {
-    ensureBlockData(si, key).use = true;
+    const d = ensureBlockData(si, key); d.use = true;
+    if (!d.volume) applyBlockTemplate(si, key, { silent: true }); // 定型があれば量・側・部位数を自動入力
   }
   renderBlockPickerBody();   // ピッカーの選択状態を更新
   renderSelectedBlocks(si);  // 下のカード一覧も即時反映
@@ -2678,7 +2891,7 @@ const PRESET_DESC = {
 // プリセット: Sheets権威 → localStorage キャッシュ → デフォルト
 let userPresets = null;
 // 薬剤以外の拡張項目（Sheetsの __extras__ 行にJSONで保存し端末間共有）
-const EXTRA_PRESET_FIELDS = ['maint','maintConc','maintO2','maintAir','fluidType','fluidRate','local'];
+const EXTRA_PRESET_FIELDS = ['maint','maintConc','maintO2','maintAir','fluidType','fluidRate'];
 
 async function loadPresetsFromSheets() {
   if (!sheetsConfig || !sheetsConfig.spreadsheetId) return null;
@@ -2721,7 +2934,7 @@ async function loadPresetsFromSheets() {
       Object.keys(cached).forEach(k => {
         if (k === '__hospital__' && !presets[k]) { presets[k] = cached[k]; return; }
         if (!presets[k]) return;
-        EXTRA_PRESET_FIELDS.concat(['comps', 'savedAt']).forEach(f => {
+        EXTRA_PRESET_FIELDS.concat(['comps', 'savedAt', 'blockTemplates']).forEach(f => {
           if (presets[k][f] === undefined && cached[k][f] !== undefined) presets[k][f] = cached[k][f];
         });
         Object.entries(cached[k].drugs || {}).forEach(([dk, st]) => { if (st && st.mix && presets[k].drugs[dk] && !presets[k].drugs[dk].mix) presets[k].drugs[dk].mix = st.mix; });
@@ -2828,8 +3041,6 @@ function applyPreset(key) {
   // 輸液（プリセットに設定があれば反映）
   if (preset.fluidType) current.fluidType = preset.fluidType;
   if (preset.fluidRate) current.fluidRate = preset.fluidRate;
-  // 局所麻酔（プリセットに設定があれば①②を置き換え。無ければ症例側はそのまま）
-  if (preset.local && typeof preset.local === 'object') applyPresetLocal(preset.local);
   populateForm();
   showToast(`プリセット適用: ${preset.label}`);
   autoSave();
@@ -2882,8 +3093,6 @@ function renderPresetEditor() {
   // 輸液
   document.getElementById('presetFluidType').value = preset.fluidType || '';
   document.getElementById('presetFluidRate').value = preset.fluidRate || '';
-  // 局所麻酔
-  document.getElementById('presetLocalSummary').innerHTML = presetLocalSummaryHtml(preset.local);
 
   const allDrugs = Object.values(DRUG_GROUPS).flat();
   const list = document.getElementById('presetDrugList');
@@ -2970,81 +3179,6 @@ function addDrugToPreset() {
   editingPreset[presetKey].drugs[drugKey] = { dose: '', route: drug.def };
   sel.value = '';
   renderPresetEditor();
-}
-
-// ─────────────── プリセットの局所麻酔 ───────────────
-// 形: preset.local = { s1:{mix:{drugs:[{name,conc,stockMl}],totalVolume}, blocks:{key:{sites,side}}}, s2:{...} }
-// mL/site(volume) は体重依存のため保存しない（適用時は空欄→当日入力）。
-function _captureLocalSet(si) {
-  const S = _laSet(si);
-  const mixSrc = (current && current[S.mix]) || {};
-  const drugs = (Array.isArray(mixSrc.drugs) ? mixSrc.drugs : [])
-    .filter(d => d && d.name)
-    .map(d => ({ name: d.name, conc: d.conc, stockMl: d.stockMl || '' }));
-  const blocks = {};
-  Object.entries((current && current[S.blocks]) || {}).forEach(([k, d]) => {
-    if (d && d.use && getBlockDef(k)) blocks[k] = { sites: d.sites || '1', side: d.side || '' };
-  });
-  if (!drugs.length && !Object.keys(blocks).length) return null;
-  return { mix: { drugs, totalVolume: mixSrc.totalVolume || '' }, blocks };
-}
-function capturePresetLocalFromCase() {
-  if (!editingPreset) return;
-  if (!current) { showToast('症例を開いた状態で取り込んでください'); return; }
-  const s1 = _captureLocalSet(1), s2 = _captureLocalSet(2);
-  if (!s1 && !s2) { showToast('この症例に局所麻酔の設定がありません'); return; }
-  const key = document.getElementById('presetSelect').value;
-  if (!editingPreset[key]) return;
-  const local = {};
-  if (s1) local.s1 = s1;
-  if (s2) local.s2 = s2;
-  editingPreset[key].local = local;
-  renderPresetEditor();
-  showToast('局所麻酔をプリセットに取り込みました（保存で確定）');
-}
-function clearPresetLocal() {
-  if (!editingPreset) return;
-  const key = document.getElementById('presetSelect').value;
-  if (editingPreset[key]) delete editingPreset[key].local;
-  renderPresetEditor();
-}
-function _localSetSummary(set) {
-  if (!set) return '';
-  const mix = set.mix || {};
-  const drugs = (mix.drugs || []).map(d => `${esc(laDrugLabel(d.name, d.conc))}${d.stockMl ? ' ' + esc(d.stockMl) + 'mL' : ''}`);
-  let mixTxt = drugs.join(' + ');
-  if (mixTxt && mix.totalVolume) mixTxt += ` → 計${esc(mix.totalVolume)}mL`;
-  const blocks = Object.entries(set.blocks || {}).map(([k, d]) => {
-    const def = getBlockDef(k); if (!def) return '';
-    const parts = []; if (d.side) parts.push(d.side); if (d.sites && d.sites !== '1') parts.push(`${d.sites}部位`);
-    return esc(def.label) + (parts.length ? `(${parts.join('・')})` : '');
-  }).filter(Boolean);
-  return `<div>🧪 ${mixTxt || '<span style="color:var(--muted)">溶液なし</span>'}</div><div>📍 ${blocks.length ? blocks.join('、') : '<span style="color:var(--muted)">ブロックなし</span>'}</div>`;
-}
-function presetLocalSummaryHtml(local) {
-  if (!local || (!local.s1 && !local.s2)) return '<span style="color:var(--muted)">未設定（「取り込む」で今の症例の内容を登録）</span>';
-  let h = '';
-  if (local.s1) h += `<div style="font-weight:700;color:var(--blue)">① セット1</div>${_localSetSummary(local.s1)}`;
-  if (local.s2) h += `<div style="font-weight:700;color:var(--blue);margin-top:4px">② セット2</div>${_localSetSummary(local.s2)}`;
-  return h;
-}
-// プリセット適用: 局所麻酔①②を置き換え（volume は空=当日入力、note は空）
-function applyPresetLocal(local) {
-  [[1, local.s1], [2, local.s2]].forEach(([si, set]) => {
-    const S = _laSet(si);
-    if (!set) { current[S.mix] = { drugs: [], totalVolume: '' }; current[S.blocks] = {}; return; }
-    const mix = set.mix || {};
-    current[S.mix] = {
-      drugs: (mix.drugs || []).map(d => ({ name: d.name, conc: d.conc, stockMl: d.stockMl || '' })),
-      totalVolume: mix.totalVolume || ''
-    };
-    const blocks = {};
-    Object.entries(set.blocks || {}).forEach(([k, d]) => {
-      if (!getBlockDef(k)) return;
-      blocks[k] = { use: true, volume: '', sites: (d && d.sites) || '1', side: (d && d.side) || '', note: '' };
-    });
-    current[S.blocks] = blocks;
-  });
 }
 
 // 維持薬・輸液の編集
@@ -5202,7 +5336,7 @@ function setSeg(key, val, el) {
   parent.querySelectorAll('.seg-i').forEach(i => i.classList.remove('on'));
   el.classList.add('on');
   // 動物種の変更は禁忌薬（猫×アセトアミノフェン）の行に即反映
-  if (key === 'species') { try { applyAcetaminophenBan(); } catch(_) {} }
+  if (key === 'species') { try { applyAcetaminophenBan(); } catch(_) {} try { populateLocalBlocks(); } catch(_) {} }
   autoSave();
 }
 
@@ -5796,7 +5930,9 @@ function saveHospitalDefaults() {
   const comps = {};
   HOSP_DEFAULT_KEYS.forEach(k => { if (current[k] !== undefined) comps[k] = current[k]; });
   if (!userPresets || typeof userPresets !== 'object') userPresets = {};
+  const _prevTpl = (userPresets.__hospital__ && userPresets.__hospital__.blockTemplates) || null;
   userPresets.__hospital__ = { label: '（病院の既定）', drugs: {}, comps, savedAt: nowIsoStr() };
+  if (_prevTpl) userPresets.__hospital__.blockTemplates = _prevTpl; // ブロック定型は保持
   // 通常プリセットがまだ無ければ既定を補う(プリセットバーが空にならないように)
   if (!Object.keys(userPresets).some(k => k.indexOf('__') !== 0)) Object.assign(userPresets, JSON.parse(JSON.stringify(DRUG_PRESETS)));
   savePresetsToStorage();
