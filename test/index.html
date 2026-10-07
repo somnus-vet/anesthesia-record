@@ -1796,6 +1796,14 @@ body.board-mode .screen{inset:32px 0 0 0!important}
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('生理食塩水(NaCl)')">NaCl</button>
       </div>
 
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">📍 局所麻酔（メイン溶液＋ブロック）</div>
+      <div id="presetLocalSummary" style="font-size:12px;line-height:1.6;background:#f8fafc;border:1.5px solid var(--border);border-radius:7px;padding:8px;margin-bottom:6px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <button type="button" class="preset-edit-btn" style="margin:0;flex:1" onclick="capturePresetLocalFromCase()">⬇ 今開いている症例の局所麻酔を取り込む</button>
+        <button type="button" class="preset-edit-btn" style="margin:0;flex:0 0 auto;border-color:#f5c2c7;color:#c0392b" onclick="clearPresetLocal()">クリア</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin:-8px 0 12px">※ 薬剤レシピ・ブロック種類・側・部位数を保存。mL/site は体重依存のため保存せず、適用後に当日入力します。</div>
+
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">薬剤・用量・経路</div>
       <div id="presetDrugList"></div>
 
@@ -2670,7 +2678,7 @@ const PRESET_DESC = {
 // プリセット: Sheets権威 → localStorage キャッシュ → デフォルト
 let userPresets = null;
 // 薬剤以外の拡張項目（Sheetsの __extras__ 行にJSONで保存し端末間共有）
-const EXTRA_PRESET_FIELDS = ['maint','maintConc','maintO2','maintAir','fluidType','fluidRate'];
+const EXTRA_PRESET_FIELDS = ['maint','maintConc','maintO2','maintAir','fluidType','fluidRate','local'];
 
 async function loadPresetsFromSheets() {
   if (!sheetsConfig || !sheetsConfig.spreadsheetId) return null;
@@ -2820,6 +2828,8 @@ function applyPreset(key) {
   // 輸液（プリセットに設定があれば反映）
   if (preset.fluidType) current.fluidType = preset.fluidType;
   if (preset.fluidRate) current.fluidRate = preset.fluidRate;
+  // 局所麻酔（プリセットに設定があれば①②を置き換え。無ければ症例側はそのまま）
+  if (preset.local && typeof preset.local === 'object') applyPresetLocal(preset.local);
   populateForm();
   showToast(`プリセット適用: ${preset.label}`);
   autoSave();
@@ -2872,6 +2882,8 @@ function renderPresetEditor() {
   // 輸液
   document.getElementById('presetFluidType').value = preset.fluidType || '';
   document.getElementById('presetFluidRate').value = preset.fluidRate || '';
+  // 局所麻酔
+  document.getElementById('presetLocalSummary').innerHTML = presetLocalSummaryHtml(preset.local);
 
   const allDrugs = Object.values(DRUG_GROUPS).flat();
   const list = document.getElementById('presetDrugList');
@@ -2958,6 +2970,81 @@ function addDrugToPreset() {
   editingPreset[presetKey].drugs[drugKey] = { dose: '', route: drug.def };
   sel.value = '';
   renderPresetEditor();
+}
+
+// ─────────────── プリセットの局所麻酔 ───────────────
+// 形: preset.local = { s1:{mix:{drugs:[{name,conc,stockMl}],totalVolume}, blocks:{key:{sites,side}}}, s2:{...} }
+// mL/site(volume) は体重依存のため保存しない（適用時は空欄→当日入力）。
+function _captureLocalSet(si) {
+  const S = _laSet(si);
+  const mixSrc = (current && current[S.mix]) || {};
+  const drugs = (Array.isArray(mixSrc.drugs) ? mixSrc.drugs : [])
+    .filter(d => d && d.name)
+    .map(d => ({ name: d.name, conc: d.conc, stockMl: d.stockMl || '' }));
+  const blocks = {};
+  Object.entries((current && current[S.blocks]) || {}).forEach(([k, d]) => {
+    if (d && d.use && getBlockDef(k)) blocks[k] = { sites: d.sites || '1', side: d.side || '' };
+  });
+  if (!drugs.length && !Object.keys(blocks).length) return null;
+  return { mix: { drugs, totalVolume: mixSrc.totalVolume || '' }, blocks };
+}
+function capturePresetLocalFromCase() {
+  if (!editingPreset) return;
+  if (!current) { showToast('症例を開いた状態で取り込んでください'); return; }
+  const s1 = _captureLocalSet(1), s2 = _captureLocalSet(2);
+  if (!s1 && !s2) { showToast('この症例に局所麻酔の設定がありません'); return; }
+  const key = document.getElementById('presetSelect').value;
+  if (!editingPreset[key]) return;
+  const local = {};
+  if (s1) local.s1 = s1;
+  if (s2) local.s2 = s2;
+  editingPreset[key].local = local;
+  renderPresetEditor();
+  showToast('局所麻酔をプリセットに取り込みました（保存で確定）');
+}
+function clearPresetLocal() {
+  if (!editingPreset) return;
+  const key = document.getElementById('presetSelect').value;
+  if (editingPreset[key]) delete editingPreset[key].local;
+  renderPresetEditor();
+}
+function _localSetSummary(set) {
+  if (!set) return '';
+  const mix = set.mix || {};
+  const drugs = (mix.drugs || []).map(d => `${esc(laDrugLabel(d.name, d.conc))}${d.stockMl ? ' ' + esc(d.stockMl) + 'mL' : ''}`);
+  let mixTxt = drugs.join(' + ');
+  if (mixTxt && mix.totalVolume) mixTxt += ` → 計${esc(mix.totalVolume)}mL`;
+  const blocks = Object.entries(set.blocks || {}).map(([k, d]) => {
+    const def = getBlockDef(k); if (!def) return '';
+    const parts = []; if (d.side) parts.push(d.side); if (d.sites && d.sites !== '1') parts.push(`${d.sites}部位`);
+    return esc(def.label) + (parts.length ? `(${parts.join('・')})` : '');
+  }).filter(Boolean);
+  return `<div>🧪 ${mixTxt || '<span style="color:var(--muted)">溶液なし</span>'}</div><div>📍 ${blocks.length ? blocks.join('、') : '<span style="color:var(--muted)">ブロックなし</span>'}</div>`;
+}
+function presetLocalSummaryHtml(local) {
+  if (!local || (!local.s1 && !local.s2)) return '<span style="color:var(--muted)">未設定（「取り込む」で今の症例の内容を登録）</span>';
+  let h = '';
+  if (local.s1) h += `<div style="font-weight:700;color:var(--blue)">① セット1</div>${_localSetSummary(local.s1)}`;
+  if (local.s2) h += `<div style="font-weight:700;color:var(--blue);margin-top:4px">② セット2</div>${_localSetSummary(local.s2)}`;
+  return h;
+}
+// プリセット適用: 局所麻酔①②を置き換え（volume は空=当日入力、note は空）
+function applyPresetLocal(local) {
+  [[1, local.s1], [2, local.s2]].forEach(([si, set]) => {
+    const S = _laSet(si);
+    if (!set) { current[S.mix] = { drugs: [], totalVolume: '' }; current[S.blocks] = {}; return; }
+    const mix = set.mix || {};
+    current[S.mix] = {
+      drugs: (mix.drugs || []).map(d => ({ name: d.name, conc: d.conc, stockMl: d.stockMl || '' })),
+      totalVolume: mix.totalVolume || ''
+    };
+    const blocks = {};
+    Object.entries(set.blocks || {}).forEach(([k, d]) => {
+      if (!getBlockDef(k)) return;
+      blocks[k] = { use: true, volume: '', sites: (d && d.sites) || '1', side: (d && d.side) || '', note: '' };
+    });
+    current[S.blocks] = blocks;
+  });
 }
 
 // 維持薬・輸液の編集
