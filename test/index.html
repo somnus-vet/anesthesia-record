@@ -1771,16 +1771,15 @@ body.board-mode .screen{inset:32px 0 0 0!important}
       <button class="modal-close" onclick="closePresetEditor()">×</button>
     </div>
     <div class="modal-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">動物種（プリセットは動物種ごとに分かれます）</div>
+      <div class="seg" id="presetEditSpSeg" style="margin-bottom:10px"></div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">編集するプリセット</div>
       <select id="presetSelect" onchange="renderPresetEditor()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:8px;min-height:44px"></select>
-      <button type="button" class="preset-edit-btn" onclick="addNewPreset()" style="margin-bottom:12px">＋ 新規プリセットを追加</button>
-
+      <button type="button" class="preset-edit-btn" id="presetAddBtn" onclick="addNewPreset()" style="margin-bottom:12px">＋ 新規プリセットを追加</button>
+      <div id="presetEmptyNote" style="display:none;font-size:13px;color:var(--muted);padding:4px 0 16px">この動物種にはまだプリセットがありません。上の「＋」で追加してください</div>
+      <div id="presetEditFields">
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">表示名</div>
       <input id="presetLabel" type="text" oninput="onPresetLabelInput(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:10px;min-height:44px">
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--muted)">動物種（バーの見出し分け）</span>
-        <div class="qdose-bar" id="presetSpeciesBar" style="margin:0"></div>
-      </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">対象術式（症例の術式に含まれていればバー先頭に⭐で出す。カンマ区切り）</div>
       <input id="presetProc" type="text" placeholder="例: CAST, 去勢" oninput="setPresetProc(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px">
 
@@ -1818,6 +1817,7 @@ body.board-mode .screen{inset:32px 0 0 0!important}
       <div class="preset-add-row">
         <select id="addDrugSelect"></select>
         <button type="button" onclick="addDrugToPreset()">＋追加</button>
+      </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -3025,6 +3025,7 @@ async function loadPresets() {
   if (!Object.keys(userPresets).some(k => k.indexOf('__') !== 0)) {
     Object.assign(userPresets, JSON.parse(JSON.stringify(DRUG_PRESETS)));  // 通常プリセットが無い時だけ既定を投入(病院の既定 __hospital__ は保持)
   }
+  migratePresetSpecies(userPresets);
   renderPresetBar();
 }
 
@@ -3049,6 +3050,8 @@ function presetDescOf(key, preset) {
   if (blocks.length) parts.push('📍 ' + blocks.join('・'));
   return parts.join(' ');
 }
+let _presetBarSp = null;  // バーで表示中の動物種(null=症例の動物種に追従)
+function setPresetBarSp(sp) { _presetBarSp = sp; renderPresetBar(); }
 function renderPresetBar() {
   const bar = document.getElementById('presetBar');
   if (!bar || !userPresets) return;
@@ -3057,18 +3060,20 @@ function renderPresetBar() {
       <div class="preset-label">${rec ? '⭐ ' : ''}${esc(preset.label)}</div>
       <div class="preset-desc">${esc(presetDescOf(key, preset))}</div>
     </button>`;
-  const rec = entries.filter(([, p]) => presetProcMatch(p));
-  const rest = entries.filter(e => rec.indexOf(e) < 0);
-  let html = '';
-  if (rec.length) html += `<div class="preset-grp">⭐ この術式のおすすめ</div>` + rec.map(e => btn(e, true)).join('');
-  if (entries.some(([, p]) => p.species)) {
-    [['dog', '🐶 犬'], ['cat', '🐱 猫'], ['', 'その他・共通']].forEach(([sp, lbl]) => {
-      const g = rest.filter(([, p]) => (p.species || '') === sp);
-      if (g.length) html += `<div class="preset-grp">${lbl}</div>` + g.map(e => btn(e, false)).join('');
-    });
-  } else {
-    html += (rec.length && rest.length ? `<div class="preset-grp">その他</div>` : '') + rest.map(e => btn(e, false)).join('');
-  }
+  const grp = t => `<div class="preset-grp">${t}</div>`;
+  const caseSp = presetSpOfCase();
+  const sp = _presetBarSp !== null ? _presetBarSp : caseSp;
+  // 動物種の切替(症例の動物種を既定に。他の動物種のプリセットも見られる)
+  let html = `<div class="seg" style="grid-column:1/-1;margin-bottom:2px">` + PRESET_SP.filter(x => x[0]).map(([v, l]) =>
+    `<div class="seg-i${sp === v ? ' on' : ''}" onclick="setPresetBarSp('${v}')">${l}${v === caseSp ? '<span style="font-size:10px;margin-left:3px;opacity:.8">(この症例)</span>' : ''}</div>`).join('') + `</div>`;
+  const inSp = entries.filter(([, p]) => presetSpecies(p) === sp);
+  const common = entries.filter(([, p]) => presetSpecies(p) === '');
+  const rec = inSp.concat(common).filter(([, p]) => presetProcMatch(p));
+  if (rec.length) html += grp('⭐ この術式のおすすめ') + rec.map(e => btn(e, true)).join('');
+  const inSpRest = inSp.filter(e => rec.indexOf(e) < 0), commonRest = common.filter(e => rec.indexOf(e) < 0);
+  if (inSpRest.length) html += grp(presetSpLabel(sp)) + inSpRest.map(e => btn(e, false)).join('');
+  else if (!inSp.length) html += grp(`${presetSpLabel(sp)} のプリセットはまだありません（✏️ 編集 → 動物種「${presetSpLabel(sp)}」で ＋新規）`);
+  if (commonRest.length) html += grp('共通') + commonRest.map(e => btn(e, false)).join('');
   bar.innerHTML = html;
 }
 
@@ -3118,14 +3123,12 @@ async function openPresetEditor() {
   if (sheetsConfig && sheetsConfig.enabled) { try { await loadPresets(); } catch (e) {} }
   else if (!userPresets) loadPresets();
   editingPreset = JSON.parse(JSON.stringify(userPresets || {}));
-  // セレクト初期化
-  const sel = document.getElementById('presetSelect');
-  sel.innerHTML = Object.entries(editingPreset).filter(([k]) => k.indexOf('__') !== 0).map(([k, p]) =>
-    `<option value="${k}">${esc(p.label)}</option>`
-  ).join('');
-  sel.value = Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0)[0];
+  migratePresetSpecies(editingPreset);
+  // 症例の動物種のグループから開く
+  _presetEditSp = presetSpOfCase();
+  renderPresetEditSeg();
   document.getElementById('presetModal').classList.add('on');
-  renderPresetEditor();
+  renderPresetSelect();
 }
 
 function closePresetEditor() {
@@ -3140,8 +3143,6 @@ function renderPresetEditor() {
   if (!preset) return;
   document.getElementById('presetLabel').value = preset.label;
   document.getElementById('presetProc').value = preset.proc || '';
-  document.getElementById('presetSpeciesBar').innerHTML = [['', '指定なし'], ['dog', '🐶 犬'], ['cat', '🐱 猫']].map(([v, lbl]) =>
-    `<button type="button" class="qdose-btn ${(preset.species || '') === v ? 'on' : ''}" onclick="setPresetSpecies('${v}')">${lbl}</button>`).join('');
   renderPresetLocalEditor();
 
   // 維持薬セレクタ
@@ -3287,12 +3288,34 @@ function setPresetProc(val) {
   const p = editingPreset[document.getElementById('presetSelect').value];
   if (p) p.proc = val;
 }
-function setPresetSpecies(v) {
+// ── プリセットの2階層: 動物種(犬/猫/その他/共通) → その中の術式プリセット ──
+const PRESET_SP = [['dog', '🐶 犬'], ['cat', '🐱 猫'], ['other', '🐰 その他'], ['', '共通']];
+function presetSpOfCase() { const s = current && current.species; return s === 'cat' ? 'cat' : s === 'dog' ? 'dog' : 'other'; }
+function presetSpLabel(sp) { return (PRESET_SP.find(x => x[0] === sp) || ['', '共通'])[1]; }
+function presetSpecies(p) { const s = (p && p.species) || ''; return (s === 'dog' || s === 'cat' || s === 'other') ? s : ''; }
+// 既定プリセットの動物種を補う(非破壊の1回移行)。それ以外の未設定は「共通」
+function migratePresetSpecies(ps) {
+  if (!ps) return;
+  if (ps.dog_routine && ps.dog_routine.species === undefined) ps.dog_routine.species = 'dog';
+  if (ps.cat_routine && ps.cat_routine.species === undefined) ps.cat_routine.species = 'cat';
+}
+let _presetEditSp = 'dog';
+function renderPresetEditSeg() {
+  const el = document.getElementById('presetEditSpSeg'); if (!el) return;
+  el.innerHTML = PRESET_SP.map(([v, l]) => `<div class="seg-i${_presetEditSp === v ? ' on' : ''}" onclick="setPresetEditSp('${v}')">${l}</div>`).join('');
+}
+function setPresetEditSp(sp) { _presetEditSp = sp; renderPresetEditSeg(); renderPresetSelect(); }
+// 動物種で絞ったプリセット一覧をセレクトへ。空なら編集欄を隠す
+function renderPresetSelect(selectKey) {
   if (!editingPreset) return;
-  const p = editingPreset[document.getElementById('presetSelect').value];
-  if (!p) return;
-  p.species = v || '';
-  document.getElementById('presetSpeciesBar').querySelectorAll('.qdose-btn').forEach(b => b.classList.toggle('on', b.textContent.indexOf(v === 'dog' ? '犬' : v === 'cat' ? '猫' : '指定なし') >= 0));
+  const sel = document.getElementById('presetSelect');
+  const list = Object.entries(editingPreset).filter(([k, p]) => k.indexOf('__') !== 0 && presetSpecies(p) === _presetEditSp);
+  sel.innerHTML = list.map(([k, p]) => `<option value="${k}">${esc(p.label)}</option>`).join('');
+  if (selectKey && list.some(([k]) => k === selectKey)) sel.value = selectKey; else if (list.length) sel.value = list[0][0];
+  const fields = document.getElementById('presetEditFields'); if (fields) fields.style.display = list.length ? '' : 'none';
+  const note = document.getElementById('presetEmptyNote'); if (note) note.style.display = list.length ? 'none' : '';
+  const btn = document.getElementById('presetAddBtn'); if (btn) btn.textContent = `＋ ${presetSpLabel(_presetEditSp)} に新規プリセットを追加`;
+  if (list.length) renderPresetEditor();
 }
 
 // ─────────────── プリセットの局所麻酔（術式プリセット：1タップで溶液＋ブロックまで） ───────────────
@@ -3433,14 +3456,8 @@ function addNewPreset() {
   const name = prompt('新しいプリセットの名前を入力してください', '新規プリセット');
   if (name === null) return;
   const key = 'custom_' + Date.now();
-  editingPreset[key] = { label: (name.trim() || '新規プリセット'), drugs:{}, maint:'', fluidType:'', fluidRate:'' };
-  const sel = document.getElementById('presetSelect');
-  const opt = document.createElement('option');
-  opt.value = key;
-  opt.textContent = editingPreset[key].label;
-  sel.appendChild(opt);
-  sel.value = key;
-  renderPresetEditor();
+  editingPreset[key] = { label: (name.trim() || '新規プリセット'), drugs:{}, maint:'', fluidType:'', fluidRate:'', species: _presetEditSp };
+  renderPresetSelect(key);
 }
 
 // プリセットを削除
@@ -3451,11 +3468,7 @@ function deletePreset() {
   if (Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0).length <= 1) { showToast('プリセットは1つ以上必要です'); return; }
   if (!confirm(`プリセット「${editingPreset[key].label}」を削除しますか？`)) return;
   delete editingPreset[key];
-  sel.innerHTML = Object.entries(editingPreset).filter(([k]) => k.indexOf('__') !== 0).map(([k, p]) =>
-    `<option value="${k}">${esc(p.label)}</option>`
-  ).join('');
-  sel.value = Object.keys(editingPreset).filter(k => k.indexOf('__') !== 0)[0];
-  renderPresetEditor();
+  renderPresetSelect();
 }
 
 function resetPresetToDefault() {
@@ -3464,12 +3477,8 @@ function resetPresetToDefault() {
   if (!DRUG_PRESETS[key]) { showToast('このプリセットに既定値はありません'); return; }
   if (!confirm(`「${editingPreset[key].label}」をデフォルト設定に戻しますか？`)) return;
   editingPreset[key] = JSON.parse(JSON.stringify(DRUG_PRESETS[key]));
-  // セレクトのラベルも更新
-  const sel = document.getElementById('presetSelect');
-  Array.from(sel.options).forEach(o => {
-    if (o.value === key) o.textContent = editingPreset[key].label;
-  });
-  renderPresetEditor();
+  editingPreset[key].species = _presetEditSp;  // 所属の動物種は保つ
+  renderPresetSelect(key);
 }
 
 async function savePresetEditor() {
@@ -5461,6 +5470,7 @@ function populateForm() {
 
   // Local anesthesia blocks
   populateLocalBlocks();
+  _presetBarSp = null;  // バーは症例の動物種に追従
   try { renderPresetBar(); } catch (_) {}  // 術式に合うプリセット(⭐)を先頭に
 
   // Emergency response doses
