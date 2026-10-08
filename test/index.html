@@ -298,6 +298,12 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .preset-btn:active{background:var(--blue);color:#fff;transform:scale(.97)}
 .preset-label{font-weight:700;font-size:13px;margin-bottom:2px}
 .preset-desc{font-size:11px;opacity:.75;font-weight:400}
+.preset-grp{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--muted);margin-top:2px}
+.preset-btn.rec{background:#fff8e0;border-color:#f3c441}
+.preset-btn.rec:active{background:#f3c441}
+.pl-row{display:flex;gap:5px;align-items:center;margin-bottom:4px}
+.pl-row select{font-size:13px;padding:6px;border:1.5px solid var(--border);border-radius:6px;background:#fff;min-height:36px}
+.pl-x{background:#fff;border:1.5px solid #f5c2c7;color:#dc3545;border-radius:6px;width:32px;height:32px;font-size:14px;cursor:pointer;flex:0 0 auto}
 .preset-edit-btn{background:#fff;border:1.5px dashed var(--blue);color:var(--blue);border-radius:8px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;width:100%;margin-bottom:12px;min-height:36px;-webkit-user-select:none}
 
 /* MODAL */
@@ -1770,7 +1776,13 @@ body.board-mode .screen{inset:32px 0 0 0!important}
       <button type="button" class="preset-edit-btn" onclick="addNewPreset()" style="margin-bottom:12px">＋ 新規プリセットを追加</button>
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">表示名</div>
-      <input id="presetLabel" type="text" oninput="onPresetLabelInput(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px">
+      <input id="presetLabel" type="text" oninput="onPresetLabelInput(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:10px;min-height:44px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--muted)">動物種（バーの見出し分け）</span>
+        <div class="qdose-bar" id="presetSpeciesBar" style="margin:0"></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">対象術式（症例の術式に含まれていればバー先頭に⭐で出す。カンマ区切り）</div>
+      <input id="presetProc" type="text" placeholder="例: CAST, 去勢" oninput="setPresetProc(this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:14px;min-height:44px">
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">維持薬</div>
       <div class="qdose-bar" id="presetMaintBar" style="margin-bottom:8px"></div>
@@ -1796,6 +1808,9 @@ body.board-mode .screen{inset:32px 0 0 0!important}
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('酢酸リンゲル(AR)')">AR</button>
         <button type="button" class="qdose-btn" onclick="presetFluidQuick('生理食塩水(NaCl)')">NaCl</button>
       </div>
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">📍 局所麻酔（適用時に溶液＋ブロックまで入る。mL/site はブロック定型（動物種×体重）から自動計算）</div>
+      <div id="presetLocalEditor" style="margin-bottom:14px"></div>
 
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">薬剤・用量・経路</div>
       <div id="presetDrugList"></div>
@@ -2760,7 +2775,10 @@ function renderBlockPickerBody() {
   const body = document.getElementById('blockPickerBody');
   if (!body) return;
   const S = _laSet(_blockPickerSet);
-  const selectedSet = new Set(Object.keys(current?.[S.blocks] || {}).filter(k => current[S.blocks][k]?.use));
+  const _ps = _blockPickerPreset ? _pLocal(_blockPickerPreset, false) : null;
+  const selectedSet = _blockPickerPreset
+    ? new Set(Object.keys((_ps && _ps.blocks) || {}))
+    : new Set(Object.keys(current?.[S.blocks] || {}).filter(k => current[S.blocks][k]?.use));
   body.innerHTML = LOCAL_BLOCKS_BY_CATEGORY.map(grp => {
     const btns = grp.keys.map(key => {
       const b = LOCAL_BLOCKS.find(x => x.key === key);
@@ -2777,11 +2795,20 @@ function renderBlockPickerBody() {
 }
 
 function closeBlockPicker() {
-  document.getElementById('blockPickerModal').classList.remove('on');
+  const m = document.getElementById('blockPickerModal');
+  m.classList.remove('on'); m.style.zIndex = '';
+  if (_blockPickerPreset) { _blockPickerPreset = 0; try { renderPresetLocalEditor(); } catch (_) {} }
 }
 
 // タップで選択/解除をトグル。ポップアップは開いたまま、選んだら「閉じる」で確定。
 function toggleBlockSelection(key) {
+  if (_blockPickerPreset) {
+    // プリセット編集モード: 症例ではなく編集中プリセットのブロック一覧をトグル
+    const s = _pLocal(_blockPickerPreset, true); if (!s) return;
+    if (s.blocks[key]) delete s.blocks[key]; else s.blocks[key] = { sites: '1', side: '' };
+    renderBlockPickerBody(); renderPresetLocalEditor();
+    return;
+  }
   const si = _blockPickerSet;
   const S = _laSet(si);
   if (!current[S.blocks]) current[S.blocks] = {};
@@ -2891,7 +2918,7 @@ const PRESET_DESC = {
 // プリセット: Sheets権威 → localStorage キャッシュ → デフォルト
 let userPresets = null;
 // 薬剤以外の拡張項目（Sheetsの __extras__ 行にJSONで保存し端末間共有）
-const EXTRA_PRESET_FIELDS = ['maint','maintConc','maintO2','maintAir','fluidType','fluidRate'];
+const EXTRA_PRESET_FIELDS = ['maint','maintConc','maintO2','maintAir','fluidType','fluidRate','local','proc','species'];
 
 async function loadPresetsFromSheets() {
   if (!sheetsConfig || !sheetsConfig.spreadsheetId) return null;
@@ -3006,16 +3033,43 @@ function savePresetsToStorage() {
 }
 
 // プリセットバーを描画
+// プリセットの「対象術式」キーワードが症例の術式に含まれるか
+function presetProcMatch(preset) {
+  const kws = String((preset && preset.proc) || '').split(/[,、，\s]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (!kws.length || !current) return false;
+  const pr = String(getVal('f_procedure') || current.procedure || '').toLowerCase();
+  return !!pr && kws.some(k => pr.includes(k));
+}
+// ボタンの説明: 固定説明 ＋ 局所麻酔のブロック名
+function presetDescOf(key, preset) {
+  const parts = [];
+  if (PRESET_DESC[key]) parts.push(PRESET_DESC[key]);
+  const blocks = [];
+  ['s1', 's2'].forEach(s => Object.keys((preset.local && preset.local[s] && preset.local[s].blocks) || {}).forEach(k => { const d = getBlockDef(k); if (d) blocks.push(d.label); }));
+  if (blocks.length) parts.push('📍 ' + blocks.join('・'));
+  return parts.join(' ');
+}
 function renderPresetBar() {
   const bar = document.getElementById('presetBar');
   if (!bar || !userPresets) return;
-  bar.innerHTML = Object.entries(userPresets).filter(([key]) => key.indexOf('__') !== 0).map(([key, preset]) => {
-    const desc = PRESET_DESC[key] || '';
-    return `<button class="preset-btn" type="button" onclick="applyPreset('${key}')">
-      <div class="preset-label">${esc(preset.label)}</div>
-      <div class="preset-desc">${esc(desc)}</div>
+  const entries = Object.entries(userPresets).filter(([key]) => key.indexOf('__') !== 0);
+  const btn = ([key, preset], rec) => `<button class="preset-btn${rec ? ' rec' : ''}" type="button" onclick="applyPreset('${key}')">
+      <div class="preset-label">${rec ? '⭐ ' : ''}${esc(preset.label)}</div>
+      <div class="preset-desc">${esc(presetDescOf(key, preset))}</div>
     </button>`;
-  }).join('');
+  const rec = entries.filter(([, p]) => presetProcMatch(p));
+  const rest = entries.filter(e => rec.indexOf(e) < 0);
+  let html = '';
+  if (rec.length) html += `<div class="preset-grp">⭐ この術式のおすすめ</div>` + rec.map(e => btn(e, true)).join('');
+  if (entries.some(([, p]) => p.species)) {
+    [['dog', '🐶 犬'], ['cat', '🐱 猫'], ['', 'その他・共通']].forEach(([sp, lbl]) => {
+      const g = rest.filter(([, p]) => (p.species || '') === sp);
+      if (g.length) html += `<div class="preset-grp">${lbl}</div>` + g.map(e => btn(e, false)).join('');
+    });
+  } else {
+    html += (rec.length && rest.length ? `<div class="preset-grp">その他</div>` : '') + rest.map(e => btn(e, false)).join('');
+  }
+  bar.innerHTML = html;
 }
 
 function applyPreset(key) {
@@ -3041,8 +3095,12 @@ function applyPreset(key) {
   // 輸液（プリセットに設定があれば反映）
   if (preset.fluidType) current.fluidType = preset.fluidType;
   if (preset.fluidRate) current.fluidRate = preset.fluidRate;
+  // 局所麻酔（プリセットに設定があれば①②を置き換え。無ければ症例側はそのまま）
+  let _noTpl = null;
+  if (presetHasLocal(preset)) _noTpl = applyPresetLocal(preset.local);
   populateForm();
-  showToast(`プリセット適用: ${preset.label}`);
+  showToast(`プリセット適用: ${preset.label}${_noTpl ? '（局所麻酔も設定）' : ''}`);
+  if (_noTpl && _noTpl.length) setTimeout(() => showToast(`定型なし: ${_noTpl.join('・')} → 量は当日入力`), 1600);
   autoSave();
   try { promptMissingCriPrep(); } catch (_) {}
 }
@@ -3080,6 +3138,10 @@ function renderPresetEditor() {
   const preset = editingPreset[key];
   if (!preset) return;
   document.getElementById('presetLabel').value = preset.label;
+  document.getElementById('presetProc').value = preset.proc || '';
+  document.getElementById('presetSpeciesBar').innerHTML = [['', '指定なし'], ['dog', '🐶 犬'], ['cat', '🐱 猫']].map(([v, lbl]) =>
+    `<button type="button" class="qdose-btn ${(preset.species || '') === v ? 'on' : ''}" onclick="setPresetSpecies('${v}')">${lbl}</button>`).join('');
+  renderPresetLocalEditor();
 
   // 維持薬セレクタ
   const maintOpts = [['','なし'],['isoflurane','イソフルラン'],['sevoflurane','セボフルラン'],['propofol','プロポフォール']];
@@ -3217,6 +3279,135 @@ function presetFluidQuick(v) {
   const el = document.getElementById('presetFluidType');
   if (el) el.value = v;
   setPresetFluidType(v);
+}
+
+function setPresetProc(val) {
+  if (!editingPreset) return;
+  const p = editingPreset[document.getElementById('presetSelect').value];
+  if (p) p.proc = val;
+}
+function setPresetSpecies(v) {
+  if (!editingPreset) return;
+  const p = editingPreset[document.getElementById('presetSelect').value];
+  if (!p) return;
+  p.species = v || '';
+  document.getElementById('presetSpeciesBar').querySelectorAll('.qdose-btn').forEach(b => b.classList.toggle('on', b.textContent.indexOf(v === 'dog' ? '犬' : v === 'cat' ? '猫' : '指定なし') >= 0));
+}
+
+// ─────────────── プリセットの局所麻酔（術式プリセット：1タップで溶液＋ブロックまで） ───────────────
+// 形: preset.local = { s1:{ mix:{drugs:[{name,conc,stockMl}], totalVolume}, blocks:{ key:{sites, side} } }, s2:{...} }
+// mL/site は保存しない。適用時にブロック定型(動物種×体重・上限付き)で計算し、定型が無ければ空欄=当日入力。
+function _pLocal(si, create) {
+  const p = editingPreset && editingPreset[document.getElementById('presetSelect').value];
+  if (!p) return null;
+  if (!p.local || typeof p.local !== 'object') { if (!create) return null; p.local = {}; }
+  const k = 's' + si;
+  if (!p.local[k]) { if (!create) return null; p.local[k] = { mix: { drugs: [], totalVolume: '' }, blocks: {} }; }
+  const s = p.local[k];
+  if (!s.mix || typeof s.mix !== 'object') s.mix = { drugs: [], totalVolume: '' };
+  if (!Array.isArray(s.mix.drugs)) s.mix.drugs = [];
+  if (!s.blocks || typeof s.blocks !== 'object') s.blocks = {};
+  return s;
+}
+function _localSetHasContent(set) {
+  return !!set && (((set.mix && set.mix.drugs) || []).some(d => d && d.name) || Object.keys(set.blocks || {}).length > 0);
+}
+function presetHasLocal(preset) {
+  const l = preset && preset.local;
+  return !!l && (_localSetHasContent(l.s1) || _localSetHasContent(l.s2));
+}
+function renderPresetLocalEditor() {
+  const el = document.getElementById('presetLocalEditor'); if (!el || !editingPreset) return;
+  el.innerHTML = [1, 2].map(si => {
+    const s = _pLocal(si, false);
+    const drugs = s ? s.mix.drugs : [], blocks = s ? Object.entries(s.blocks) : [];
+    const has = _localSetHasContent(s);
+    const drugRows = drugs.map((d, i) => `<div class="pl-row">
+        <select style="flex:1;min-width:120px" onchange="setPresetMixDrugKey(${si},${i},this.value)">${laDrugOptionsHtml(d.name, d.conc, '薬剤+濃度…')}</select>
+        <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(d.stockMl || '')}" oninput="setPresetMixField(${si},${i},'stockMl',this.value)" style="width:56px">
+        <span class="unit">mL</span>
+        <button type="button" class="pl-x" onclick="removePresetMixDrug(${si},${i})">×</button>
+      </div>`).join('');
+    const blockRows = blocks.map(([k, d]) => {
+      const def = getBlockDef(k); if (!def) return '';
+      const side = BLOCKS_WITH_SIDE.has(k)
+        ? `<select style="min-width:56px" onchange="setPresetBlockField(${si},'${k}','side',this.value)">${['', 'R', 'L', '両側'].map(x => `<option value="${x}" ${(d.side || '') === x ? 'selected' : ''}>${x || '側-'}</option>`).join('')}</select>`
+        : '';
+      const tpl = getBlockTemplate(k, tplSpeciesOfCase());
+      return `<div class="pl-row">
+        <span style="flex:1;font-size:13px;font-weight:600;min-width:0">${esc(def.label)}<div style="font-size:10px;color:${tpl ? '#7a5a00' : '#c0392b'};font-weight:500">${tpl ? '★ 定型 ' + esc(tplDoseText(tpl)) : '定型なし（量は当日入力）'}</div></span>
+        ${side}
+        <input class="fdose" type="text" inputmode="numeric" pattern="[0-9]*" value="${esc(d.sites || '1')}" oninput="setPresetBlockField(${si},'${k}','sites',this.value)" style="width:40px">
+        <span class="unit">部位</span>
+        <button type="button" class="pl-x" onclick="removePresetBlock(${si},'${k}')">×</button>
+      </div>`;
+    }).join('');
+    return `<div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:7px;padding:8px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-weight:700;color:var(--blue);font-size:13px">${si === 1 ? '①' : '②'} 局所麻酔セット${si}</span>
+        ${has ? `<button type="button" class="qdose-btn" style="margin-left:auto;border-color:#f5c2c7;color:#c0392b" onclick="clearPresetLocal(${si})">クリア</button>` : '<span style="font-size:11px;color:var(--muted)">未設定</span>'}
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:3px">🧪 メイン溶液</div>
+      ${drugRows}
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+        <button type="button" class="qdose-btn" onclick="addPresetMixDrug(${si})">＋薬剤</button>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">合計</span>
+        <input class="fdose" type="text" inputmode="decimal" placeholder="mL" value="${esc(s ? (s.mix.totalVolume || '') : '')}" oninput="setPresetMixField(${si},-1,'totalVolume',this.value)" style="width:56px">
+        <span class="unit">mL</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:3px">📍 ブロック</div>
+      ${blockRows || '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">なし</div>'}
+      <button type="button" class="qdose-btn" onclick="openPresetBlockPicker(${si})">＋ ブロックを選ぶ</button>
+    </div>`;
+  }).join('');
+}
+function addPresetMixDrug(si) { const s = _pLocal(si, true); if (!s) return; s.mix.drugs.push({ name: 'リドカイン', conc: 2, stockMl: '' }); renderPresetLocalEditor(); }
+function setPresetMixDrugKey(si, i, val) { const s = _pLocal(si, true); if (!s || !s.mix.drugs[i]) return; const p = parseLaDrugKey(val); s.mix.drugs[i].name = p.name; s.mix.drugs[i].conc = p.conc; }
+function setPresetMixField(si, i, f, val) { const s = _pLocal(si, true); if (!s) return; if (i < 0) s.mix[f] = val; else if (s.mix.drugs[i]) s.mix.drugs[i][f] = val; }
+function removePresetMixDrug(si, i) { const s = _pLocal(si, true); if (!s) return; s.mix.drugs.splice(i, 1); renderPresetLocalEditor(); }
+function removePresetBlock(si, key) { const s = _pLocal(si, true); if (!s) return; delete s.blocks[key]; renderPresetLocalEditor(); }
+function setPresetBlockField(si, key, f, val) {
+  const s = _pLocal(si, true); if (!s || !s.blocks[key]) return;
+  s.blocks[key][f] = val;
+  // 両側なら部位数2に自動補正（手で変えていない時のみ）
+  if (f === 'side') { const b = s.blocks[key]; if (val === '両側' && (!b.sites || b.sites === '1')) b.sites = '2'; else if ((val === 'R' || val === 'L') && b.sites === '2') b.sites = '1'; renderPresetLocalEditor(); }
+}
+function clearPresetLocal(si) {
+  const p = editingPreset && editingPreset[document.getElementById('presetSelect').value];
+  if (!p || !p.local) return;
+  delete p.local['s' + si];
+  if (!Object.keys(p.local).length) delete p.local;
+  renderPresetLocalEditor();
+}
+let _blockPickerPreset = 0; // >0: プリセット編集のセット番号へ追加するモード
+function openPresetBlockPicker(si) {
+  _blockPickerPreset = si; _blockPickerSet = si;
+  renderBlockPickerBody();
+  const m = document.getElementById('blockPickerModal'); m.style.zIndex = '10001'; m.classList.add('on');
+}
+// プリセット適用: 局所麻酔①②を置き換え。量はブロック定型から（無ければ空）。戻り値=定型が無かったブロック名
+function applyPresetLocal(local) {
+  const noTpl = [];
+  [[1, local && local.s1], [2, local && local.s2]].forEach(([si, set]) => {
+    const S = _laSet(si);
+    current[S.mix] = { drugs: [], totalVolume: '' };
+    current[S.blocks] = {};
+    if (!_localSetHasContent(set)) return;
+    const mix = set.mix || {};
+    current[S.mix] = {
+      drugs: (mix.drugs || []).filter(d => d && d.name).map(d => ({ name: d.name, conc: d.conc, stockMl: d.stockMl || '' })),
+      totalVolume: mix.totalVolume || ''
+    };
+    Object.entries(set.blocks || {}).forEach(([k, d]) => {
+      const def = getBlockDef(k); if (!def) return;
+      const b = ensureBlockData(si, k); b.use = true;
+      const ok = applyBlockTemplate(si, k, { silent: true });  // 定型: 量・側・部位数・メモ
+      if (d && d.sites) b.sites = d.sites;                        // プリセット側の側/部位数は定型より優先
+      if (d && d.side && BLOCKS_WITH_SIDE.has(k)) b.side = d.side;
+      if (!ok) noTpl.push(def.label);
+    });
+  });
+  return noTpl;
 }
 
 // 新規プリセットを追加
@@ -5253,6 +5444,7 @@ function populateForm() {
 
   // Local anesthesia blocks
   populateLocalBlocks();
+  try { renderPresetBar(); } catch (_) {}  // 術式に合うプリセット(⭐)を先頭に
 
   // Emergency response doses
   updateEmergencyDoses(current.weight);
@@ -8748,6 +8940,7 @@ function procSuggestList(q) {
 }
 let _procOpen = -1;  // サジェストを開いているボックス番号
 function renderProcBoxes() {
+  try { renderPresetBar(); } catch (_) {}
   const box = document.getElementById('procBoxes'); if (!box) return;
   const toks = procTokens(getVal('f_procedure') || (current && current.procedure) || '');
   const rows = toks.length ? toks : [''];
