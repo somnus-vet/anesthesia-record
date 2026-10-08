@@ -3101,6 +3101,7 @@ function applyPreset(key) {
   populateForm();
   showToast(`プリセット適用: ${preset.label}${_noTpl ? '（局所麻酔も設定）' : ''}`);
   if (_noTpl && _noTpl.length) setTimeout(() => showToast(`定型なし: ${_noTpl.join('・')} → 量は当日入力`), 1600);
+  if (_noTpl && applyPresetLocal._noWeight) setTimeout(() => showToast('体重が未入力のため、局所麻酔の溶液量(mL)は空欄です'), _noTpl.length ? 3200 : 1600);
   autoSave();
   try { promptMissingCriPrep(); } catch (_) {}
 }
@@ -3399,6 +3400,7 @@ function openPresetBlockPicker(si) {
 // プリセット適用: 局所麻酔①②を置き換え。量はブロック定型から（無ければ空）。戻り値=定型が無かったブロック名
 function applyPresetLocal(local) {
   const noTpl = [];
+  applyPresetLocal._noWeight = false;
   [[1, local && local.s1], [2, local && local.s2]].forEach(([si, set]) => {
     const S = _laSet(si);
     current[S.mix] = { drugs: [], totalVolume: '' };
@@ -3412,7 +3414,7 @@ function applyPresetLocal(local) {
       drugs: (mix.drugs || []).filter(d => d && d.name).map(d => ({ name: d.name, conc: d.conc, stockMl: d.mlKg !== undefined ? kg2ml(d.mlKg) : (d.stockMl || '') })),
       totalVolume: mix.totalMlKg !== undefined ? kg2ml(mix.totalMlKg) : (mix.totalVolume || '')
     };
-    if (!w && ((mix.drugs || []).some(d => d && d.mlKg) || mix.totalMlKg)) noTpl.push('（体重未入力: 溶液の量は空欄）');
+    if (!w && ((mix.drugs || []).some(d => d && d.mlKg) || mix.totalMlKg)) applyPresetLocal._noWeight = true;
     Object.entries(set.blocks || {}).forEach(([k, d]) => {
       const def = getBlockDef(k); if (!def) return;
       const b = ensureBlockData(si, k); b.use = true;
