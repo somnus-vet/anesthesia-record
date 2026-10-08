@@ -7769,8 +7769,15 @@ function renderQuickDoseBar() {
   // (ショットで記録するとSomLogでCRIラインに載らないため、入口を分ける)
   // 同じ薬剤名が複数グループでチェックされている時(前投薬アトロピン＋循環系アトロピン等)はボタン1つに
   // (回数バッジは薬剤名で数えるので同じ値になる。経路は用量シートで変更できる)
-  const _seen = new Set();
-  const used = usedAll.filter(d => !isCriKey(d.key)).filter(d => { if (_seen.has(d.label)) return false; _seen.add(d.label); return true; });
+  // まとめる時は「前投薬以外」(循環系のアトロピン等)の定義を採用する。前投薬の定義を採るとボタンの
+  // 標準量が前投与の用量に追従してしまい、昇圧薬として登録した用量(術中のベース用量)が使われないため
+  const _premedKeys = new Set((DRUG_GROUPS.premeds || []).map(x => x.key));
+  const used = [];
+  usedAll.filter(d => !isCriKey(d.key)).forEach(d => {
+    const i = used.findIndex(x => x.label === d.label);
+    if (i < 0) used.push(d);
+    else if (_premedKeys.has(used[i].key) && !_premedKeys.has(d.key)) used[i] = d;
+  });
   const criHtml = criQuickButtonsHtml(usedAll.filter(d => isCriKey(d.key)));
   if (!used.length) {
     bar.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:2px 0">「A. 麻酔プロトコル」で薬剤をチェックすると、ここにワンタップ投与ボタンが出ます</div>' + criHtml;
