@@ -3295,8 +3295,9 @@ function setPresetSpecies(v) {
 }
 
 // ─────────────── プリセットの局所麻酔（術式プリセット：1タップで溶液＋ブロックまで） ───────────────
-// 形: preset.local = { s1:{ mix:{drugs:[{name,conc,stockMl}], totalVolume}, blocks:{ key:{sites, side} } }, s2:{...} }
-// mL/site は保存しない。適用時にブロック定型(動物種×体重・上限付き)で計算し、定型が無ければ空欄=当日入力。
+// 形: preset.local = { s1:{ mix:{drugs:[{name,conc,mlKg}], totalMlKg}, blocks:{ key:{sites, side} } }, s2:{...} }
+// 溶液は mL/kg で持ち、適用時に症例の体重で mL に換算。ブロックの mL/site は保存せず、
+// 適用時にブロック定型(動物種×体重・上限付き)で計算し、定型が無ければ空欄=当日入力。
 function _pLocal(si, create) {
   const p = editingPreset && editingPreset[document.getElementById('presetSelect').value];
   if (!p) return null;
@@ -3322,12 +3323,22 @@ function renderPresetLocalEditor() {
     const s = _pLocal(si, false);
     const drugs = s ? s.mix.drugs : [], blocks = s ? Object.entries(s.blocks) : [];
     const has = _localSetHasContent(s);
-    const drugRows = drugs.map((d, i) => `<div class="pl-row">
+    const w = parseFloat(current && current.weight) || 0;
+    const drugRows = drugs.map((d, i) => {
+      // mg/kg = 濃度% × 10 × mL/kg。動物種の最大用量(LA_DRUG_OPTIONS)と比べて目安を出す
+      const mlkg = parseFloat(d.mlKg); const opt = LA_DRUG_OPTIONS.find(o => o.name === d.name);
+      const isCat = current && current.species === 'cat'; const mx = opt ? (isCat ? opt.maxCat : opt.maxDog) : null;
+      const mgkg = (!isNaN(mlkg) && d.conc) ? mlkg * parseFloat(d.conc) * 10 : NaN;
+      const hint = isNaN(mgkg) ? '' : `<div style="font-size:10px;color:${mx != null && mgkg > mx ? '#c0392b' : 'var(--muted)'};margin:-2px 0 4px 2px">= ${mgkg.toFixed(2)} mg/kg${mx != null ? `（${isCat ? '猫' : '犬'}の最大 ${mx} mg/kg${mgkg > mx ? ' ⚠️超過' : ''}）` : ''}${w ? ` ・ 体重${w}kg → ${fmtMl(mlkg * w)}mL` : ''}</div>`;
+      return `<div class="pl-row">
         <select style="flex:1;min-width:120px" onchange="setPresetMixDrugKey(${si},${i},this.value)">${laDrugOptionsHtml(d.name, d.conc, '薬剤+濃度…')}</select>
-        <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(d.stockMl || '')}" oninput="setPresetMixField(${si},${i},'stockMl',this.value)" style="width:56px">
-        <span class="unit">mL</span>
+        <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(d.mlKg || '')}" oninput="setPresetMixField(${si},${i},'mlKg',this.value)" onblur="renderPresetLocalEditor()" style="width:56px">
+        <span class="unit">mL/kg</span>
         <button type="button" class="pl-x" onclick="removePresetMixDrug(${si},${i})">×</button>
-      </div>`).join('');
+      </div>${hint}`;
+    }).join('');
+    const totKg = parseFloat(s && s.mix.totalMlKg);
+    const totHint = (!isNaN(totKg) && w) ? `<div style="font-size:10px;color:var(--muted);margin:-4px 0 6px 2px">体重${w}kg → 合計 ${fmtMl(totKg * w)}mL（適用時に症例の体重で換算）</div>` : '';
     const blockRows = blocks.map(([k, d]) => {
       const def = getBlockDef(k); if (!def) return '';
       const side = BLOCKS_WITH_SIDE.has(k)
@@ -3352,17 +3363,17 @@ function renderPresetLocalEditor() {
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
         <button type="button" class="qdose-btn" onclick="addPresetMixDrug(${si})">＋薬剤</button>
         <span style="margin-left:auto;font-size:12px;color:var(--muted)">合計</span>
-        <input class="fdose" type="text" inputmode="decimal" placeholder="mL" value="${esc(s ? (s.mix.totalVolume || '') : '')}" oninput="setPresetMixField(${si},-1,'totalVolume',this.value)" style="width:56px">
-        <span class="unit">mL</span>
-      </div>
+        <input class="fdose" type="text" inputmode="decimal" placeholder="0" value="${esc(s ? (s.mix.totalMlKg || '') : '')}" oninput="setPresetMixField(${si},-1,'totalMlKg',this.value)" onblur="renderPresetLocalEditor()" style="width:56px">
+        <span class="unit">mL/kg</span>
+      </div>${totHint}
       <div style="font-size:11px;color:var(--muted);margin-bottom:3px">📍 ブロック</div>
       ${blockRows || '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">なし</div>'}
       <button type="button" class="qdose-btn" onclick="openPresetBlockPicker(${si})">＋ ブロックを選ぶ</button>
     </div>`;
   }).join('');
 }
-function addPresetMixDrug(si) { const s = _pLocal(si, true); if (!s) return; s.mix.drugs.push({ name: 'リドカイン', conc: 2, stockMl: '' }); renderPresetLocalEditor(); }
-function setPresetMixDrugKey(si, i, val) { const s = _pLocal(si, true); if (!s || !s.mix.drugs[i]) return; const p = parseLaDrugKey(val); s.mix.drugs[i].name = p.name; s.mix.drugs[i].conc = p.conc; }
+function addPresetMixDrug(si) { const s = _pLocal(si, true); if (!s) return; s.mix.drugs.push({ name: 'リドカイン', conc: 2, mlKg: '' }); renderPresetLocalEditor(); }
+function setPresetMixDrugKey(si, i, val) { const s = _pLocal(si, true); if (!s || !s.mix.drugs[i]) return; const p = parseLaDrugKey(val); s.mix.drugs[i].name = p.name; s.mix.drugs[i].conc = p.conc; renderPresetLocalEditor(); }
 function setPresetMixField(si, i, f, val) { const s = _pLocal(si, true); if (!s) return; if (i < 0) s.mix[f] = val; else if (s.mix.drugs[i]) s.mix.drugs[i][f] = val; }
 function removePresetMixDrug(si, i) { const s = _pLocal(si, true); if (!s) return; s.mix.drugs.splice(i, 1); renderPresetLocalEditor(); }
 function removePresetBlock(si, key) { const s = _pLocal(si, true); if (!s) return; delete s.blocks[key]; renderPresetLocalEditor(); }
@@ -3393,11 +3404,15 @@ function applyPresetLocal(local) {
     current[S.mix] = { drugs: [], totalVolume: '' };
     current[S.blocks] = {};
     if (!_localSetHasContent(set)) return;
+    // 溶液は mL/kg で登録 → 症例の体重で mL に換算(体重未入力なら空欄)
     const mix = set.mix || {};
+    const w = parseFloat(current.weight) || 0;
+    const kg2ml = v => { const x = parseFloat(v); return (w && !isNaN(x)) ? fmtMl(x * w) : ''; };
     current[S.mix] = {
-      drugs: (mix.drugs || []).filter(d => d && d.name).map(d => ({ name: d.name, conc: d.conc, stockMl: d.stockMl || '' })),
-      totalVolume: mix.totalVolume || ''
+      drugs: (mix.drugs || []).filter(d => d && d.name).map(d => ({ name: d.name, conc: d.conc, stockMl: d.mlKg !== undefined ? kg2ml(d.mlKg) : (d.stockMl || '') })),
+      totalVolume: mix.totalMlKg !== undefined ? kg2ml(mix.totalMlKg) : (mix.totalVolume || '')
     };
+    if (!w && ((mix.drugs || []).some(d => d && d.mlKg) || mix.totalMlKg)) noTpl.push('（体重未入力: 溶液の量は空欄）');
     Object.entries(set.blocks || {}).forEach(([k, d]) => {
       const def = getBlockDef(k); if (!def) return;
       const b = ensureBlockData(si, k); b.use = true;
