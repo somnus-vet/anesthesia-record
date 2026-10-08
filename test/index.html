@@ -5468,28 +5468,41 @@ function medetomidinePlanPerKg() {
   });
   return any ? sum : NaN;
 }
-function atipamezoleFromMedetomidine() {
-  const m = medetomidinePlanPerKg();
-  return isNaN(m) ? NaN : +((m * ATIP_RATIO).toPrecision(4));
+// 現在の倍率: 手で直した時はその倍率(atipRatio)を覚え、以後はその倍率で追従する(少し減らす運用に対応)
+function atipamezoleRatio() {
+  const r = current && current.drugs && current.drugs.atipamezole;
+  const k = r && parseFloat(r.atipRatio);
+  return (!isNaN(k) && k > 0) ? k : ATIP_RATIO;
 }
-// メデトミジンの用量/チェックが変わった時に呼ぶ。アチパメゾールがチェック済みで、手で直していない
-// (autoAtip !== false)なら用量を ×5 に更新。opts.relink=true でチェック時の連動開始(手直しを解除)
+function atipamezoleFromMedetomidine(ratio) {
+  const m = medetomidinePlanPerKg();
+  return isNaN(m) ? NaN : +((m * (ratio || atipamezoleRatio())).toPrecision(3));
+}
+// アチパメゾールを手で直した時: メデトミジンに対する倍率を覚える(メデトミジン未設定なら覚えない)
+function rememberAtipamezoleRatio() {
+  const r = current && current.drugs && current.drugs.atipamezole; if (!r) return;
+  const m = medetomidinePlanPerKg(), v = parseFloat(r.dose);
+  if (isNaN(m) || isNaN(v) || v <= 0) return;
+  r.atipRatio = +((v / m).toPrecision(3));
+}
+// メデトミジンの用量/チェックが変わった時に呼ぶ。アチパメゾールがチェック済みなら、覚えている倍率
+// (既定 ×5)で用量を更新。opts.relink=true でチェック時に倍率を ×5 に戻す
 function syncAtipamezoleDose(opts) {
   if (!current || !current.drugs) return;
   const r = current.drugs.atipamezole;
   if (!r || !r.use) return;
-  if (opts && opts.relink) r.autoAtip = true;
-  if (r.autoAtip === false) return;
-  const v = atipamezoleFromMedetomidine();
+  if (opts && opts.relink) delete r.atipRatio;
+  const ratio = atipamezoleRatio();
+  const v = atipamezoleFromMedetomidine(ratio);
   if (isNaN(v)) return;
   const nv = String(v);
   if (String(r.dose || '').trim() === nv) return;
-  r.dose = nv; r.autoAtip = true; delete r.ml;
+  r.dose = nv; delete r.ml;
   const el = document.getElementById('ddose_atipamezole');
   if (el && document.activeElement !== el) el.value = nv;
   const d = findDrugDef('atipamezole');
   if (d) updateCalc('atipamezole', nv, current.weight, d.unit);
-  if (!(opts && opts.quiet)) showToast(`アチパメゾール ${nv}μg/kg（メデトミジン×${ATIP_RATIO}＝同じmL）に合わせました`);
+  if (!(opts && opts.quiet)) showToast(`アチパメゾール ${nv}μg/kg（メデトミジン×${ratio}${ratio === ATIP_RATIO ? '＝同じmL' : ''}）に合わせました`);
   try { renderQuickDoseBar(); } catch (_) {}
 }
 function isPremedKey(key) { return DRUG_GROUPS.premeds.some(d => d.key === key); }
@@ -5924,7 +5937,7 @@ function renderDrugPick(q) {
 // 薬剤をチェックした時の初期用量: この病院の直近症例(同じ動物種を優先) → プリセット → 参考範囲の下限
 function defaultDoseFor(key) {
   const d = findDrugDef(key); if (!d || !current) return null;
-  if (key === 'atipamezole') { const _v = atipamezoleFromMedetomidine(); if (!isNaN(_v)) return { dose: String(_v), src: 'メデトミジン×' + ATIP_RATIO }; }
+  if (key === 'atipamezole') { const _v = atipamezoleFromMedetomidine(ATIP_RATIO); if (!isNaN(_v)) return { dose: String(_v), src: 'メデトミジン×' + ATIP_RATIO }; }
   const fac = (sheetsConfig && sheetsConfig.facility) || '';
   const usable = c => c && c.id !== current.id && (!fac || !c.facility || c.facility === fac) && c.drugs && c.drugs[key] && c.drugs[key].use && String(c.drugs[key].dose || '').trim();
   const hist = (cases || []).filter(usable).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
@@ -6569,7 +6582,7 @@ function onDoseInput(key, val) {
   let unit = 'mg/kg';
   Object.values(DRUG_GROUPS).flat().forEach(d => { if (d.key === key) unit = d.unit; });
   updateCalc(key, val, current.weight, unit);
-  if (key === 'atipamezole') current.drugs[key].autoAtip = false;  // 手で直した用量はメデトミジンに追従させない
+  if (key === 'atipamezole') rememberAtipamezoleRatio();  // 手で直したら、その倍率で以後追従
   if (ATIP_SRC_KEYS.indexOf(key) >= 0) { try { syncAtipamezoleDose(); } catch (_) {} }
   try { renderMixSummary(); refreshCriSummaries(); } catch (_) {}
   autoSave();
@@ -6622,7 +6635,7 @@ function onMlInput(key, val) {
   }
   const row = document.getElementById('drow_' + key); if (row) row.classList.add('on');
   updateCalc(key, r.dose, current.weight, d.unit);
-  if (key === 'atipamezole') r.autoAtip = false;
+  if (key === 'atipamezole') rememberAtipamezoleRatio();
   if (ATIP_SRC_KEYS.indexOf(key) >= 0) { try { syncAtipamezoleDose(); } catch (_) {} }
   try { renderMixSummary(); renderQuickDoseBar(); } catch (_) {}
   autoSave();
