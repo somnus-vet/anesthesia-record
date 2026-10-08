@@ -300,6 +300,14 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .preset-desc{font-size:11px;opacity:.75;font-weight:400}
 .preset-grp{grid-column:1/-1;font-size:11px;font-weight:700;color:var(--muted);margin-top:2px}
 .preset-btn.rec{background:#fff8e0;border-color:#f3c441}
+.preset-pick{grid-column:1/-1;background:#fff;border:2px solid var(--blue);color:var(--navy);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:700;cursor:pointer;text-align:left;min-height:46px;display:flex;align-items:center;gap:8px;-webkit-user-select:none}
+.preset-pick .cnt{margin-left:auto;font-size:11px;font-weight:500;color:var(--muted)}
+.preset-pick.open{border-bottom-left-radius:0;border-bottom-right-radius:0;background:#eaf3fb}
+.preset-list{grid-column:1/-1;border:2px solid var(--blue);border-top:none;border-radius:0 0 8px 8px;background:#fff;margin-top:-7px;overflow:hidden}
+.preset-list .pl-grp{font-size:11px;font-weight:700;color:var(--muted);padding:7px 12px 3px;background:#f8fafc}
+.preset-list .pl-item{display:block;width:100%;text-align:left;background:#fff;border:none;border-top:1px solid #eef2f6;padding:10px 12px;cursor:pointer;min-height:46px}
+.preset-list .pl-item:active{background:#eaf3fb}
+.preset-list .pl-item .preset-label{font-size:14px}
 .preset-btn.rec:active{background:#f3c441}
 .pl-row{display:flex;gap:5px;align-items:center;margin-bottom:4px}
 .pl-row select{font-size:13px;padding:6px;border:1.5px solid var(--border);border-radius:6px;background:#fff;min-height:36px}
@@ -3051,7 +3059,7 @@ function presetDescOf(key, preset) {
   return parts.join(' ');
 }
 let _presetBarSp = null;  // バーで表示中の動物種(null=症例の動物種に追従)
-function setPresetBarSp(sp) { _presetBarSp = sp; renderPresetBar(); }
+function setPresetBarSp(sp) { _presetBarSp = sp; window._presetPickOpen = false; renderPresetBar(); }
 function renderPresetBar() {
   const bar = document.getElementById('presetBar');
   if (!bar || !userPresets) return;
@@ -3069,13 +3077,23 @@ function renderPresetBar() {
   const inSp = entries.filter(([, p]) => presetSpecies(p) === sp);
   const common = entries.filter(([, p]) => presetSpecies(p) === '');
   const rec = inSp.concat(common).filter(([, p]) => presetProcMatch(p));
+  // ⭐おすすめ(術式一致)だけ直接ボタン。残りは「処置内容から選ぶ」1ボタン→その場で一覧(画面が伸びない)
   if (rec.length) html += grp('⭐ この術式のおすすめ') + rec.map(e => btn(e, true)).join('');
   const inSpRest = inSp.filter(e => rec.indexOf(e) < 0), commonRest = common.filter(e => rec.indexOf(e) < 0);
-  if (inSpRest.length) html += grp(presetSpLabel(sp)) + inSpRest.map(e => btn(e, false)).join('');
-  else if (!inSp.length) html += grp(`${presetSpLabel(sp)} のプリセットはまだありません（✏️ 編集 → 動物種「${presetSpLabel(sp)}」で ＋新規）`);
-  if (commonRest.length) html += grp('共通') + commonRest.map(e => btn(e, false)).join('');
+  const n = inSpRest.length + commonRest.length;
+  const open = !!window._presetPickOpen;
+  html += `<button type="button" class="preset-pick${open ? ' open' : ''}" onclick="window._presetPickOpen=!window._presetPickOpen;renderPresetBar()">📋 処置内容から選ぶ <span style="font-size:11px">${open ? '▲' : '▼'}</span><span class="cnt">${presetSpLabel(sp)} ${inSpRest.length}件${commonRest.length ? '・共通 ' + commonRest.length + '件' : ''}</span></button>`;
+  if (open) {
+    const item = ([key, preset]) => `<button type="button" class="pl-item" onclick="window._presetPickOpen=false;applyPreset('${key}')"><div class="preset-label">${esc(preset.label)}</div><div class="preset-desc">${esc(presetDescOf(key, preset))}</div></button>`;
+    let list = '';
+    if (inSpRest.length) list += `<div class="pl-grp">${presetSpLabel(sp)}</div>` + inSpRest.map(item).join('');
+    else list += `<div class="pl-grp">${presetSpLabel(sp)} のプリセットはまだありません（✏️ 編集 → 動物種「${presetSpLabel(sp)}」で ＋新規）</div>`;
+    if (commonRest.length) list += `<div class="pl-grp">共通</div>` + commonRest.map(item).join('');
+    html += `<div class="preset-list">${list}</div>`;
+  }
   bar.innerHTML = html;
 }
+
 
 function applyPreset(key) {
   if (!current) return;
@@ -3104,6 +3122,7 @@ function applyPreset(key) {
   let _noTpl = null;
   if (presetHasLocal(preset)) _noTpl = applyPresetLocal(preset.local);
   populateForm();
+  try { renderPresetBar(); } catch (_) {}
   showToast(`プリセット適用: ${preset.label}${_noTpl ? '（局所麻酔も設定）' : ''}`);
   if (_noTpl && _noTpl.length) setTimeout(() => showToast(`定型なし: ${_noTpl.join('・')} → 量は当日入力`), 1600);
   if (_noTpl && applyPresetLocal._noWeight) setTimeout(() => showToast('体重が未入力のため、局所麻酔の溶液量(mL)は空欄です'), _noTpl.length ? 3200 : 1600);
@@ -5470,7 +5489,7 @@ function populateForm() {
 
   // Local anesthesia blocks
   populateLocalBlocks();
-  _presetBarSp = null;  // バーは症例の動物種に追従
+  _presetBarSp = null; window._presetPickOpen = false;  // バーは症例の動物種に追従・一覧は閉じる
   try { renderPresetBar(); } catch (_) {}  // 術式に合うプリセット(⭐)を先頭に
 
   // Emergency response doses
