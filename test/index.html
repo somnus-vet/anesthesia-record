@@ -1141,7 +1141,10 @@ body.board-mode .screen{inset:32px 0 0 0!important}
 
           <div style="font-size:12px;font-weight:800;color:var(--blue);margin-bottom:6px;letter-spacing:.4px">⚡ プリセット（いつものセット）</div>
           <div class="preset-bar" id="presetBar"></div>
-          <button class="preset-edit-btn" type="button" onclick="openPresetEditor()">✏️ プリセットを編集</button>
+          <div style="display:flex;gap:6px">
+            <button class="preset-edit-btn" type="button" onclick="openPresetEditor()">✏️ プリセットを編集</button>
+            <button class="preset-edit-btn" type="button" style="border-style:solid;background:#eaf3fb" onclick="openSaveAsPreset()">💾 今のプランをプリセットに保存</button>
+          </div>
 
           <div class="sub-acc" data-sub="premeds">
           <div class="sub-hdr" onclick="toggleSub(this)"><span class="acc-arrow">▶</span>前投薬 <span class="sub-en">Pre-medication</span><span class="sub-sum" id="ssum_premeds"></span></div>
@@ -1769,6 +1772,30 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     </div>
     <div class="modal-footer">
       <button class="btn-save" style="width:100%" onclick="document.getElementById('gauzeModal').classList.remove('on')">確認した</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="savePresetModal">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-hdr">
+      <span>💾 今のプランをプリセットに保存</span>
+      <button class="modal-close" onclick="document.getElementById('savePresetModal').classList.remove('on')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">保存先</div>
+      <select id="sapTarget" onchange="sapOnTarget()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:12px;min-height:44px"></select>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">表示名</div>
+      <input id="sapLabel" type="text" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:12px;min-height:44px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">動物種</div>
+      <div class="seg" id="sapSpSeg" style="margin-bottom:12px"></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">対象術式（症例の術式に含まれていれば⭐おすすめに出る。カンマ区切り）</div>
+      <input id="sapProc" type="text" placeholder="例: CAST, 去勢" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:7px;font-size:15px;background:#f8fafc;margin-bottom:12px;min-height:44px">
+      <div class="chk-item" id="sapLocalChk" onclick="this.classList.toggle('on')"><div class="chk-box"></div><span class="chk-label">局所麻酔も含める（薬液は体重で割って mL/kg で保存。ブロックの量は定型から）</span></div>
+      <div id="sapSummary" style="font-size:12px;line-height:1.7;background:#f8fafc;border:1.5px solid var(--border);border-radius:7px;padding:8px;margin-top:10px"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" onclick="document.getElementById('savePresetModal').classList.remove('on')">キャンセル</button>
+      <button type="button" class="btn-save" onclick="saveAsPreset()">保存</button>
     </div>
   </div>
 </div>
@@ -3467,6 +3494,107 @@ function applyPresetLocal(local) {
     });
   });
   return noTpl;
+}
+
+// ─────────────── 今のプランをプリセットとして保存 ───────────────
+let _sapSp = '';
+function sapSetSp(sp) { _sapSp = sp; document.getElementById('sapSpSeg').innerHTML = PRESET_SP.map(([v, l]) => `<div class="seg-i${_sapSp === v ? ' on' : ''}" onclick="sapSetSp('${v}')">${l}</div>`).join(''); }
+// 今の症例から プリセット形を組み立てる(薬剤/維持/輸液/局所麻酔)。局所麻酔の薬液は mL → mL/kg
+function buildPresetFromCase(includeLocal) {
+  collectForm();
+  const p = { label: '', drugs: {}, maint: '', fluidType: '', fluidRate: '' };
+  Object.entries(current.drugs || {}).forEach(([k, d]) => {
+    if (!d || !d.use || !findDrugDef(k)) return;
+    p.drugs[k] = { dose: String(d.dose || ''), route: d.route || '' };
+    if (d.mix) p.drugs[k].mix = d.mix;
+  });
+  p.maint = current.maintIsoflurane ? 'isoflurane' : current.maintSevoflurane ? 'sevoflurane' : current.maintPropofol ? 'propofol' : '';
+  ['maintConc', 'maintO2', 'maintAir', 'fluidType', 'fluidRate'].forEach(f => { if (current[f] !== undefined && current[f] !== '') p[f] = String(current[f]); });
+  if (includeLocal) {
+    const w = parseFloat(current.weight) || 0;
+    const perKg = v => { const x = parseFloat(v); return (w && !isNaN(x)) ? String(+((x / w).toPrecision(3))) : ''; };
+    const local = {};
+    [1, 2].forEach(si => {
+      const S = _laSet(si);
+      const mix = current[S.mix] || {}, blocks = current[S.blocks] || {};
+      const drugs = (mix.drugs || []).filter(d => d && d.name).map(d => ({ name: d.name, conc: d.conc, mlKg: perKg(d.stockMl) }));
+      const bl = {};
+      Object.entries(blocks).forEach(([k, d]) => { if (d && d.use && getBlockDef(k)) bl[k] = { sites: d.sites || '1', side: d.side || '' }; });
+      if (drugs.length || Object.keys(bl).length) local['s' + si] = { mix: { drugs, totalMlKg: perKg(mix.totalVolume) }, blocks: bl };
+    });
+    if (Object.keys(local).length) p.local = local;
+  }
+  return p;
+}
+function sapSummaryHtml(p) {
+  const drugs = Object.entries(p.drugs).map(([k, s]) => { const d = findDrugDef(k); return d ? `${d.label} ${s.dose}${d.unit}` : ''; }).filter(Boolean);
+  const maint = { isoflurane: 'イソ', sevoflurane: 'セボ', propofol: 'プロポ' }[p.maint] || '';
+  const lines = [];
+  lines.push(`💊 ${drugs.length ? drugs.join(' / ') : '<span style="color:var(--muted)">薬剤なし</span>'}`);
+  if (maint || p.fluidType) lines.push(`🌬 ${[maint ? maint + (p.maintConc ? ' ' + p.maintConc + '%' : '') : '', p.fluidType ? '輸液 ' + p.fluidType + (p.fluidRate ? ' ' + p.fluidRate : '') : ''].filter(Boolean).join('　')}`);
+  if (p.local) ['s1', 's2'].forEach((s, i) => {
+    const set = p.local[s]; if (!set) return;
+    const mix = (set.mix.drugs || []).map(d => `${laDrugLabel(d.name, d.conc)} ${d.mlKg || '?'}mL/kg`).join('+') + (set.mix.totalMlKg ? ` → 計${set.mix.totalMlKg}mL/kg` : '');
+    const bl = Object.entries(set.blocks).map(([k, d]) => { const def = getBlockDef(k); return def ? def.label + (d.side ? '(' + d.side + ')' : '') : ''; }).filter(Boolean).join('・');
+    lines.push(`📍${i ? '②' : '①'} ${bl || 'ブロックなし'}${mix ? '　🧪 ' + mix : ''}`);
+  });
+  if (p.local && !(parseFloat(current.weight) > 0)) lines.push('<span style="color:#c0392b">⚠️ 体重が未入力のため、薬液の mL/kg は空欄で保存されます</span>');
+  return lines.join('<br>');
+}
+function sapRefresh() {
+  const inc = document.getElementById('sapLocalChk').classList.contains('on');
+  document.getElementById('sapSummary').innerHTML = sapSummaryHtml(buildPresetFromCase(inc));
+}
+function sapOnTarget() {
+  const key = document.getElementById('sapTarget').value;
+  if (!key) return;
+  const p = userPresets && userPresets[key]; if (!p) return;
+  document.getElementById('sapLabel').value = p.label || '';
+  document.getElementById('sapProc').value = p.proc || '';
+  sapSetSp(presetSpecies(p));
+}
+async function openSaveAsPreset() {
+  if (!current) return;
+  collectForm();
+  if (!Object.values(current.drugs || {}).some(d => d && d.use)) { showToast('プランに薬剤がありません'); return; }
+  // 最新のプリセット一覧から(別端末の変更を巻き戻さないため)
+  if (sheetsConfig && sheetsConfig.enabled) { try { await loadPresets(); } catch (e) {} }
+  const sp = presetSpOfCase();
+  const sel = document.getElementById('sapTarget');
+  const list = Object.entries(userPresets || {}).filter(([k]) => k.indexOf('__') !== 0);
+  sel.innerHTML = `<option value="">＋ 新しいプリセットとして保存</option>` + list.map(([k, p]) => `<option value="${k}">上書き: ${esc(p.label)}（${esc(presetSpLabel(presetSpecies(p)))}）</option>`).join('');
+  sel.value = '';
+  const toks = procTokens(getVal('f_procedure') || current.procedure || '');
+  document.getElementById('sapLabel').value = `${presetSpLabel(sp).replace(/^\S+\s/, '')}・${toks.join('＋') || '新規'}`;
+  document.getElementById('sapProc').value = toks.join(', ');
+  sapSetSp(sp);
+  const chk = document.getElementById('sapLocalChk');
+  chk.classList.toggle('on', hasLocalAnesthesia());
+  chk.onclick = () => { chk.classList.toggle('on'); sapRefresh(); };
+  sapRefresh();
+  document.getElementById('savePresetModal').classList.add('on');
+}
+async function saveAsPreset() {
+  if (!current) return;
+  const label = (document.getElementById('sapLabel').value || '').trim();
+  if (!label) { showToast('表示名を入力してください'); return; }
+  const inc = document.getElementById('sapLocalChk').classList.contains('on');
+  const p = buildPresetFromCase(inc);
+  p.label = label; p.species = _sapSp; p.proc = (document.getElementById('sapProc').value || '').trim();
+  let key = document.getElementById('sapTarget').value;
+  if (key && userPresets[key]) {
+    if (!confirm(`プリセット「${userPresets[key].label}」を今のプランで上書きします。よろしいですか？`)) return;
+    if (!inc && userPresets[key].local) p.local = userPresets[key].local;  // 局所麻酔を含めない時は既存のを保つ
+  } else key = 'custom_' + Date.now();
+  userPresets[key] = p;
+  savePresetsToStorage();
+  renderPresetBar();
+  document.getElementById('savePresetModal').classList.remove('on');
+  if (sheetsConfig && sheetsConfig.enabled && sheetsConfig.webappUrl) {
+    showToast('💾 プリセット保存中…');
+    const ok = await pushPresetsToSheets();
+    showToast(ok ? `✓ 「${label}」を Sheets に保存` : '⚠️ ローカルのみ保存（Sheets失敗）');
+  } else showToast(`「${label}」を保存しました（ローカルのみ）`);
 }
 
 // 新規プリセットを追加
