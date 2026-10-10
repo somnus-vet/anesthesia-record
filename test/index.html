@@ -2080,6 +2080,7 @@ const LOCAL_BLOCKS = [
   { key:'ql',                 label:'QLブロック',         desc:'腹部・骨盤' },
   { key:'esp',                label:'ESPブロック',        desc:'胸腹部' },
   { key:'paravertebral',      label:'傍脊椎ブロック',      desc:'胸壁・乳腺' },
+  { key:'serratus',           label:'前鋸筋面ブロック',    desc:'胸壁・開胸/肋骨' },
   { key:'intercostal',        label:'肋間神経ブロック',    desc:'開胸' },
   // 四肢
   { key:'brachial',           label:'腕神経叢ブロック',    desc:'前肢' },
@@ -2139,7 +2140,7 @@ function laDrugOptionsHtml(curName, curConc, emptyLabel) {
 const LOCAL_BLOCKS_BY_CATEGORY = [
   { cat: '浸潤系', keys: ['incisional','intraperitoneal','intratesticular'] },
   { cat: '神経軸', keys: ['ls_epidural','sc_epidural'] },
-  { cat: '体幹',   keys: ['tap','ql','esp','paravertebral','intercostal'] },
+  { cat: '体幹',   keys: ['tap','ql','esp','paravertebral','serratus','intercostal'] },
   { cat: '四肢',   keys: ['brachial','rumm_distal','rumm_proximal','femoral','sciatic','ls_plexus'] },
   { cat: '頭部',   keys: ['infraorbital','maxillary','inferior_alveolar','mental'] },
   { cat: '眼科',   keys: ['retrobulbar','peribulbar','subtenon','auriculopalpebral'] },
@@ -2401,7 +2402,7 @@ const BLOCKS_WITH_SIDE = new Set([
   'infraorbital','maxillary','inferior_alveolar','mental',
   'retrobulbar','peribulbar','subtenon','auriculopalpebral',
   'brachial','rumm_distal','rumm_proximal','femoral','sciatic','ls_plexus',
-  'tap','ql','esp','paravertebral','intercostal','intratesticular'
+  'tap','ql','esp','paravertebral','serratus','intercostal','intratesticular'
 ]);
 
 function renderSelectedBlocks(si = 1) {
