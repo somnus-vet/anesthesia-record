@@ -8913,8 +8913,10 @@ function indFinishSlow(uid, by, endTime) {
   r.durSec = _secBetween(r.time, endTime || nowTime()) || 0; r.durBy = by;
   _indRefreshNote(r); touchEv(r);
   renderTimeline(); autoSave(); pushCurrentToSheets();
-  closeInductionSheet();
-  showToast(`⏱ slow bolus 完了 ${_fmtSec(r.durSec)} — 下の行で残量を入力してください`);
+  // 完了後もシートは閉じない(残量入力・シート内「挿管を記録」を続けられるように)
+  const dKey = ((DRUG_GROUPS.induction || []).find(d => d.label === r.drug) || {}).key;
+  if (document.getElementById('inductionModal').classList.contains('on')) renderInductionSheet(dKey);
+  showToast(`⏱ slow bolus 完了 ${_fmtSec(r.durSec)} — 残量を入力してください`);
 }
 function closeRunningSlowBolus(endTime, by) {
   let n = 0;
