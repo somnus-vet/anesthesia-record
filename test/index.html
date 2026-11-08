@@ -8265,11 +8265,13 @@ function renderQuickDoseBar() {
     // 薬剤ボタンには薬液量(mL)を出さない(ユーザー要望: 選択済みの薬のボタンには不要。mLは用量シートで確認)
     return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${laterTag}${badge}</button>`;
   };
-  // 挿管後は「前投与薬グループの薬で投与済みのもの」(ミダゾラム/ブトルファノール等、術中はほぼ使わない)を
-  // 1つのチップに畳む。未投与の前投与薬や、他グループにもチェックがある薬(アトロピン等は循環系定義に統合済)は残す
+  // 導入(または挿管)を記録したら前投与薬グループの薬(ミダゾラム/ブトルファノール等、術中はほぼ使わない)を
+  // 投与済みかどうかに関わらず1つのチップに畳む。例外: メデトミジン/ニカルジピンは術中にも使うので残す。
+  // 他グループにもチェックがある薬(アトロピン等は循環系定義に統合済)は前投与薬扱いにならないので残る
   if (_qdPremedFoldCase !== (current.id || null)) { _qdPremedFoldCase = current.id || null; _qdPremedOpen = false; }
-  const afterIntub = !!(current.intubationTime || '').trim();
-  const folded = afterIntub ? used.filter(d => _premedKeys.has(d.key) && log.some(r => r.drug === d.label && r.time && !r.deleted)) : [];
+  const afterInd = !!((current.inductionTime || '').trim() || (current.intubationTime || '').trim());
+  const _keepPremed = new Set(['medetomidine', 'nicardipine']);
+  const folded = afterInd ? used.filter(d => _premedKeys.has(d.key) && !_keepPremed.has(d.key)) : [];
   const main = folded.length ? used.filter(d => folded.indexOf(d) < 0) : used;
   let foldHtml = '';
   if (folded.length) {
