@@ -79,7 +79,8 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 /* スマホ: ソフトキーボード表示中は下部アクションバーを畳んで入力欄の見える範囲を確保(Chrome iOSの入力補助バー肥大化対策) */
 @media (max-width:600px){
   body.kb-open .act-bar{display:none}
-  .act-btn{font-size:13px;padding:10px 4px;gap:3px;white-space:nowrap}
+  .act-bar{padding:5px 10px;padding-bottom:max(5px,env(safe-area-inset-bottom));gap:6px}
+  .act-btn{font-size:13px;padding:6px 4px;min-height:36px;gap:3px;white-space:nowrap}
 }
 .act-btn{flex:1;padding:10px 6px;border-radius:var(--r-sm);border:none;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;min-height:44px}
 .act-primary{background:var(--navy);color:#fff}
@@ -3136,6 +3137,26 @@ document.addEventListener('focusout', e => {
   const t = e.target;
   if (t && t.matches && t.matches(KB_INPUT_SEL)) setKbOpen(false);
 });
+// Chrome iOSの「キーボードを閉じる」ボタンはフォーカスを外さずキーボードだけ下げる(focusoutが来ない)ため、
+// 表示領域の高さが戻ったことでも kb-open を解除する
+(function () {
+  const vv = window.visualViewport;
+  const getH = () => (vv ? vv.height : window.innerHeight);
+  let baseH = getH();
+  const onResize = () => {
+    const h = getH();
+    if (h > baseH) baseH = h;
+    if (baseH - h < 120) {
+      clearTimeout(kbOpenTimer);
+      document.body.classList.remove('kb-open');
+    } else {
+      const ae = document.activeElement;
+      if (ae && ae.matches && ae.matches(KB_INPUT_SEL)) document.body.classList.add('kb-open');
+    }
+  };
+  (vv || window).addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', () => { setTimeout(() => { baseH = getH(); onResize(); }, 400); });
+})();
 document.addEventListener('focusout', e => {
   const t = e.target;
   if (!t || !t.matches || !t.matches('input,textarea,select')) return;
