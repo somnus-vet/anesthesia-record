@@ -361,6 +361,18 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 
 /* QUICK DOSE BAR */
 .qdose-bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+/* 薬剤ボタンのジャンル行: 左に細い縦ラベル、ボタンはジャンル色 */
+.qd-grp{display:flex;gap:6px;width:100%;align-items:stretch;--g:#2e86c1;--g-bg:#e8f4fd;--g-tx:#1b5e8a}
+.qd-glbl{writing-mode:vertical-rl;text-orientation:mixed;font-size:10px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--g);border-radius:6px;padding:4px 2px;display:flex;align-items:center;justify-content:center;min-width:18px;flex-shrink:0;line-height:1}
+.qd-gbtns{display:flex;flex-wrap:wrap;gap:7px;flex:1;min-width:0}
+.qd-grp .qdose-btn{background:var(--g-bg);border-color:var(--g);color:var(--g-tx)}
+.qd-g-cri{--g:#8e44ad;--g-bg:#efe6f7;--g-tx:#5b2c83}
+.qd-g-ind{--g:#2e86c1;--g-bg:#e8f4fd;--g-tx:#1b5e8a}
+.qd-g-analg{--g:#b9770e;--g-bg:#fdf3e1;--g-tx:#7d4e05}
+.qd-g-circ{--g:#c0392b;--g-bg:#fdecea;--g-tx:#8e2a1f}
+.qd-g-abx{--g:#27ae60;--g-bg:#e9f7ef;--g-tx:#1b6e3e}
+.qd-g-rev{--g:#0e8f8f;--g-bg:#e3f6f5;--g-tx:#0a5f5f}
+.qd-g-misc{--g:#5d6d7e;--g-bg:#eef1f5;--g-tx:#3b4856}
 .qdose-btn{display:flex;align-items:center;gap:5px;background:var(--blue-bg);border:1.5px solid var(--blue);color:var(--blue);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .05s ease,filter .05s ease,box-shadow .05s ease}
 /* インライン背景が指定されたボタンでも効くよう transform/filter で押下感を出す */
 .qdose-btn:active{background:var(--blue);color:#fff;transform:scale(0.93);filter:brightness(0.9);box-shadow:0 2px 5px rgba(0,0,0,0.28) inset}
@@ -8271,8 +8283,22 @@ function renderQuickDoseBar() {
   const afterInd = !!((current.inductionTime || '').trim() || (current.intubationTime || '').trim());
   const _keepPremed = new Set(['medetomidine', 'nicardipine']);
   const main = afterInd ? used.filter(d => !_premedKeys.has(d.key) || _keepPremed.has(d.key)) : used;
-  bar.innerHTML = criHtml + main.map(btnHtml).join('');
+  // ジャンル別に行を分け、左の縦ラベルとボタン色で見分ける(薬が無いジャンルの行は出さない)
+  const groupOf = key => {
+    if (/^a_/.test(key)) return 'ind';
+    for (const g of Object.keys(DRUG_GROUPS)) if ((DRUG_GROUPS[g] || []).some(x => x.key === key)) return QD_GROUP_CLS[g] || 'misc';
+    return 'misc';
+  };
+  const buckets = {};
+  main.forEach(d => { const g = groupOf(d.key); (buckets[g] = buckets[g] || []).push(d); });
+  const rows = QD_GROUP_ORDER.filter(g => buckets[g] && buckets[g].length)
+    .map(g => `<div class="qd-grp qd-g-${g}"><span class="qd-glbl">${QD_GROUP_LABEL[g]}</span><div class="qd-gbtns">${buckets[g].map(btnHtml).join('')}</div></div>`);
+  bar.innerHTML = (criHtml ? `<div class="qd-grp qd-g-cri"><span class="qd-glbl">CRI</span><div class="qd-gbtns">${criHtml}</div></div>` : '') + rows.join('');
 }
+// 薬剤ボタンのジャンル分け(表示順・ラベル・色クラス)。グループ定義名→表示ジャンル
+const QD_GROUP_CLS = { premeds: 'ind', induction: 'ind', addon: 'ind', antibiotics: 'abx', vasopressors: 'circ', antagonists: 'rev', postAnalg: 'analg', other: 'misc' };
+const QD_GROUP_ORDER = ['ind', 'analg', 'circ', 'abx', 'rev', 'misc'];
+const QD_GROUP_LABEL = { ind: '導入/鎮静', analg: '鎮痛', circ: '循環', abx: '抗菌薬', rev: '拮抗', misc: 'その他' };
 
 // ── CRI(持続投与)の記録: 薬剤記録バーの専用ボタン → シートで用量(またはmL/h)を選ぶ ──
 // 現在のCRI量 = その薬の記録のうち「時刻が最も遅い」行(配列順は入力順で時刻順ではない)
