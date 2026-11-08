@@ -67,6 +67,11 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tab-bar::-webkit-scrollbar{display:none}
 .tab{flex:1;min-width:54px;padding:7px 4px;text-align:center;cursor:pointer;color:rgba(255,255,255,.55);font-size:9.5px;border-bottom:3px solid transparent;transition:all .2s;-webkit-user-select:none}
 .tab .ti{font-size:17px;display:block;margin-bottom:1px}
+/* スマホ: タブ帯を低く(約48px→約34px) */
+@media (max-width:600px){
+  .tab{padding:3px 4px 2px;border-bottom-width:2px}
+  .tab .ti{font-size:14px;margin-bottom:0;line-height:1.15}
+}
 .tab.on{color:#fff;border-bottom-color:#5dade2}
 
 /* MAIN + PANELS */
