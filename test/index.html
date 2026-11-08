@@ -76,6 +76,11 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
 /* ACTION BAR */
 .act-bar{background:#fff;border-top:1px solid var(--border);padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));display:flex;gap:8px;flex-shrink:0}
+/* スマホ: ソフトキーボード表示中は下部アクションバーを畳んで入力欄の見える範囲を確保(Chrome iOSの入力補助バー肥大化対策) */
+@media (max-width:600px){
+  body.kb-open .act-bar{display:none}
+  .act-btn{font-size:13px;padding:10px 4px;gap:3px;white-space:nowrap}
+}
 .act-btn{flex:1;padding:10px 6px;border-radius:var(--r-sm);border:none;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;min-height:44px}
 .act-primary{background:var(--navy);color:#fff}
 .act-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border)}
@@ -3692,12 +3697,29 @@ function isUserTypingNow() {
   const ae = document.activeElement;
   return !!(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
 }
+// ソフトキーボード表示判定: 文字入力系のフォーカスで body.kb-open を付け、下部アクションバーを畳む(スマホのみCSSで効く)
+const KB_INPUT_SEL = 'textarea,input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=color]):not([type=file])';
+let kbOpenTimer = null;
+function setKbOpen(on) {
+  clearTimeout(kbOpenTimer);
+  if (on) { document.body.classList.add('kb-open'); return; }
+  // 欄→欄の移動で一瞬閉じてバーが出入りしないよう少し待つ
+  kbOpenTimer = setTimeout(() => {
+    const ae = document.activeElement;
+    if (!(ae && ae.matches && ae.matches(KB_INPUT_SEL))) document.body.classList.remove('kb-open');
+  }, 150);
+}
 document.addEventListener('focusin', e => {
   const t = e.target;
   if (t && t.matches && t.matches('input,textarea,select')) {
     userTyping = true;
     clearTimeout(userTypingClearTimer);
+    if (t.matches(KB_INPUT_SEL)) setKbOpen(true);
   }
+});
+document.addEventListener('focusout', e => {
+  const t = e.target;
+  if (t && t.matches && t.matches(KB_INPUT_SEL)) setKbOpen(false);
 });
 document.addEventListener('focusout', e => {
   const t = e.target;
