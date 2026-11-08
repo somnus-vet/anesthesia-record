@@ -298,6 +298,24 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .tl-mixbadge{font-size:10.5px;font-weight:800;color:#fff;border-radius:6px;padding:2px 5px;margin-right:2px;white-space:nowrap}
 .tl-mixbadge.m1{background:#f59e0b}.tl-mixbadge.m2{background:#0d9488}.tl-mixbadge.m3{background:#7c3aed}
 .qdose-btn.dp-unplanned{background:#fff;color:var(--navy);border-color:var(--border)}
+/* 薬剤一覧モーダル: ジャンルごとに色分け(見出し・ボタン枠)。プラン済みは地色付き、未プランは白地＋ジャンル色の枠 */
+.dp-sec{--g:#5d6d7e;--g-bg:#eef1f5;--g-tx:#3b4856}
+.dp-sec.g-emg{--g:#b91c1c;--g-bg:#fee2e2;--g-tx:#991b1b}
+.dp-sec.g-pre{--g:#6d5bd0;--g-bg:#ecebfb;--g-tx:#4a3fa0}
+.dp-sec.g-ind{--g:#2e86c1;--g-bg:#e8f4fd;--g-tx:#1b5e8a}
+.dp-sec.g-abx{--g:#27ae60;--g-bg:#e9f7ef;--g-tx:#1b6e3e}
+.dp-sec.g-cri{--g:#8e44ad;--g-bg:#efe6f7;--g-tx:#5b2c83}
+.dp-sec.g-circ{--g:#c0392b;--g-bg:#fdecea;--g-tx:#8e2a1f}
+.dp-sec.g-rev{--g:#0e8f8f;--g-bg:#e3f6f5;--g-tx:#0a5f5f}
+.dp-sec.g-analg{--g:#b9770e;--g-bg:#fdf3e1;--g-tx:#7d4e05}
+.dp-hdr{position:sticky;top:0;z-index:1;background:#fff;font-size:11.5px;font-weight:800;color:var(--g-tx);padding:7px 0 5px;display:flex;align-items:center;gap:6px;border-bottom:2px solid var(--g);margin-bottom:6px}
+.dp-hdr .dp-dot{width:9px;height:9px;border-radius:50%;background:var(--g);flex-shrink:0}
+.dp-sec .qdose-bar{margin-bottom:12px}
+.dp-sec .qdose-btn{background:var(--g-bg);border-color:var(--g);color:var(--g-tx)}
+.dp-sec .qdose-btn.dp-unplanned{background:#fff;color:var(--g-tx);border-color:var(--g);border-style:dashed}
+.dp-jump{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 0 8px;margin:0 -4px 2px;scrollbar-width:none}
+.dp-jump::-webkit-scrollbar{display:none}
+.dp-jump .dp-jbtn{flex-shrink:0;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:999px;border:1.5px solid var(--g);color:var(--g-tx);background:var(--g-bg);white-space:nowrap;cursor:pointer}
 .qdose-btn .later-tag{font-size:10px;background:#64748b;color:#fff;border-radius:5px;padding:1px 4px}
 .ev-mix1{background:#fff7ed!important;border-color:#f59e0b!important;color:#b45309!important}
 .ev-mix2{background:#f0fdfa!important;border-color:#0d9488!important;color:#0f766e!important}
@@ -361,18 +379,6 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 
 /* QUICK DOSE BAR */
 .qdose-bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
-/* 薬剤ボタンのジャンル行: 左に細い縦ラベル、ボタンはジャンル色 */
-.qd-grp{display:flex;gap:6px;width:100%;align-items:stretch;--g:#2e86c1;--g-bg:#e8f4fd;--g-tx:#1b5e8a}
-.qd-glbl{writing-mode:vertical-rl;text-orientation:mixed;font-size:10px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--g);border-radius:6px;padding:4px 2px;display:flex;align-items:center;justify-content:center;min-width:18px;flex-shrink:0;line-height:1}
-.qd-gbtns{display:flex;flex-wrap:wrap;gap:7px;flex:1;min-width:0;align-items:flex-start;align-content:flex-start}
-.qd-grp .qdose-btn{background:var(--g-bg);border-color:var(--g);color:var(--g-tx)}
-.qd-g-cri{--g:#8e44ad;--g-bg:#efe6f7;--g-tx:#5b2c83}
-.qd-g-ind{--g:#2e86c1;--g-bg:#e8f4fd;--g-tx:#1b5e8a}
-.qd-g-analg{--g:#b9770e;--g-bg:#fdf3e1;--g-tx:#7d4e05}
-.qd-g-circ{--g:#c0392b;--g-bg:#fdecea;--g-tx:#8e2a1f}
-.qd-g-abx{--g:#27ae60;--g-bg:#e9f7ef;--g-tx:#1b6e3e}
-.qd-g-rev{--g:#0e8f8f;--g-bg:#e3f6f5;--g-tx:#0a5f5f}
-.qd-g-misc{--g:#5d6d7e;--g-bg:#eef1f5;--g-tx:#3b4856}
 .qdose-btn{display:flex;align-items:center;gap:5px;background:var(--blue-bg);border:1.5px solid var(--blue);color:var(--blue);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .05s ease,filter .05s ease,box-shadow .05s ease}
 /* インライン背景が指定されたボタンでも効くよう transform/filter で押下感を出す */
 .qdose-btn:active{background:var(--blue);color:#fff;transform:scale(0.93);filter:brightness(0.9);box-shadow:0 2px 5px rgba(0,0,0,0.28) inset}
@@ -1763,6 +1769,7 @@ body.board-mode .screen{inset:32px 0 0 0!important}
     <div class="modal-hdr"><span>💊 薬剤一覧から選んで記録</span><button class="modal-close" onclick="closeDrugPick()">×</button></div>
     <div class="modal-body" style="padding-top:8px">
       <input class="fin" id="drugPickSearch" type="text" placeholder="薬剤名で検索（例: ブト）" oninput="renderDrugPick(this.value)" autocomplete="off" style="margin-bottom:8px">
+      <div id="drugPickJump" class="dp-jump"></div>
       <div id="drugPickBody" style="max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     </div>
   </div>
@@ -6337,6 +6344,11 @@ function openDrugPick() {
   setTimeout(() => { if (s) s.focus(); }, 80);
 }
 function closeDrugPick() { document.getElementById('drugPickModal').classList.remove('on'); }
+function drugPickJumpTo(id) {
+  const box = document.getElementById('drugPickBody'), el = document.getElementById('dpSec_' + id);
+  if (!box || !el) return;
+  box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top;
+}
 function renderDrugPick(q) {
   const box = document.getElementById('drugPickBody'); if (!box) return;
   const qq = String(q || '').trim().toLowerCase();
@@ -6346,15 +6358,19 @@ function renderDrugPick(q) {
   const EMERG = ['adrenaline_low', 'adrenaline_arrest', 'atropine_v', 'diphenhydramine', 'dexamethasone', 'dantrolene', 'lipid20', 'glucose20'];
   const chip = d => `<button type="button" class="qdose-btn${used.has(d.key) ? '' : ' dp-unplanned'}" onclick="closeDrugPick();${isCriKey(d.key) ? 'openCriSheet' : 'quickDose'}('${d.key}')">${esc(d.label)}${d.sub ? `<span style="font-size:10.5px;font-weight:800;color:#b91c1c">${esc(d.sub)} ${esc(d.dog)}${esc(d.unit)}</span>` : ''}<span style="font-size:10px;opacity:.7">${d.sub ? '' : esc(d.unit)}</span>${plannedMl(d) ? `<span class="qml">${plannedMl(d)}</span>` : ''}${allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : ''}</button>`;
   const emerg = EMERG.map(k => findDrugDef(k)).filter(d => d && (!qq || d.label.toLowerCase().indexOf(qq) >= 0));
-  const emergHtml = emerg.length ? `<div style="font-size:11px;font-weight:800;color:#b91c1c;margin:4px 0 4px">🚨 緊急薬</div><div class="qdose-bar">${emerg.map(chip).join('')}</div>` : '';
-  const html = emergHtml + Object.entries(DRUG_GROUPS).map(([gk, arr]) => {
-    if (gk === 'addon') return '';
+  // ジャンル別セクション: 色分け見出し(スクロール中も上に張り付く)＋ジャンル色のボタン。上部のチップで該当セクションへジャンプ
+  const GCLS = { premeds:'g-pre', induction:'g-ind', antibiotics:'g-abx', cri:'g-cri', vasopressors:'g-circ', antagonists:'g-rev', postAnalg:'g-analg', other:'' };
+  const sec = (id, cls, label, list) => `<div class="dp-sec ${cls}" id="dpSec_${id}"><div class="dp-hdr"><span class="dp-dot"></span>${label}</div><div class="qdose-bar">${list.map(chip).join('')}</div></div>`;
+  const secs = [];
+  if (emerg.length) secs.push({ id:'emerg', cls:'g-emg', label:'🚨 緊急薬', list: emerg });
+  Object.entries(DRUG_GROUPS).forEach(([gk, arr]) => {
+    if (gk === 'addon') return;
     const list = arr.filter(d => !qq || d.label.toLowerCase().indexOf(qq) >= 0);
-    if (!list.length) return '';
-    return `<div style="font-size:11px;font-weight:800;color:var(--muted);margin:8px 0 4px">${gn[gk] || gk}</div><div class="qdose-bar">`
-      + list.map(chip).join('')
-      + `</div>`;
-  }).join('');
+    if (list.length) secs.push({ id: gk, cls: GCLS[gk] || '', label: gn[gk] || gk, list });
+  });
+  const html = secs.map(x => sec(x.id, x.cls, x.label, x.list)).join('');
+  const jump = document.getElementById('drugPickJump');
+  if (jump) jump.innerHTML = (!qq && secs.length > 1) ? secs.map(x => `<button type="button" class="dp-sec dp-jbtn ${x.cls}" onclick="drugPickJumpTo('${x.id}')">${x.label.replace(/^🚨 /, '')}</button>`).join('') : '';
   box.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">該当する薬剤がありません。「＋ 手入力の行」で記録してください</div>';
 }
 
@@ -8283,22 +8299,8 @@ function renderQuickDoseBar() {
   const afterInd = !!((current.inductionTime || '').trim() || (current.intubationTime || '').trim());
   const _keepPremed = new Set(['medetomidine', 'nicardipine']);
   const main = afterInd ? used.filter(d => !_premedKeys.has(d.key) || _keepPremed.has(d.key)) : used;
-  // ジャンル別に行を分け、左の縦ラベルとボタン色で見分ける(薬が無いジャンルの行は出さない)
-  const groupOf = key => {
-    if (/^a_/.test(key)) return 'ind';
-    for (const g of Object.keys(DRUG_GROUPS)) if ((DRUG_GROUPS[g] || []).some(x => x.key === key)) return QD_GROUP_CLS[g] || 'misc';
-    return 'misc';
-  };
-  const buckets = {};
-  main.forEach(d => { const g = groupOf(d.key); (buckets[g] = buckets[g] || []).push(d); });
-  const rows = QD_GROUP_ORDER.filter(g => buckets[g] && buckets[g].length)
-    .map(g => `<div class="qd-grp qd-g-${g}"><span class="qd-glbl">${QD_GROUP_LABEL[g]}</span><div class="qd-gbtns">${buckets[g].map(btnHtml).join('')}</div></div>`);
-  bar.innerHTML = (criHtml ? `<div class="qd-grp qd-g-cri"><span class="qd-glbl">CRI</span><div class="qd-gbtns">${criHtml}</div></div>` : '') + rows.join('');
+  bar.innerHTML = criHtml + main.map(btnHtml).join('');
 }
-// 薬剤ボタンのジャンル分け(表示順・ラベル・色クラス)。グループ定義名→表示ジャンル
-const QD_GROUP_CLS = { premeds: 'ind', induction: 'ind', addon: 'ind', antibiotics: 'abx', vasopressors: 'circ', antagonists: 'rev', postAnalg: 'analg', other: 'misc' };
-const QD_GROUP_ORDER = ['ind', 'analg', 'circ', 'abx', 'rev', 'misc'];
-const QD_GROUP_LABEL = { ind: '導入', analg: '鎮痛', circ: '循環', abx: '抗菌', rev: '拮抗', misc: '他' };
 
 // ── CRI(持続投与)の記録: 薬剤記録バーの専用ボタン → シートで用量(またはmL/h)を選ぶ ──
 // 現在のCRI量 = その薬の記録のうち「時刻が最も遅い」行(配列順は入力順で時刻順ではない)
