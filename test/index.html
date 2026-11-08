@@ -364,7 +364,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 /* 薬剤ボタンのジャンル行: 左に細い縦ラベル、ボタンはジャンル色 */
 .qd-grp{display:flex;gap:6px;width:100%;align-items:stretch;--g:#2e86c1;--g-bg:#e8f4fd;--g-tx:#1b5e8a}
 .qd-glbl{writing-mode:vertical-rl;text-orientation:mixed;font-size:10px;font-weight:700;letter-spacing:1px;color:#fff;background:var(--g);border-radius:6px;padding:4px 2px;display:flex;align-items:center;justify-content:center;min-width:18px;flex-shrink:0;line-height:1}
-.qd-gbtns{display:flex;flex-wrap:wrap;gap:7px;flex:1;min-width:0}
+.qd-gbtns{display:flex;flex-wrap:wrap;gap:7px;flex:1;min-width:0;align-items:flex-start;align-content:flex-start}
 .qd-grp .qdose-btn{background:var(--g-bg);border-color:var(--g);color:var(--g-tx)}
 .qd-g-cri{--g:#8e44ad;--g-bg:#efe6f7;--g-tx:#5b2c83}
 .qd-g-ind{--g:#2e86c1;--g-bg:#e8f4fd;--g-tx:#1b5e8a}
@@ -8298,7 +8298,7 @@ function renderQuickDoseBar() {
 // 薬剤ボタンのジャンル分け(表示順・ラベル・色クラス)。グループ定義名→表示ジャンル
 const QD_GROUP_CLS = { premeds: 'ind', induction: 'ind', addon: 'ind', antibiotics: 'abx', vasopressors: 'circ', antagonists: 'rev', postAnalg: 'analg', other: 'misc' };
 const QD_GROUP_ORDER = ['ind', 'analg', 'circ', 'abx', 'rev', 'misc'];
-const QD_GROUP_LABEL = { ind: '導入/鎮静', analg: '鎮痛', circ: '循環', abx: '抗菌薬', rev: '拮抗', misc: 'その他' };
+const QD_GROUP_LABEL = { ind: '導入', analg: '鎮痛', circ: '循環', abx: '抗菌', rev: '拮抗', misc: '他' };
 
 // ── CRI(持続投与)の記録: 薬剤記録バーの専用ボタン → シートで用量(またはmL/h)を選ぶ ──
 // 現在のCRI量 = その薬の記録のうち「時刻が最も遅い」行(配列順は入力順で時刻順ではない)
