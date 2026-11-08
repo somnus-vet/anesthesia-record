@@ -6242,11 +6242,8 @@ function updateAllergyBanner() {
     b.classList.add('past');
     b.innerHTML = `<span>⚠️</span><span class="alg-b-body">過去の麻酔記録にアレルギーあり: ${esc(pa.text)}（今回は${st === 'none' ? '「なし」と記録' : '未確認'}。タップして確認）</span>`;
     b.style.display = '';
-  } else if (st === '') {
-    b.classList.add('unk');
-    b.innerHTML = `<span>❔</span><span class="alg-b-body">アレルギー未確認 — 術前タブで「なし（確認済）」か「あり」を記録してください</span>`;
-    b.style.display = '';
   } else {
+    // 「未確認」の黄色帯は廃止(スマホで画面を圧迫するため)。アレルギーが記録された時だけ赤/橙で警告する
     b.style.display = 'none';
   }
 }
