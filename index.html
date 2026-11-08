@@ -8280,8 +8280,8 @@ function indAddBolus(key, method) {
   if (method === 'slow') extra.durSec = null;
   const row = _indPush(d, perKg, extra);
   _indRefreshNote(row);
-  if (method === 'slow') renderInductionSheet(key); else closeInductionSheet();
-  showToast(method === 'slow' ? `⏱ slow bolus 開始（${drawn.toFixed(2)} mL）` : `✅ bolus ${drawn.toFixed(2)} mL を記録 — 下の行で残量を入れると実投与量に直ります`);
+  renderInductionSheet(key);  // bolusでもシートは閉じない(残量入力・追加・シート内「挿管を記録」をそのまま続けられるように)
+  showToast(method === 'slow' ? `⏱ slow bolus 開始（${drawn.toFixed(2)} mL）` : `✅ bolus ${drawn.toFixed(2)} mL を記録 — 残量を入れると実投与量に直ります`);
 }
 function indFinishSlow(uid, by, endTime) {
   const r = (current.drugLog || []).find(x => x && x.uid === uid); if (!r) return;
