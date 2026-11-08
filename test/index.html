@@ -8370,7 +8370,8 @@ function quickDose(key) {
   if (!current) return;
   const d = findDrugDef(key);
   if (!d) return;
-  if (_isInductionKey(key)) { openInductionSheet(key); return; }
+  // 導入薬(プロポフォール/アルファキサロン)も薬剤ボタンからは通常の用量パネルで記録する(鎮静・術中追加など)。
+  // 導入としての投与は「導入」イベントボタン→導入シート経由のみ(導入時刻の自動設定もシート側だけ)
   warnOpioidConflict(key);
   doseSelectKey = key;
   const drugData0 = (current.drugs && current.drugs[key]) || {};
@@ -8697,7 +8698,16 @@ function _indDrugs(focusKey) {
   if (f && !used.some(d => d.key === f.key)) used.push(f);
   return used.length ? used : all;
 }
-function _indRowsOf(d) { return (current.drugLog || []).filter(r => r && !r.deleted && r.drug === d.label && !/CRI/i.test(String(r.route || ''))); }  // 旧記録(method無し)も累計に含める
+// 導入シートの累計に含める行: シート経由(method有り)か、導入時刻以降の記録。導入前の鎮静目的の投与(薬剤ボタン)は別物として除外
+function _indRowsOf(d) {
+  const t0 = (current.inductionTime || '').trim();
+  return (current.drugLog || []).filter(r => {
+    if (!(r && !r.deleted && r.drug === d.label && !/CRI/i.test(String(r.route || '')))) return false;
+    if (r.method || !t0) return true;
+    const dt = _secBetween(t0, r.time);
+    return dt !== null && dt <= 6 * 3600;
+  });
+}
 function _perKgOfRow(r) { const m = String(r.dose || '').match(/^\s*([\d.]+)/); return m ? parseFloat(m[1]) : NaN; }
 function _fmtSec(s) { s = Math.max(0, Math.round(+s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 function _secBetween(t1, t2) { const a = timeToSec(t1), b = timeToSec(t2); if (a === null || b === null) return null; return ((b - a) % 86400 + 86400) % 86400; }
