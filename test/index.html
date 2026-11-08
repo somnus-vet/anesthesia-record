@@ -362,6 +362,7 @@ input.fin[readonly]{background:#fff;cursor:pointer}
 /* QUICK DOSE BAR */
 .qdose-bar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
 .qdose-btn{display:flex;align-items:center;gap:5px;background:var(--blue-bg);border:1.5px solid var(--blue);color:var(--blue);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;min-height:44px;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .05s ease,filter .05s ease,box-shadow .05s ease}
+.qdose-btn.qdose-fold{background:#f1f3f6;border-style:dashed;color:var(--muted);font-weight:600}
 /* インライン背景が指定されたボタンでも効くよう transform/filter で押下感を出す */
 .qdose-btn:active{background:var(--blue);color:#fff;transform:scale(0.93);filter:brightness(0.9);box-shadow:0 2px 5px rgba(0,0,0,0.28) inset}
 .qdose-btn.on{background:var(--blue);color:#fff}
@@ -8256,15 +8257,30 @@ function renderQuickDoseBar() {
     return;
   }
   const log = current.drugLog || [];
-  bar.innerHTML = criHtml + used.map(d => {
+  const btnHtml = d => {
     const hits = log.filter(r => r.drug === d.label && r.time && !r.deleted);  // 削除墓標は回数に数えない
     // バッジは回数のみ。時刻まで載せるとボタンが横に伸びて折り返し、縦に積み上がるため。
     const badge = hits.length ? `<span class="qdose-badge">×${hits.length}</span>` : '';
     const laterTag = (DRUG_GROUPS.addon.some(x => x.key === d.key) ? '<span class="later-tag">追加</span>' : '') + (allergyMatchForDrug(d.label) ? '<span class="later-tag" style="background:#b91c1c">⚠️ｱﾚﾙｷﾞｰ</span>' : '');
     // 薬剤ボタンには薬液量(mL)を出さない(ユーザー要望: 選択済みの薬のボタンには不要。mLは用量シートで確認)
     return `<button type="button" class="qdose-btn" onclick="quickDose('${d.key}')">${esc(d.label)}${laterTag}${badge}</button>`;
-  }).join('');
+  };
+  // 挿管後は「前投与薬グループの薬で投与済みのもの」(ミダゾラム/ブトルファノール等、術中はほぼ使わない)を
+  // 1つのチップに畳む。未投与の前投与薬や、他グループにもチェックがある薬(アトロピン等は循環系定義に統合済)は残す
+  if (_qdPremedFoldCase !== (current.id || null)) { _qdPremedFoldCase = current.id || null; _qdPremedOpen = false; }
+  const afterIntub = !!(current.intubationTime || '').trim();
+  const folded = afterIntub ? used.filter(d => _premedKeys.has(d.key) && log.some(r => r.drug === d.label && r.time && !r.deleted)) : [];
+  const main = folded.length ? used.filter(d => folded.indexOf(d) < 0) : used;
+  let foldHtml = '';
+  if (folded.length) {
+    foldHtml = _qdPremedOpen
+      ? folded.map(btnHtml).join('') + `<button type="button" class="qdose-btn qdose-fold" onclick="toggleQdPremedFold()">◂ 前投与薬を畳む</button>`
+      : `<button type="button" class="qdose-btn qdose-fold" onclick="toggleQdPremedFold()">前投与薬 ${folded.length}剤 ▸</button>`;
+  }
+  bar.innerHTML = criHtml + main.map(btnHtml).join('') + foldHtml;
 }
+let _qdPremedOpen = false, _qdPremedFoldCase = null;
+function toggleQdPremedFold() { _qdPremedOpen = !_qdPremedOpen; renderQuickDoseBar(); }
 
 // ── CRI(持続投与)の記録: 薬剤記録バーの専用ボタン → シートで用量(またはmL/h)を選ぶ ──
 // 現在のCRI量 = その薬の記録のうち「時刻が最も遅い」行(配列順は入力順で時刻順ではない)
